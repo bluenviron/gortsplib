@@ -11,7 +11,7 @@ import (
 	"strings"
 	"unicode"
 
-	psdp "github.com/pion/sdp/v3"
+	"github.com/pion/sdp/v3"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
@@ -19,7 +19,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
 )
 
-func getAttribute(attributes []psdp.Attribute, key string) string {
+func getAttribute(attributes []sdp.Attribute, key string) string {
 	for _, attr := range attributes {
 		if attr.Key == key {
 			return attr.Value
@@ -28,7 +28,7 @@ func getAttribute(attributes []psdp.Attribute, key string) string {
 	return ""
 }
 
-func isBackChannel(attributes []psdp.Attribute) bool {
+func isBackChannel(attributes []sdp.Attribute) bool {
 	for _, attr := range attributes {
 		if attr.Key == "sendonly" {
 			return true
@@ -93,7 +93,7 @@ type Media struct {
 }
 
 // Unmarshal decodes the media from the SDP format.
-func (m *Media) Unmarshal(md *psdp.MediaDescription) error {
+func (m *Media) Unmarshal(md *sdp.MediaDescription) error {
 	m.Type = MediaType(md.MediaName.Media)
 
 	m.ID = getAttribute(md.Attributes, "mid")
@@ -147,7 +147,7 @@ func (m *Media) Unmarshal(md *psdp.MediaDescription) error {
 }
 
 // Marshal encodes the media in SDP format.
-func (m Media) Marshal() (*psdp.MediaDescription, error) {
+func (m Media) Marshal() (*sdp.MediaDescription, error) {
 	var protos []string
 
 	if m.Profile == headers.TransportProfileSAVP {
@@ -156,22 +156,22 @@ func (m Media) Marshal() (*psdp.MediaDescription, error) {
 		protos = []string{"RTP", "AVP"}
 	}
 
-	md := &psdp.MediaDescription{
-		MediaName: psdp.MediaName{
+	md := &sdp.MediaDescription{
+		MediaName: sdp.MediaName{
 			Media:  string(m.Type),
 			Protos: protos,
 		},
 	}
 
 	if m.ID != "" {
-		md.Attributes = append(md.Attributes, psdp.Attribute{
+		md.Attributes = append(md.Attributes, sdp.Attribute{
 			Key:   "mid",
 			Value: m.ID,
 		})
 	}
 
 	if m.IsBackChannel {
-		md.Attributes = append(md.Attributes, psdp.Attribute{
+		md.Attributes = append(md.Attributes, sdp.Attribute{
 			Key: "sendonly",
 		})
 	}
@@ -182,13 +182,13 @@ func (m Media) Marshal() (*psdp.MediaDescription, error) {
 			return nil, err
 		}
 
-		md.Attributes = append(md.Attributes, psdp.Attribute{
+		md.Attributes = append(md.Attributes, sdp.Attribute{
 			Key:   "key-mgmt",
 			Value: "mikey " + base64.StdEncoding.EncodeToString(keyEnc),
 		})
 	}
 
-	md.Attributes = append(md.Attributes, psdp.Attribute{
+	md.Attributes = append(md.Attributes, sdp.Attribute{
 		Key:   "control",
 		Value: m.Control,
 	})
@@ -199,7 +199,7 @@ func (m Media) Marshal() (*psdp.MediaDescription, error) {
 
 		rtpmap := forma.RTPMap()
 		if rtpmap != "" {
-			md.Attributes = append(md.Attributes, psdp.Attribute{
+			md.Attributes = append(md.Attributes, sdp.Attribute{
 				Key:   "rtpmap",
 				Value: typ + " " + rtpmap,
 			})
@@ -212,7 +212,7 @@ func (m Media) Marshal() (*psdp.MediaDescription, error) {
 				tmp[i] = key + "=" + fmtp[key]
 			}
 
-			md.Attributes = append(md.Attributes, psdp.Attribute{
+			md.Attributes = append(md.Attributes, sdp.Attribute{
 				Key:   "fmtp",
 				Value: typ + " " + strings.Join(tmp, "; "),
 			})

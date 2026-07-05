@@ -1,10 +1,10 @@
-package sdp
+package sdpunmarshaler
 
 import (
 	"net/url"
 	"testing"
 
-	psdp "github.com/pion/sdp/v3"
+	"github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,7 +16,7 @@ var cases = []struct {
 	name string
 	dec  []byte
 	enc  []byte
-	desc SessionDescription
+	desc sdp.SessionDescription
 }{
 	// compliant SDPs
 	{
@@ -31,8 +31,8 @@ var cases = []struct {
 			"s=SDP Seminar\r\n" +
 			"i=A Seminar on the session description protocol\r\n" +
 			"t=3034423619 3042462419\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "jdoe",
 				SessionID:      2890844526,
 				SessionVersion: 2890842807,
@@ -41,9 +41,9 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: ptrOf(psdp.Information("A Seminar on the session description protocol")),
-			TimeDescriptions: []psdp.TimeDescription{
-				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
+			SessionInformation: ptrOf(sdp.Information("A Seminar on the session description protocol")),
+			TimeDescriptions: []sdp.TimeDescription{
+				{Timing: sdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
 		},
 	},
@@ -59,8 +59,8 @@ var cases = []struct {
 			"s=SDP Seminar\r\n" +
 			"i=A Seminar on the session description protocol\r\n" +
 			"t=3034423619 3042462419\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "jdoe",
 				SessionID:      2890844526,
 				SessionVersion: 2890842807,
@@ -69,9 +69,9 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: ptrOf(psdp.Information("A Seminar on the session description protocol")),
-			TimeDescriptions: []psdp.TimeDescription{
-				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
+			SessionInformation: ptrOf(sdp.Information("A Seminar on the session description protocol")),
+			TimeDescriptions: []sdp.TimeDescription{
+				{Timing: sdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
 		},
 	},
@@ -91,8 +91,8 @@ var cases = []struct {
 			"s=SDP Seminar\r\n" +
 			"i=A Seminar on the session description protocol\r\n" +
 			"t=3034423619 3042462419\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "jdoe",
 				SessionID:      2890844526,
 				SessionVersion: 2890842807,
@@ -101,9 +101,9 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: ptrOf(psdp.Information("A Seminar on the session description protocol")),
-			TimeDescriptions: []psdp.TimeDescription{
-				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
+			SessionInformation: ptrOf(sdp.Information("A Seminar on the session description protocol")),
+			TimeDescriptions: []sdp.TimeDescription{
+				{Timing: sdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
 		},
 	},
@@ -159,8 +159,8 @@ var cases = []struct {
 			"a=sendrecv\r\n" +
 			"m=video 51372 RTP/AVP 99\r\n" +
 			"a=rtpmap:99 h263-1998/90000\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "jdoe",
 				SessionID:      2890844526,
 				SessionVersion: 2890842807,
@@ -169,22 +169,22 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: ptrOf(psdp.Information("A Seminar on the session description protocol")),
+			SessionInformation: ptrOf(sdp.Information("A Seminar on the session description protocol")),
 			URI: func() *url.URL {
 				u, _ := url.Parse("http://www.example.com/seminars/sdp.pdf")
 				return u
 			}(),
-			EmailAddress: ptrOf(psdp.EmailAddress("j.doe@example.com (Jane Doe)")),
-			PhoneNumber: func() *psdp.PhoneNumber {
-				v := psdp.PhoneNumber("+1 617 555-6011")
+			EmailAddress: ptrOf(sdp.EmailAddress("j.doe@example.com (Jane Doe)")),
+			PhoneNumber: func() *sdp.PhoneNumber {
+				v := sdp.PhoneNumber("+1 617 555-6011")
 				return &v
 			}(),
-			ConnectionInformation: &psdp.ConnectionInformation{
+			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
-				Address:     &psdp.Address{Address: "224.2.17.12/127"},
+				Address:     &sdp.Address{Address: "224.2.17.12/127"},
 			},
-			Bandwidth: []psdp.Bandwidth{
+			Bandwidth: []sdp.Bandwidth{
 				{
 					Experimental: true,
 					Type:         "YZ",
@@ -195,22 +195,22 @@ var cases = []struct {
 					Bandwidth: 12345,
 				},
 			},
-			TimeDescriptions: []psdp.TimeDescription{
-				{Timing: psdp.Timing{StartTime: 2873397496, StopTime: 2873404696}},
+			TimeDescriptions: []sdp.TimeDescription{
+				{Timing: sdp.Timing{StartTime: 2873397496, StopTime: 2873404696}},
 				{
-					Timing:      psdp.Timing{StartTime: 3034423619, StopTime: 3042462419},
-					RepeatTimes: []psdp.RepeatTime{{Interval: 604800, Duration: 3600, Offsets: []int64{0, 90000}}},
+					Timing:      sdp.Timing{StartTime: 3034423619, StopTime: 3042462419},
+					RepeatTimes: []sdp.RepeatTime{{Interval: 604800, Duration: 3600, Offsets: []int64{0, 90000}}},
 				},
 			},
-			TimeZones: []psdp.TimeZone{
+			TimeZones: []sdp.TimeZone{
 				{AdjustmentTime: 2882844526, Offset: -3600},
 				{AdjustmentTime: 2898848070},
 			},
-			EncryptionKey: func() *psdp.EncryptionKey {
-				v := psdp.EncryptionKey("prompt")
+			EncryptionKey: func() *sdp.EncryptionKey {
+				v := sdp.EncryptionKey("prompt")
 				return &v
 			}(),
-			Attributes: []psdp.Attribute{
+			Attributes: []sdp.Attribute{
 				{
 					Key:   "candidate",
 					Value: "0 1 UDP 2113667327 203.0.113.1 54400 typ host",
@@ -220,45 +220,45 @@ var cases = []struct {
 					Value: "",
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "audio",
-						Port:    psdp.RangedPort{Value: 49170},
+						Port:    sdp.RangedPort{Value: 49170},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"0"},
 					},
-					MediaTitle: ptrOf(psdp.Information("Vivamus a posuere nisl")),
-					ConnectionInformation: &psdp.ConnectionInformation{
+					MediaTitle: ptrOf(sdp.Information("Vivamus a posuere nisl")),
+					ConnectionInformation: &sdp.ConnectionInformation{
 						NetworkType: "IN",
 						AddressType: "IP4",
-						Address:     &psdp.Address{Address: "203.0.113.1"},
+						Address:     &sdp.Address{Address: "203.0.113.1"},
 					},
-					Bandwidth: []psdp.Bandwidth{
+					Bandwidth: []sdp.Bandwidth{
 						{
 							Experimental: true,
 							Type:         "YZ",
 							Bandwidth:    128,
 						},
 					},
-					EncryptionKey: func() *psdp.EncryptionKey {
-						v := psdp.EncryptionKey("prompt")
+					EncryptionKey: func() *sdp.EncryptionKey {
+						v := sdp.EncryptionKey("prompt")
 						return &v
 					}(),
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key: "sendrecv",
 						},
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
-						Port:    psdp.RangedPort{Value: 51372},
+						Port:    sdp.RangedPort{Value: 51372},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"99"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "99 h263-1998/90000",
@@ -305,8 +305,8 @@ var cases = []struct {
 			"a=rtpmap:106 vnd.onvif.metadata/90000\r\n" +
 			"a=control:?ctype=app106\r\n" +
 			"a=sendonly\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      1646532490,
 				SessionVersion: 1646532490,
@@ -315,8 +315,8 @@ var cases = []struct {
 				UnicastAddress: "10.175.31.17",
 			},
 			SessionName:      "RTSP Server",
-			TimeDescriptions: []psdp.TimeDescription{{}},
-			Attributes: []psdp.Attribute{
+			TimeDescriptions: []sdp.TimeDescription{{}},
+			Attributes: []sdp.Attribute{
 				{
 					Key:   "control",
 					Value: "*",
@@ -330,20 +330,20 @@ var cases = []struct {
 					Value: "npt=0-",
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					ConnectionInformation: &psdp.ConnectionInformation{
+					ConnectionInformation: &sdp.ConnectionInformation{
 						NetworkType: "IN",
 						AddressType: "IP4",
-						Address:     &psdp.Address{Address: "0.0.0.0"},
+						Address:     &sdp.Address{Address: "0.0.0.0"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "96 H264/90000",
@@ -363,13 +363,13 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "application",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"106"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "106 vnd.onvif.metadata/90000",
@@ -413,8 +413,8 @@ var cases = []struct {
 			"a=rtpmap:97 mpeg4-generic/44100/2\r\n" +
 			"a=fmtp:97 profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1210\r\n" +
 			"a=control:streamid=1\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "jdoe",
 				SessionID:      2890844526,
 				SessionVersion: 2890842807,
@@ -423,15 +423,15 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName: "SDP Seminar",
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP", "TCP"},
 						Formats: []string{"96"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "96 H265/90000",
@@ -448,13 +448,13 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "audio",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP", "TCP"},
 						Formats: []string{"97"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "97 mpeg4-generic/44100/2",
@@ -497,17 +497,17 @@ var cases = []struct {
 			"a=rtpmap:97 mpeg4-generic/44100/2\r\n" +
 			"a=fmtp:97 profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1210\r\n" +
 			"a=control:streamid=1\r\n"),
-		SessionDescription{
+		sdp.SessionDescription{
 			SessionName: "SDP Seminar",
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP", "TCP"},
 						Formats: []string{"96"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "96 H265/90000",
@@ -524,13 +524,13 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "audio",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP", "TCP"},
 						Formats: []string{"97"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "97 mpeg4-generic/44100/2",
@@ -576,22 +576,22 @@ var cases = []struct {
 			"a=control:rtsp://192.168.0.1/audioback\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n" +
 			"a=sendonly\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				SessionVersion: 2890842807,
 				NetworkType:    "IN",
 				AddressType:    "IP4",
 				UnicastAddress: "192.168.0.1",
 			},
 			SessionName: "RTSP Session with audiobackchannel",
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"26"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "rtsp://192.168.0.1/video",
@@ -602,12 +602,12 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "audio",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"0"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "rtsp://192.168.0.1/audio",
@@ -618,12 +618,12 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "audio",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"0"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "rtsp://192.168.0.1/audioback",
@@ -674,8 +674,8 @@ var cases = []struct {
 			"a=rtpmap:97 MPEG4-GENERIC/48000/1\r\n" +
 			"a=fmtp:97 profile-level-id=1;mode=AAC-hbr;sizelength=13;indexLength=3;indexDeltaLength=3;config=118856E500\r\n" +
 			"a=control:streamid=1\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      0,
 				SessionVersion: 0,
@@ -684,33 +684,33 @@ var cases = []struct {
 				UnicastAddress: "127.0.0.1",
 			},
 			SessionName: "No Name",
-			ConnectionInformation: &psdp.ConnectionInformation{
+			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
-				Address:     &psdp.Address{Address: "0.0.0.0"},
+				Address:     &sdp.Address{Address: "0.0.0.0"},
 			},
-			TimeDescriptions: []psdp.TimeDescription{{}},
-			Attributes: []psdp.Attribute{
+			TimeDescriptions: []sdp.TimeDescription{{}},
+			Attributes: []sdp.Attribute{
 				{
 					Key:   "control",
 					Value: "*",
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					Bandwidth: []psdp.Bandwidth{
+					Bandwidth: []sdp.Bandwidth{
 						{
 							Type:      "AS",
 							Bandwidth: 253,
 						},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "96 H264/90000",
@@ -726,19 +726,19 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "audio",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"97"},
 					},
-					Bandwidth: []psdp.Bandwidth{
+					Bandwidth: []sdp.Bandwidth{
 						{
 							Type:      "AS",
 							Bandwidth: 189,
 						},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "97 MPEG4-GENERIC/48000/1",
@@ -784,8 +784,8 @@ var cases = []struct {
 			"a=framerate:25.0\r\n" +
 			"a=fmtp:105 packetization-mode=1; profile-level-id=640028; " +
 			"sprop-parameter-sets=Z2QAKKwa0A8ARPy4CIAAAAMAgAAADLWgAtwAHJ173CPFCKg=,KO4ESSJAAAAAAAAAAA==\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      12345,
 				SessionVersion: 1,
@@ -793,28 +793,28 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "10.21.61.139",
 			},
-			SessionName: psdp.SessionName("Sony RTSP Server"),
-			ConnectionInformation: &psdp.ConnectionInformation{
+			SessionName: sdp.SessionName("Sony RTSP Server"),
+			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
-				Address:     &psdp.Address{Address: "0.0.0.0"},
+				Address:     &sdp.Address{Address: "0.0.0.0"},
 			},
-			TimeDescriptions: []psdp.TimeDescription{{}},
-			Attributes: []psdp.Attribute{
+			TimeDescriptions: []sdp.TimeDescription{{}},
+			Attributes: []sdp.Attribute{
 				{
 					Key:   "range",
 					Value: "npt=now-",
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"105"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "105 H264/90000",
@@ -881,8 +881,8 @@ var cases = []struct {
 			"b=RR:0\r\n" +
 			"a=rtpmap:96 H264/90000\r\n" +
 			"a=fmtp:96 packetization-mode=1;profile-level-id=640028;sprop-parameter-sets=J2QAKKwrQCgDzQDxImo=,KO4CXLA=;\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      16379793953309178445,
 				SessionVersion: 16379793953309178445,
@@ -890,15 +890,15 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "5c2b68da",
 			},
-			SessionName:        psdp.SessionName("Unnamed"),
-			SessionInformation: ptrOf(psdp.Information("N/A")),
-			ConnectionInformation: &psdp.ConnectionInformation{
+			SessionName:        sdp.SessionName("Unnamed"),
+			SessionInformation: ptrOf(sdp.Information("N/A")),
+			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
-				Address:     &psdp.Address{Address: "0.0.0.0"},
+				Address:     &sdp.Address{Address: "0.0.0.0"},
 			},
-			TimeDescriptions: []psdp.TimeDescription{{}},
-			Attributes: []psdp.Attribute{
+			TimeDescriptions: []sdp.TimeDescription{{}},
+			Attributes: []sdp.Attribute{
 				{
 					Key:   "tool",
 					Value: "vlc 3.0.11",
@@ -913,20 +913,20 @@ var cases = []struct {
 					Value: "UTF-8",
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "audio",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					Bandwidth: []psdp.Bandwidth{
+					Bandwidth: []sdp.Bandwidth{
 						{
 							Type: "RR",
 						},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "96 mpeg4-generic/22050",
@@ -939,18 +939,18 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					Bandwidth: []psdp.Bandwidth{
+					Bandwidth: []sdp.Bandwidth{
 						{
 							Type: "RR",
 						},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "96 H264/90000",
@@ -982,8 +982,8 @@ var cases = []struct {
 			"a=range:clock=0-\r\n" +
 			"m=video 8048 MP2T/AVP 33\r\n" +
 			"b=AS:7655\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      1702415089,
 				SessionVersion: 4281335390,
@@ -991,28 +991,28 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "127.0.0.1",
 			},
-			SessionName: psdp.SessionName("live"),
-			ConnectionInformation: &psdp.ConnectionInformation{
+			SessionName: sdp.SessionName("live"),
+			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
-				Address:     &psdp.Address{Address: "239.3.1.142"},
+				Address:     &sdp.Address{Address: "239.3.1.142"},
 			},
-			TimeDescriptions: []psdp.TimeDescription{{}},
-			Attributes: []psdp.Attribute{
+			TimeDescriptions: []sdp.TimeDescription{{}},
+			Attributes: []sdp.Attribute{
 				{
 					Key:   "range",
 					Value: "clock=0-",
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
-						Port:    psdp.RangedPort{Value: 8048},
+						Port:    sdp.RangedPort{Value: 8048},
 						Protos:  []string{"MP2T", "AVP"},
 						Formats: []string{"33"},
 					},
-					Bandwidth: []psdp.Bandwidth{
+					Bandwidth: []sdp.Bandwidth{
 						{
 							Type:      "AS",
 							Bandwidth: 7655,
@@ -1064,8 +1064,8 @@ var cases = []struct {
 			"b=AS:5000\r\n" +
 			"a=rtpmap:0 PCMU/8000/1\r\n" +
 			"a=control:rtsp://10.10.1.30:8554/onvif2/audio/trackID=1\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "RTSP",
 				SessionID:      16381778200090761968,
 				SessionVersion: 16381778200090839277,
@@ -1073,36 +1073,36 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "",
 			},
-			SessionName:      psdp.SessionName("RTSP Server"),
-			EmailAddress:     ptrOf(psdp.EmailAddress("NONE")),
-			TimeDescriptions: []psdp.TimeDescription{{}},
-			Attributes: []psdp.Attribute{
+			SessionName:      sdp.SessionName("RTSP Server"),
+			EmailAddress:     ptrOf(sdp.EmailAddress("NONE")),
+			TimeDescriptions: []sdp.TimeDescription{{}},
+			Attributes: []sdp.Attribute{
 				{Key: "recvonly"},
 				{
 					Key:   "x-dimensions",
 					Value: "1920,1080",
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					ConnectionInformation: &psdp.ConnectionInformation{
+					ConnectionInformation: &sdp.ConnectionInformation{
 						NetworkType: "IN",
 						AddressType: "IP4",
-						Address:     &psdp.Address{Address: "0.0.0.0"},
+						Address:     &sdp.Address{Address: "0.0.0.0"},
 					},
-					Bandwidth: []psdp.Bandwidth{
+					Bandwidth: []sdp.Bandwidth{
 						{
 							Type:      "AS",
 							Bandwidth: 5000,
 						},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "96 H264/90000",
@@ -1126,24 +1126,24 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "audio",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"0"},
 					},
-					ConnectionInformation: &psdp.ConnectionInformation{
+					ConnectionInformation: &sdp.ConnectionInformation{
 						NetworkType: "IN",
 						AddressType: "IP4",
-						Address:     &psdp.Address{Address: "0.0.0.0"},
+						Address:     &sdp.Address{Address: "0.0.0.0"},
 					},
-					Bandwidth: []psdp.Bandwidth{
+					Bandwidth: []sdp.Bandwidth{
 						{
 							Type:      "AS",
 							Bandwidth: 5000,
 						},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "0 PCMU/8000/1",
@@ -1211,8 +1211,8 @@ var cases = []struct {
 			"a=rtpmap:96 x-wms-rtx/1000\r\n" +
 			"a=control:rtx\r\n" +
 			"a=stream:65536\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      200710060441230578,
 				SessionVersion: 200710060441230578,
@@ -1220,20 +1220,20 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "127.0.0.1",
 			},
-			SessionName: psdp.SessionName("<No Title>"),
-			ConnectionInformation: &psdp.ConnectionInformation{
+			SessionName: sdp.SessionName("<No Title>"),
+			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
-				Address:     &psdp.Address{Address: "0.0.0.0"},
+				Address:     &sdp.Address{Address: "0.0.0.0"},
 			},
-			Bandwidth: []psdp.Bandwidth{
+			Bandwidth: []sdp.Bandwidth{
 				{
 					Type:      "AS",
 					Bandwidth: 104,
 				},
 			},
-			TimeDescriptions: []psdp.TimeDescription{{}},
-			Attributes: []psdp.Attribute{
+			TimeDescriptions: []sdp.TimeDescription{{}},
+			Attributes: []sdp.Attribute{
 				{
 					Key:   "maxps",
 					Value: "1250",
@@ -1256,15 +1256,15 @@ var cases = []struct {
 				},
 				{Key: "recvonly"},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					Bandwidth: []psdp.Bandwidth{
+					Bandwidth: []sdp.Bandwidth{
 						{
 							Type:      "AS",
 							Bandwidth: 105,
@@ -1283,7 +1283,7 @@ var cases = []struct {
 							Bandwidth: 0,
 						},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "96 x-asf-pf/1000",
@@ -1299,13 +1299,13 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "application",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					Bandwidth: []psdp.Bandwidth{
+					Bandwidth: []sdp.Bandwidth{
 						{
 							Type:      "RS",
 							Bandwidth: 0,
@@ -1315,7 +1315,7 @@ var cases = []struct {
 							Bandwidth: 0,
 						},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "96 x-wms-rtx/1000",
@@ -1341,8 +1341,8 @@ var cases = []struct {
 		[]byte("v=0\r\n" +
 			"o=RTSP Session 1 2 IN IP4 0.0.0.0\r\n" +
 			"s=Sony RTSP Server\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "RTSP Session",
 				SessionID:      1,
 				SessionVersion: 2,
@@ -1350,7 +1350,7 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "0.0.0.0",
 			},
-			SessionName: psdp.SessionName("Sony RTSP Server"),
+			SessionName: sdp.SessionName("Sony RTSP Server"),
 		},
 	},
 	{
@@ -1389,28 +1389,28 @@ var cases = []struct {
 			"a=control:trackID=video\r\n" +
 			"a=Media_header:MEDIAINFO=494D4B48010100000400000100000000000000000000000000000000000000000000000000000000;\r\n" +
 			"a=appversion:1.0\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      1109162014219182,
 				NetworkType:    "IN",
 				AddressType:    "IP4",
 				UnicastAddress: "0.0.0.0",
 			},
-			SessionName:        psdp.SessionName("HIK Media Server V3.1.3"),
-			SessionInformation: ptrOf(psdp.Information("HIK Media Server Session Description : standard")),
-			EmailAddress:       ptrOf(psdp.EmailAddress("NONE")),
-			ConnectionInformation: &psdp.ConnectionInformation{
+			SessionName:        sdp.SessionName("HIK Media Server V3.1.3"),
+			SessionInformation: ptrOf(sdp.Information("HIK Media Server Session Description : standard")),
+			EmailAddress:       ptrOf(sdp.EmailAddress("NONE")),
+			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
-				Address: &psdp.Address{
+				Address: &sdp.Address{
 					Address: "0.0.0.0",
 				},
 			},
-			TimeDescriptions: []psdp.TimeDescription{
+			TimeDescriptions: []sdp.TimeDescription{
 				{},
 			},
-			Attributes: []psdp.Attribute{
+			Attributes: []sdp.Attribute{
 				{
 					Key:   "control",
 					Value: "*",
@@ -1420,15 +1420,15 @@ var cases = []struct {
 					Value: "npt=now-",
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					MediaTitle: ptrOf(psdp.Information("Video Media")),
-					Attributes: []psdp.Attribute{
+					MediaTitle: ptrOf(sdp.Information("Video Media")),
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "96 H264/90000",
@@ -1468,8 +1468,8 @@ var cases = []struct {
 			"s=SDP Seminar\r\n" +
 			"i=A Seminar on the session description protocol\r\n" +
 			"t=3034423619 3042462419\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "jdoe",
 				SessionID:      2890844526,
 				SessionVersion: 2890842807,
@@ -1478,9 +1478,9 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: ptrOf(psdp.Information("A Seminar on the session description protocol")),
-			TimeDescriptions: []psdp.TimeDescription{
-				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
+			SessionInformation: ptrOf(sdp.Information("A Seminar on the session description protocol")),
+			TimeDescriptions: []sdp.TimeDescription{
+				{Timing: sdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
 		},
 	},
@@ -1534,8 +1534,8 @@ var cases = []struct {
 			"a=rtpmap:99 FCAM/90000\r\n" +
 			"a=framesize:99 320-240\r\n" +
 			"a=fmtp:99 sampling=mono; width=320; height=240; depth=16\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      0,
 				SessionVersion: 0,
@@ -1544,23 +1544,23 @@ var cases = []struct {
 				UnicastAddress: "172.16.2.20",
 			},
 			SessionName:        "IR stream",
-			SessionInformation: ptrOf(psdp.Information("Live infrared")),
-			TimeDescriptions:   []psdp.TimeDescription{{}},
-			ConnectionInformation: &psdp.ConnectionInformation{
+			SessionInformation: ptrOf(sdp.Information("Live infrared")),
+			TimeDescriptions:   []sdp.TimeDescription{{}},
+			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
-				Address: &psdp.Address{
+				Address: &sdp.Address{
 					Address: "172.16.2.20",
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96", "97", "111", "112", "99"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "rtsp://172.16.2.20/sid=96&overlay=on",
@@ -1660,8 +1660,8 @@ var cases = []struct {
 			"a=x-dimensions:352,288\r\n" +
 			"a=x-algoTarget:P\r\n" +
 			"a=control:video\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      1,
 				SessionVersion: 1,
@@ -1670,16 +1670,16 @@ var cases = []struct {
 				UnicastAddress: "127.0.0.1",
 			},
 			SessionName:      "RTP session",
-			TimeDescriptions: []psdp.TimeDescription{{}},
-			EmailAddress:     ptrOf(psdp.EmailAddress("NONE")),
-			MediaDescriptions: []*psdp.MediaDescription{
+			TimeDescriptions: []sdp.TimeDescription{{}},
+			EmailAddress:     ptrOf(sdp.EmailAddress("NONE")),
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "96 MP4V-ES/1000",
@@ -1721,8 +1721,8 @@ var cases = []struct {
 			"s=SDP Seminar\r\n" +
 			"i=A Seminar on the session description protocol\r\n" +
 			"t=3034423619 3042462419\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "jdoe",
 				SessionID:      2890844526,
 				SessionVersion: 2890842807,
@@ -1731,9 +1731,9 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: ptrOf(psdp.Information("A Seminar on the session description protocol")),
-			TimeDescriptions: []psdp.TimeDescription{
-				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
+			SessionInformation: ptrOf(sdp.Information("A Seminar on the session description protocol")),
+			TimeDescriptions: []sdp.TimeDescription{
+				{Timing: sdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
 		},
 	},
@@ -1749,8 +1749,8 @@ var cases = []struct {
 			"s=SDP Seminar\r\n" +
 			"i=A Seminar on the session description protocol\r\n" +
 			"t=3034423619 3042462419\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "jdoe",
 				SessionID:      272358255,
 				SessionVersion: 2890842807,
@@ -1759,9 +1759,9 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: ptrOf(psdp.Information("A Seminar on the session description protocol")),
-			TimeDescriptions: []psdp.TimeDescription{
-				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
+			SessionInformation: ptrOf(sdp.Information("A Seminar on the session description protocol")),
+			TimeDescriptions: []sdp.TimeDescription{
+				{Timing: sdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
 		},
 	},
@@ -1799,8 +1799,8 @@ var cases = []struct {
 			"a=Width:integer;384\r\n" +
 			"a=Height:integer;832\r\n" +
 			"a=fmtp:96 packetization-mode=1;profile-level-id=64001f;sprop-parameter-sets=J2QAH6xWwYBp+kA=,KO48sA==\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      1681692777,
 				SessionVersion: 1681692777,
@@ -1809,39 +1809,39 @@ var cases = []struct {
 				UnicastAddress: "127.0.0.1",
 			},
 			SessionName: "Video Stream",
-			ConnectionInformation: &psdp.ConnectionInformation{
+			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
-				Address: &psdp.Address{
+				Address: &sdp.Address{
 					Address: "127.0.0.1",
 				},
 			},
-			TimeDescriptions: []psdp.TimeDescription{
+			TimeDescriptions: []sdp.TimeDescription{
 				{},
 			},
-			Attributes: []psdp.Attribute{
+			Attributes: []sdp.Attribute{
 				{
 					Key:   "control",
 					Value: "*",
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media: "video",
-						Port: psdp.RangedPort{
+						Port: sdp.RangedPort{
 							Value: 0,
 						},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					Bandwidth: []psdp.Bandwidth{
+					Bandwidth: []sdp.Bandwidth{
 						{
 							Type:      "TIAS",
 							Bandwidth: 10000,
 						},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "maxprate",
 							Value: "2.0000",
@@ -1921,8 +1921,8 @@ var cases = []struct {
 			"m=application/TP-LINK 0 RTP/AVP smart/1/90000\r\n" +
 			"a=rtpmap:95 TP-LINK/90000\r\n" +
 			"a=control:track3\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "- 14665860",
 				SessionID:      31787219,
 				SessionVersion: 1,
@@ -1931,23 +1931,23 @@ var cases = []struct {
 				UnicastAddress: "192.168.4.226",
 			},
 			SessionName:      "Session streamed by \"TP-LINK RTSP Server\"",
-			TimeDescriptions: []psdp.TimeDescription{{}},
-			MediaDescriptions: []*psdp.MediaDescription{
+			TimeDescriptions: []sdp.TimeDescription{{}},
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					ConnectionInformation: &psdp.ConnectionInformation{
+					ConnectionInformation: &sdp.ConnectionInformation{
 						NetworkType: "IN",
 						AddressType: "IP4",
-						Address: &psdp.Address{
+						Address: &sdp.Address{
 							Address: "0.0.0.0",
 						},
 					},
-					Bandwidth: []psdp.Bandwidth{{Type: "AS", Bandwidth: 4096}},
-					Attributes: []psdp.Attribute{
+					Bandwidth: []sdp.Bandwidth{{Type: "AS", Bandwidth: 4096}},
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "range",
 							Value: "npt=0-",
@@ -1969,12 +1969,12 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "audio",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"8"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "8 PCMA/8000",
@@ -1986,12 +1986,12 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "application/TP-LINK",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"smart/1/90000"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "95 TP-LINK/90000",
@@ -2025,8 +2025,8 @@ var cases = []struct {
 			"a=control:stream=1\r\n" +
 			"a=fmtp:33 ver=1.2;src=1;tuner=1,240,1,7,112,,dvbc,,,,6900,34;pids=0,16,17,18,20\r\n" +
 			"a=sendonly\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      224,
 				SessionVersion: 1,
@@ -2035,22 +2035,22 @@ var cases = []struct {
 				UnicastAddress: "192.168.178.1",
 			},
 			SessionName:      "SatIPServer:1 0,0,4",
-			TimeDescriptions: []psdp.TimeDescription{{}},
-			MediaDescriptions: []*psdp.MediaDescription{
+			TimeDescriptions: []sdp.TimeDescription{{}},
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"33"},
 					},
-					ConnectionInformation: &psdp.ConnectionInformation{
+					ConnectionInformation: &sdp.ConnectionInformation{
 						NetworkType: "IN",
 						AddressType: "IP4",
-						Address: &psdp.Address{
+						Address: &sdp.Address{
 							Address: "0.0.0.0",
 						},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "stream=1",
@@ -2097,36 +2097,36 @@ var cases = []struct {
 			"a=rtpmap:97 MPEG4-GENERIC/48000/2\r\n" +
 			"a=fmtp:97 profile-level-id=15;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1190\r\n" +
 			"a=control:track2\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "JefferyZhang Inno Fuzhou",
 				NetworkType:    "IN",
 				AddressType:    "IP4",
 				UnicastAddress: "127.0.0.1",
 			},
 			SessionName: "RbsLive",
-			ConnectionInformation: &psdp.ConnectionInformation{
+			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
-				Address: &psdp.Address{
+				Address: &sdp.Address{
 					Address: "0.0.0.0",
 				},
 			},
-			TimeDescriptions: []psdp.TimeDescription{{}},
-			Attributes: []psdp.Attribute{
+			TimeDescriptions: []sdp.TimeDescription{{}},
+			Attributes: []sdp.Attribute{
 				{
 					Key:   "tool",
 					Value: "libmpp at 2.0.1",
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "96 H264/90000",
@@ -2142,12 +2142,12 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "audio",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"97"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "97 MPEG4-GENERIC/48000/2",
@@ -2205,8 +2205,8 @@ var cases = []struct {
 			"m=application/MERCURY 0 RTP/AVP smart/1/90000\r\n" +
 			"a=rtpmap:95 MERCURY/90000\r\n" +
 			"a=control:track3\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "- 14665860",
 				SessionID:      31787219,
 				SessionVersion: 1,
@@ -2215,32 +2215,32 @@ var cases = []struct {
 				UnicastAddress: "192.168.0.60",
 			},
 			SessionName:      "Session streamed by \"MERCURY RTSP Server\"",
-			TimeDescriptions: []psdp.TimeDescription{{}},
-			Attributes: []psdp.Attribute{
+			TimeDescriptions: []sdp.TimeDescription{{}},
+			Attributes: []sdp.Attribute{
 				{
 					Key:   "smart_encoder",
 					Value: "virtualIFrame=1",
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					ConnectionInformation: &psdp.ConnectionInformation{
+					ConnectionInformation: &sdp.ConnectionInformation{
 						NetworkType: "IN",
 						AddressType: "IP4",
-						Address: &psdp.Address{
+						Address: &sdp.Address{
 							Address: "0.0.0.0",
 						},
 					},
-					Bandwidth: []psdp.Bandwidth{{
+					Bandwidth: []sdp.Bandwidth{{
 						Type:      "AS",
 						Bandwidth: 4096,
 					}},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "range",
 							Value: "npt=0-",
@@ -2261,12 +2261,12 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "audio",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"8"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "8 PCMA/8000",
@@ -2278,12 +2278,12 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "application/MERCURY",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"smart/1/90000"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "95 MERCURY/90000",
@@ -2325,8 +2325,8 @@ var cases = []struct {
 			"a=fmtp:96 packetization-mode=1;profile-level-id=64001F;" +
 			"sprop-parameter-sets=Z2QAKKwbGoB4AiflwFuAgICgAAB9AAATiB0MAEr4AAL68F3lxoYAJXwAAX14LvLhQA==,aO48MA==\r\n" +
 			"a=recvonly\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      1,
 				SessionVersion: 1,
@@ -2335,15 +2335,15 @@ var cases = []struct {
 				UnicastAddress: "10.10.10.10",
 			},
 			SessionName:      "Media Presentation",
-			TimeDescriptions: []psdp.TimeDescription{{}},
-			ConnectionInformation: &psdp.ConnectionInformation{
+			TimeDescriptions: []sdp.TimeDescription{{}},
+			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
-				Address: &psdp.Address{
+				Address: &sdp.Address{
 					Address: "0.0.0.0",
 				},
 			},
-			Attributes: []psdp.Attribute{
+			Attributes: []sdp.Attribute{
 				{
 					Key:   "control",
 					Value: "*",
@@ -2353,14 +2353,14 @@ var cases = []struct {
 					Value: "npt=now-",
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "rtsp://10.10.10.10:5556/vurix/1414/0/video",
@@ -2410,8 +2410,8 @@ var cases = []struct {
 			"m=audio 0 RTP/AVP 8\r\n" +
 			"a=control:trackID=4\r\n" +
 			"a=rtpmap:8 PCMA/8000\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      38990265062388,
 				SessionVersion: 38990265062388,
@@ -2420,27 +2420,27 @@ var cases = []struct {
 				UnicastAddress: "192.168.1.10",
 			},
 			SessionName: "",
-			Attributes: []psdp.Attribute{
+			Attributes: []sdp.Attribute{
 				{
 					Key:   "range",
 					Value: "npt=0-",
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					ConnectionInformation: &psdp.ConnectionInformation{
+					ConnectionInformation: &sdp.ConnectionInformation{
 						NetworkType: "IN",
 						AddressType: "IP4",
-						Address: &psdp.Address{
+						Address: &sdp.Address{
 							Address: "0.0.0.0",
 						},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
 							Value: "96 H265/90000 ",
@@ -2457,12 +2457,12 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "audio",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"8"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "trackID=4",
@@ -2487,14 +2487,14 @@ var cases = []struct {
 			"m=video 0 RTP/AVP 96\r\n" +
 			"a=rtpmap:96 H264/90000\r\n" +
 			"a=control:trackID=0\r\n"),
-		SessionDescription{
-			MediaDescriptions: []*psdp.MediaDescription{{
-				MediaName: psdp.MediaName{
+		sdp.SessionDescription{
+			MediaDescriptions: []*sdp.MediaDescription{{
+				MediaName: sdp.MediaName{
 					Media:   "video",
 					Protos:  []string{"RTP", "AVP"},
 					Formats: []string{"96"},
 				},
-				Attributes: []psdp.Attribute{
+				Attributes: []sdp.Attribute{
 					{
 						Key:   "rtpmap",
 						Value: "96 H264/90000",
@@ -2523,8 +2523,8 @@ var cases = []struct {
 			"a=rtpmap:96 H264/90000\r\n" +
 			"a=fmtp:96 packetization-mode=1; profile-level-id=33;" +
 			" sprop-parameter-sets=Z00AM4qKUDwBE/L/4AAgAC2AgA==,aO48gA==\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      1698210484,
 				SessionVersion: 1698210484,
@@ -2533,13 +2533,13 @@ var cases = []struct {
 				UnicastAddress: "46.242.10.231:12626",
 			},
 			SessionName: "Playout",
-			MediaDescriptions: []*psdp.MediaDescription{{
-				MediaName: psdp.MediaName{
+			MediaDescriptions: []*sdp.MediaDescription{{
+				MediaName: sdp.MediaName{
 					Media:   "video",
 					Protos:  []string{"RTP", "AVP"},
 					Formats: []string{"96"},
 				},
-				Attributes: []psdp.Attribute{
+				Attributes: []sdp.Attribute{
 					{
 						Key:   "rtpmap",
 						Value: "96 H264/90000",
@@ -2571,25 +2571,25 @@ var cases = []struct {
 			"a=control:track2\r\n" +
 			"a=x-onvif-track:track2\r\n" +
 			"a=x-bufferdelay:1.000000\r\n"),
-		SessionDescription{
-			MediaDescriptions: []*psdp.MediaDescription{{
-				MediaName: psdp.MediaName{
+		sdp.SessionDescription{
+			MediaDescriptions: []*sdp.MediaDescription{{
+				MediaName: sdp.MediaName{
 					Media:   "metadata",
 					Protos:  []string{"RTP", "AVP"},
 					Formats: []string{"98"},
 				},
-				ConnectionInformation: &psdp.ConnectionInformation{
+				ConnectionInformation: &sdp.ConnectionInformation{
 					NetworkType: "IN",
 					AddressType: "IP4",
-					Address: &psdp.Address{
+					Address: &sdp.Address{
 						Address: "0.0.0.0",
 					},
 				},
-				Bandwidth: []psdp.Bandwidth{{
+				Bandwidth: []sdp.Bandwidth{{
 					Type:      "AS",
 					Bandwidth: 1000,
 				}},
-				Attributes: []psdp.Attribute{
+				Attributes: []sdp.Attribute{
 					{
 						Key:   "rtpmap",
 						Value: "98 METADATA/90000",
@@ -2652,8 +2652,8 @@ var cases = []struct {
 			"a=rtpmap:0 PCMU/8000\r\n" +
 			"m=application 0 RTP/AVP 107\r\n" +
 			"a=control:2\r\na=recvonly\r\na=rtpmap:107 METADATA/90000\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "Channel1",
 				SessionID:      3910280086,
 				SessionVersion: 3910366486,
@@ -2661,15 +2661,15 @@ var cases = []struct {
 				AddressType:    "IP4",
 			},
 			SessionName: "Channel1",
-			ConnectionInformation: &psdp.ConnectionInformation{
+			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
-				Address: &psdp.Address{
+				Address: &sdp.Address{
 					Address: "0.0.0.0",
 				},
 			},
-			TimeDescriptions: []psdp.TimeDescription{{Timing: psdp.Timing{StartTime: 3910280086, StopTime: 3910366486}}},
-			Attributes: []psdp.Attribute{
+			TimeDescriptions: []sdp.TimeDescription{{Timing: sdp.Timing{StartTime: 3910280086, StopTime: 3910366486}}},
+			Attributes: []sdp.Attribute{
 				{
 					Key:   "range",
 					Value: "npt=0-",
@@ -2679,14 +2679,14 @@ var cases = []struct {
 					Value: "*",
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "0",
@@ -2706,12 +2706,12 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "audio",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"0"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "1",
@@ -2726,12 +2726,12 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "application",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"107"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "2",
@@ -2785,8 +2785,8 @@ var cases = []struct {
 			"m=video 0 RTP/AVP 96\r\n" +
 			"c=IN IP4 192.168.1.63\r\n" +
 			"a=control:rtsp://192.168.1.63/defaultPr\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      1705180917694,
 				SessionVersion: 1705180917694,
@@ -2795,22 +2795,22 @@ var cases = []struct {
 				UnicastAddress: "192.168.1.63",
 			},
 			SessionName:      "Live",
-			TimeDescriptions: []psdp.TimeDescription{{}},
-			MediaDescriptions: []*psdp.MediaDescription{
+			TimeDescriptions: []sdp.TimeDescription{{}},
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "audio",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"0"},
 					},
-					ConnectionInformation: &psdp.ConnectionInformation{
+					ConnectionInformation: &sdp.ConnectionInformation{
 						NetworkType: "IN",
 						AddressType: "IP4",
-						Address: &psdp.Address{
+						Address: &sdp.Address{
 							Address: "192.168.1.63",
 						},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "rtsp://192.168.1.63/defaultPrimary/micCfg0/trackID=9?mtu=1440&streamType=u",
@@ -2822,19 +2822,19 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "audio",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"0", "97"},
 					},
-					ConnectionInformation: &psdp.ConnectionInformation{
+					ConnectionInformation: &sdp.ConnectionInformation{
 						NetworkType: "IN",
 						AddressType: "IP4",
-						Address: &psdp.Address{
+						Address: &sdp.Address{
 							Address: "192.168.1.63",
 						},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "rtsp://192.168.1.63/defaultPrimary/spk0/trackID=2?mtu=1440&streamType=u",
@@ -2853,19 +2853,19 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					ConnectionInformation: &psdp.ConnectionInformation{
+					ConnectionInformation: &sdp.ConnectionInformation{
 						NetworkType: "IN",
 						AddressType: "IP4",
-						Address: &psdp.Address{
+						Address: &sdp.Address{
 							Address: "192.168.1.63",
 						},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "rtsp://192.168.1.63/defaultPr",
@@ -2917,8 +2917,8 @@ var cases = []struct {
 			"a=rtpmap:96 MP4V-ES/90000\r\n" +
 			"a=fmtp:96 profile-level-id=245; config=000001B0F5000001B509000001000000012008D48D88032514043C14440F\r\n" +
 			"a=mpeg4-esid:201\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      1962418793961427,
 				SessionVersion: 1962418793961418,
@@ -2927,20 +2927,20 @@ var cases = []struct {
 				UnicastAddress: "192.168.221.104",
 			},
 			SessionName:  "Media Presentation",
-			EmailAddress: ptrOf(psdp.EmailAddress("NONE")),
-			ConnectionInformation: &psdp.ConnectionInformation{
+			EmailAddress: ptrOf(sdp.EmailAddress("NONE")),
+			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
-				Address: &psdp.Address{
+				Address: &sdp.Address{
 					Address: "0.0.0.0",
 				},
 			},
-			Bandwidth: []psdp.Bandwidth{{
+			Bandwidth: []sdp.Bandwidth{{
 				Type:      "AS",
 				Bandwidth: 8000,
 			}},
-			TimeDescriptions: []psdp.TimeDescription{{}},
-			Attributes: []psdp.Attribute{
+			TimeDescriptions: []sdp.TimeDescription{{}},
+			Attributes: []sdp.Attribute{
 				{
 					Key:   "control",
 					Value: "*",
@@ -2957,18 +2957,18 @@ var cases = []struct {
 						"zLWF1O2Jhc2U2NCx3QkFTWVFTSVVFVUZQd0E9BBICDQAAAgAAAAAAAAAABQMAAEAGCQEAAAAAAAAAAA==\"",
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					Bandwidth: []psdp.Bandwidth{{
+					Bandwidth: []sdp.Bandwidth{{
 						Type:      "AS",
 						Bandwidth: 8000,
 					}},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "framerate",
 							Value: "30.0",
@@ -3023,28 +3023,28 @@ var cases = []struct {
 			"m=text 0 RTP/AVP 103\r\n" +
 			"a=control:trackID=2\r\n" +
 			"a=rtpmap:103 object-detection/1000\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "",
 				SessionID:      0,
 				SessionVersion: 0,
 			},
 			SessionName: "DWC-MV94WiAT",
-			ConnectionInformation: &psdp.ConnectionInformation{
+			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
-				Address: &psdp.Address{
+				Address: &sdp.Address{
 					Address: "10.1.10.178",
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "trackID=0",
@@ -3061,12 +3061,12 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "audio",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"14"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "trackID=1",
@@ -3074,12 +3074,12 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "text",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"103"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "trackID=2",
@@ -3109,8 +3109,8 @@ var cases = []struct {
 			"t=0 0\r\n" +
 			"r=0 0\r\n" +
 			"m=video 0 RTP/AVP 96\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "VNSDK",
 				SessionID:      0,
 				SessionVersion: 0,
@@ -3119,24 +3119,24 @@ var cases = []struct {
 				UnicastAddress: "10.0.8.133",
 			},
 			SessionName: "aja.sdp",
-			ConnectionInformation: &psdp.ConnectionInformation{
+			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
-				Address: &psdp.Address{
+				Address: &sdp.Address{
 					Address: "10.0.8.133",
 				},
 			},
-			TimeDescriptions: []psdp.TimeDescription{
+			TimeDescriptions: []sdp.TimeDescription{
 				{
-					Timing:      psdp.Timing{StartTime: 0, StopTime: 0},
-					RepeatTimes: []psdp.RepeatTime{{Interval: 0, Duration: 0, Offsets: nil}},
+					Timing:      sdp.Timing{StartTime: 0, StopTime: 0},
+					RepeatTimes: []sdp.RepeatTime{{Interval: 0, Duration: 0, Offsets: nil}},
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
@@ -3176,8 +3176,8 @@ var cases = []struct {
 			"a=rtpmap:107 vnd.onvif.metadata/90000\r\n" +
 			"a=fmtp:107 DecoderTag=h3c-v3 RTCP=0\r\n" +
 			"a=recvonly\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      1001,
 				SessionVersion: 1,
@@ -3185,14 +3185,14 @@ var cases = []struct {
 				AddressType:    "IP4",
 			},
 			SessionName: "VCP IPC Realtime stream",
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"105"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "rtsp://10.0.0.1/media/video1/video",
@@ -3213,12 +3213,12 @@ var cases = []struct {
 					},
 				},
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "application",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"107"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{
 							Key:   "control",
 							Value: "rtsp://10.0.0.1/media/video1/metadata",
@@ -3254,8 +3254,8 @@ var cases = []struct {
 			"c=IN IP4 198.51.100.1\r\n" +
 			"t=0 0\r\n" +
 			"m=video 0 RTP/AVP 96\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "test",
 				SessionID:      123,
 				SessionVersion: 456,
@@ -3264,26 +3264,26 @@ var cases = []struct {
 				UnicastAddress: "192.0.2.1",
 			},
 			SessionName: "Test SDP",
-			ConnectionInformation: &psdp.ConnectionInformation{
+			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
-				Address: &psdp.Address{
+				Address: &sdp.Address{
 					Address: "198.51.100.1",
 				},
 			},
-			TimeDescriptions: []psdp.TimeDescription{
+			TimeDescriptions: []sdp.TimeDescription{
 				{
-					Timing: psdp.Timing{
+					Timing: sdp.Timing{
 						StartTime: 0,
 						StopTime:  0,
 					},
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
@@ -3305,8 +3305,8 @@ var cases = []struct {
 			"c=IN IP6 2001:db8::2\r\n" +
 			"t=0 0\r\n" +
 			"m=video 0 RTP/AVP 96\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "test",
 				SessionID:      123,
 				SessionVersion: 456,
@@ -3315,26 +3315,26 @@ var cases = []struct {
 				UnicastAddress: "2001:db8::1",
 			},
 			SessionName: "Test SDP",
-			ConnectionInformation: &psdp.ConnectionInformation{
+			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP6",
-				Address: &psdp.Address{
+				Address: &sdp.Address{
 					Address: "2001:db8::2",
 				},
 			},
-			TimeDescriptions: []psdp.TimeDescription{
+			TimeDescriptions: []sdp.TimeDescription{
 				{
-					Timing: psdp.Timing{
+					Timing: sdp.Timing{
 						StartTime: 0,
 						StopTime:  0,
 					},
 				},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
@@ -3374,8 +3374,8 @@ var cases = []struct {
 			"TEdFMjFRyjhJHRRAgWmiijDeMEDzmGGD8NCw6GhsREKtdevruxgv4pC+xUXxRBrQpBWEChEcJmw=\r\n" +
 			"a=request-iframe-allowed:1000\r\n" +
 			"a=control:rtsp://192.168.1.1:554/c266233d-e0e5-414f-9c57-9ed9d187c969/Video\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
 				Username:       "-",
 				SessionID:      1329416390,
 				SessionVersion: 1329416390,
@@ -3384,23 +3384,23 @@ var cases = []struct {
 				UnicastAddress: "192.168.1.1",
 			},
 			SessionName: "EWR 52B",
-			TimeDescriptions: []psdp.TimeDescription{
-				{Timing: psdp.Timing{StartTime: 0, StopTime: 0}},
+			TimeDescriptions: []sdp.TimeDescription{
+				{Timing: sdp.Timing{StartTime: 0, StopTime: 0}},
 			},
-			Attributes: []psdp.Attribute{
+			Attributes: []sdp.Attribute{
 				{Key: "control", Value: "rtsp://192.168.1.1:554/c266233d-e0e5-414f-9c57-9ed9d187c969"},
 				{Key: "range", Value: "npt=now-"},
 				{Key: "length", Value: "npt=0"},
 			},
-			MediaDescriptions: []*psdp.MediaDescription{
+			MediaDescriptions: []*sdp.MediaDescription{
 				{
-					MediaName: psdp.MediaName{
+					MediaName: sdp.MediaName{
 						Media:   "video",
-						Port:    psdp.RangedPort{Value: 0},
+						Port:    sdp.RangedPort{Value: 0},
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"105"},
 					},
-					Attributes: []psdp.Attribute{
+					Attributes: []sdp.Attribute{
 						{Key: "rtpmap", Value: "105 H264/90000"},
 						{Key: "fmtp", Value: "105 packetization-mode=1; profile-level-id=640033; " +
 							"sprop-parameter-sets=Z2QAM6zTAPABD7AWoCAgKAABd2AAHUwEeEQiiw==," +
@@ -3426,18 +3426,18 @@ var cases = []struct {
 			"b=AS:0\r\n" +
 			"a=rtpmap:123 META /0\r\n" +
 			"a=control:track=2\r\n"),
-		SessionDescription{
-			MediaDescriptions: []*psdp.MediaDescription{{
-				MediaName: psdp.MediaName{
+		sdp.SessionDescription{
+			MediaDescriptions: []*sdp.MediaDescription{{
+				MediaName: sdp.MediaName{
 					Media:   "meta",
 					Protos:  []string{"RTP", "AVP"},
 					Formats: []string{"123"},
 				},
-				Bandwidth: []psdp.Bandwidth{{
+				Bandwidth: []sdp.Bandwidth{{
 					Type:      "AS",
 					Bandwidth: 0,
 				}},
-				Attributes: []psdp.Attribute{
+				Attributes: []sdp.Attribute{
 					{
 						Key:   "rtpmap",
 						Value: "123 META /0",
@@ -3455,20 +3455,9 @@ var cases = []struct {
 func TestUnmarshal(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			desc := SessionDescription{}
-			err := desc.Unmarshal(c.dec)
+			desc, err := Unmarshal(c.dec)
 			require.NoError(t, err)
-			require.Equal(t, c.desc, desc)
-		})
-	}
-}
-
-func TestMarshal(t *testing.T) {
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			enc, err := c.desc.Marshal()
-			require.NoError(t, err)
-			require.Equal(t, string(c.enc), string(enc))
+			require.Equal(t, c.desc, *desc)
 		})
 	}
 }
@@ -3479,8 +3468,7 @@ func FuzzUnmarshal(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, b string) {
-		var desc SessionDescription
-		err := desc.Unmarshal([]byte(b))
+		desc, err := Unmarshal([]byte(b))
 		if err != nil {
 			return
 		}

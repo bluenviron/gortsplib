@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/pion/rtp"
-	psdp "github.com/pion/sdp/v3"
+	"github.com/pion/sdp/v3"
 )
 
 var (
@@ -15,7 +15,7 @@ var (
 	smartRtpmapRegexp      = regexp.MustCompile("^([0-9]+) (.+)/[0-9]+$")
 )
 
-func replaceSmartPayloadType(payloadType string, attributes []psdp.Attribute) string {
+func replaceSmartPayloadType(payloadType string, attributes []sdp.Attribute) string {
 	re1 := smartPayloadTypeRegexp.FindStringSubmatch(payloadType)
 	if re1 != nil {
 		for _, attr := range attributes {
@@ -30,7 +30,7 @@ func replaceSmartPayloadType(payloadType string, attributes []psdp.Attribute) st
 	return payloadType
 }
 
-func getFormatAttribute(attributes []psdp.Attribute, payloadType uint8, key string) string {
+func getFormatAttribute(attributes []sdp.Attribute, payloadType uint8, key string) string {
 	for _, attr := range attributes {
 		if attr.Key == key {
 			v := strings.TrimSpace(attr.Value)
@@ -112,7 +112,7 @@ type Format interface {
 }
 
 // Unmarshal decodes a format from a media description.
-func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error) {
+func Unmarshal(md *sdp.MediaDescription, payloadTypeStr string) (Format, error) {
 	mediaType := md.MediaName.Media
 	payloadTypeStr = replaceSmartPayloadType(payloadTypeStr, md.Attributes)
 

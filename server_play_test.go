@@ -25,7 +25,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
 	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
-	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
+	"github.com/bluenviron/gortsplib/v5/pkg/sdpunmarshaler"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 )
 
@@ -1660,8 +1660,7 @@ func TestServerPlayVLCMulticast(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	var desc sdp.SessionDescription
-	err = desc.Unmarshal(res.Body)
+	desc, err := sdpunmarshaler.Unmarshal(res.Body)
 	require.NoError(t, err)
 
 	require.Equal(t, "224.1.0.0", desc.ConnectionInformation.Address.Address)

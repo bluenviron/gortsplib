@@ -24,7 +24,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
 	"github.com/bluenviron/gortsplib/v5/pkg/rtptime"
-	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
+	"github.com/bluenviron/gortsplib/v5/pkg/sdpunmarshaler"
 )
 
 type readFunc func([]byte) bool
@@ -770,8 +770,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}, liberrors.ErrServerContentTypeUnsupported{CT: ct}
 		}
 
-		var ssd sdp.SessionDescription
-		err = ssd.Unmarshal(req.Body)
+		ssd, err := sdpunmarshaler.Unmarshal(req.Body)
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
@@ -779,7 +778,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		var desc description.Session
-		err = desc.Unmarshal(&ssd)
+		err = desc.Unmarshal2(ssd)
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,

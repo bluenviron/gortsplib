@@ -22,6 +22,7 @@ import (
 
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
+	"github.com/pion/sdp/v3"
 
 	"github.com/bluenviron/gortsplib/v5/internal/asyncprocessor"
 	"github.com/bluenviron/gortsplib/v5/internal/bytecounter"
@@ -34,7 +35,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
 	"github.com/bluenviron/gortsplib/v5/pkg/rtptime"
-	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
+	"github.com/bluenviron/gortsplib/v5/pkg/sdpunmarshaler"
 )
 
 const (
@@ -1514,19 +1515,18 @@ func (c *Client) doDescribe(u *base.URL) (*description.Session, *base.Response, 
 		return nil, nil, liberrors.ErrClientContentTypeUnsupported{CT: ct}
 	}
 
-	var ssd sdp.SessionDescription
-	err = ssd.Unmarshal(res.Body)
+	ssd, err := sdpunmarshaler.Unmarshal(res.Body)
 	if err != nil {
 		return nil, nil, liberrors.ErrClientSDPInvalid{Err: err}
 	}
 
 	var desc description.Session
-	err = desc.Unmarshal(&ssd)
+	err = desc.Unmarshal2(ssd)
 	if err != nil {
 		return nil, nil, liberrors.ErrClientSDPInvalid{Err: err}
 	}
 
-	baseURL, err := findBaseURL(&ssd, res, u)
+	baseURL, err := findBaseURL(ssd, res, u)
 	if err != nil {
 		return nil, nil, err
 	}

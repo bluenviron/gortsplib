@@ -21,7 +21,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
-	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
+	"github.com/bluenviron/gortsplib/v5/pkg/sdpunmarshaler"
 )
 
 var serverCert = []byte(`-----BEGIN CERTIFICATE-----
@@ -107,12 +107,11 @@ func doDescribe(t *testing.T, conn *conn.Conn, backChannels bool) *description.S
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	var desc sdp.SessionDescription
-	err = desc.Unmarshal(res.Body)
+	desc, err := sdpunmarshaler.Unmarshal(res.Body)
 	require.NoError(t, err)
 
 	var desc2 description.Session
-	err = desc2.Unmarshal(&desc)
+	err = desc2.Unmarshal2(desc)
 	require.NoError(t, err)
 
 	desc2.BaseURL = mustParseURL(res.Header["Content-Base"][0])
