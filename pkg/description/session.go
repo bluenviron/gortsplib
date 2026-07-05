@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	psdp "github.com/pion/sdp/v3"
+	"github.com/pion/sdp/v3"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
-	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
+	gosdp "github.com/bluenviron/gortsplib/v5/pkg/sdp"
 )
 
 func atLeastOneHasMID(medias []*Media) bool {
@@ -94,7 +94,14 @@ func (d *Session) FindFormat(forma any) *Media {
 }
 
 // Unmarshal decodes the description from SDP.
-func (d *Session) Unmarshal(ssd *sdp.SessionDescription) error {
+//
+// Deprecated: use Unmarshal2.
+func (d *Session) Unmarshal(ssd *gosdp.SessionDescription) error {
+	return d.Unmarshal2((*sdp.SessionDescription)(ssd))
+}
+
+// Unmarshal2 decodes the description from SDP.
+func (d *Session) Unmarshal2(ssd *sdp.SessionDescription) error {
 	d.Title = string(ssd.SessionName)
 	if d.Title == " " {
 		d.Title = ""
@@ -169,13 +176,13 @@ func (d *Session) Unmarshal(ssd *sdp.SessionDescription) error {
 
 // Marshal encodes the description in SDP format.
 func (d Session) Marshal() ([]byte, error) {
-	var sessionName psdp.SessionName
+	var sessionName sdp.SessionName
 	if d.Title != "" {
-		sessionName = psdp.SessionName(d.Title)
+		sessionName = sdp.SessionName(d.Title)
 	} else {
 		// RFC 4566: If a session has no meaningful name, the
 		// value "s= " SHOULD be used (i.e., a single space as the session name).
-		sessionName = psdp.SessionName(" ")
+		sessionName = sdp.SessionName(" ")
 	}
 
 	var address string
@@ -187,25 +194,25 @@ func (d Session) Marshal() ([]byte, error) {
 
 	sout := &sdp.SessionDescription{
 		SessionName: sessionName,
-		Origin: psdp.Origin{
+		Origin: sdp.Origin{
 			Username:       "-",
 			NetworkType:    "IN",
 			AddressType:    "IP4",
 			UnicastAddress: "127.0.0.1",
 		},
 		// required by Darwin Streaming Server
-		ConnectionInformation: &psdp.ConnectionInformation{
+		ConnectionInformation: &sdp.ConnectionInformation{
 			NetworkType: "IN",
 			AddressType: "IP4",
-			Address:     &psdp.Address{Address: address},
+			Address:     &sdp.Address{Address: address},
 		},
-		TimeDescriptions: []psdp.TimeDescription{
-			{Timing: psdp.Timing{StartTime: 0, StopTime: 0}},
+		TimeDescriptions: []sdp.TimeDescription{
+			{Timing: sdp.Timing{StartTime: 0, StopTime: 0}},
 		},
 	}
 
 	for _, group := range d.FECGroups {
-		sout.Attributes = append(sout.Attributes, psdp.Attribute{
+		sout.Attributes = append(sout.Attributes, sdp.Attribute{
 			Key:   "group",
 			Value: "FEC " + strings.Join(group, " "),
 		})
@@ -217,13 +224,13 @@ func (d Session) Marshal() ([]byte, error) {
 			return nil, err
 		}
 
-		sout.Attributes = append(sout.Attributes, psdp.Attribute{
+		sout.Attributes = append(sout.Attributes, sdp.Attribute{
 			Key:   "key-mgmt",
 			Value: "mikey " + base64.StdEncoding.EncodeToString(keyEnc),
 		})
 	}
 
-	sout.MediaDescriptions = make([]*psdp.MediaDescription, len(d.Medias))
+	sout.MediaDescriptions = make([]*sdp.MediaDescription, len(d.Medias))
 	atLeastOneIsBackChannel := atLeastOneIsBackChannel(d.Medias)
 
 	for i, media := range d.Medias {
@@ -233,7 +240,7 @@ func (d Session) Marshal() ([]byte, error) {
 		}
 
 		if !media.IsBackChannel && atLeastOneIsBackChannel {
-			med.Attributes = append(med.Attributes, psdp.Attribute{
+			med.Attributes = append(med.Attributes, sdp.Attribute{
 				Key: "recvonly",
 			})
 		}

@@ -7,7 +7,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
-	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
+	"github.com/bluenviron/gortsplib/v5/pkg/sdpunmarshaler"
 )
 
 func mustParseURL(s string) *base.URL {
@@ -150,8 +150,7 @@ func TestMediaURL(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			var sd sdp.SessionDescription
-			err := sd.Unmarshal(ca.sdp)
+			sd, err := sdpunmarshaler.Unmarshal(ca.sdp)
 			require.NoError(t, err)
 
 			var media Media

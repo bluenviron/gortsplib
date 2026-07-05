@@ -12,7 +12,7 @@ import (
 
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
-	psdp "github.com/pion/sdp/v3"
+	"github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
@@ -22,7 +22,6 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
 	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
-	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
 )
 
 func doAnnounce(t *testing.T, conn *conn.Conn, u string, medias []*description.Media) {
@@ -371,17 +370,17 @@ func TestServerRecordPath(t *testing.T) {
 			require.NoError(t, err)
 
 			sout := &sdp.SessionDescription{
-				SessionName: psdp.SessionName("Stream"),
-				Origin: psdp.Origin{
+				SessionName: sdp.SessionName("Stream"),
+				Origin: sdp.Origin{
 					Username:       "-",
 					NetworkType:    "IN",
 					AddressType:    "IP4",
 					UnicastAddress: "127.0.0.1",
 				},
-				TimeDescriptions: []psdp.TimeDescription{
-					{Timing: psdp.Timing{}},
+				TimeDescriptions: []sdp.TimeDescription{
+					{Timing: sdp.Timing{}},
 				},
-				MediaDescriptions: []*psdp.MediaDescription{enc},
+				MediaDescriptions: []*sdp.MediaDescription{enc},
 			}
 
 			byts, _ := sout.Marshal()

@@ -23,7 +23,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
 	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
-	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
+	"github.com/bluenviron/gortsplib/v5/pkg/sdpunmarshaler"
 )
 
 var testH264Media = &description.Media{
@@ -497,12 +497,11 @@ func TestClientRecord(t *testing.T) {
 				require.Equal(t, base.Announce, req.Method)
 				require.Equal(t, mustParseURL(ca.scheme+"://localhost:8554/teststream"), req.URL)
 
-				var desc sdp.SessionDescription
-				err2 = desc.Unmarshal(req.Body)
+				desc, err2 := sdpunmarshaler.Unmarshal(req.Body)
 				require.NoError(t, err2)
 
 				var desc2 description.Session
-				err2 = desc2.Unmarshal(&desc)
+				err2 = desc2.Unmarshal2(desc)
 				require.NoError(t, err2)
 
 				if ca.secure == "secure" {

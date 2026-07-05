@@ -8,7 +8,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
-	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
+	"github.com/bluenviron/gortsplib/v5/pkg/sdpunmarshaler"
 )
 
 var casesSession = []struct {
@@ -980,12 +980,11 @@ var casesSession = []struct {
 func TestSessionUnmarshal(t *testing.T) {
 	for _, ca := range casesSession {
 		t.Run(ca.name, func(t *testing.T) {
-			var sdp sdp.SessionDescription
-			err := sdp.Unmarshal([]byte(ca.in))
+			sdp, err := sdpunmarshaler.Unmarshal([]byte(ca.in))
 			require.NoError(t, err)
 
 			var desc Session
-			err = desc.Unmarshal(&sdp)
+			err = desc.Unmarshal2(sdp)
 			require.NoError(t, err)
 			require.Equal(t, ca.desc, desc)
 		})
@@ -1105,14 +1104,13 @@ func FuzzSessionUnmarshal(f *testing.F) {
 		"a=mid:4\r\n")
 
 	f.Fuzz(func(t *testing.T, enc string) {
-		var sd sdp.SessionDescription
-		err := sd.Unmarshal([]byte(enc))
+		sd, err := sdpunmarshaler.Unmarshal([]byte(enc))
 		if err != nil {
 			return
 		}
 
 		var desc Session
-		err = desc.Unmarshal(&sd)
+		err = desc.Unmarshal2(sd)
 		if err != nil {
 			return
 		}

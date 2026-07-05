@@ -3,7 +3,7 @@ package format //nolint:revive
 import (
 	"testing"
 
-	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
+	"github.com/bluenviron/gortsplib/v5/pkg/sdpunmarshaler"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/stretchr/testify/require"
 )
@@ -1247,8 +1247,7 @@ var casesFormat = []struct {
 func TestUnmarshal(t *testing.T) {
 	for _, ca := range casesFormat {
 		t.Run(ca.name, func(t *testing.T) {
-			var desc sdp.SessionDescription
-			err := desc.Unmarshal([]byte(ca.in))
+			desc, err := sdpunmarshaler.Unmarshal([]byte(ca.in))
 			require.NoError(t, err)
 			require.Equal(t, 1, len(desc.MediaDescriptions))
 			require.Equal(t, 1, len(desc.MediaDescriptions[0].MediaName.Formats))
@@ -1276,8 +1275,7 @@ func FuzzUnmarshal(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, in string) {
-		var desc sdp.SessionDescription
-		err := desc.Unmarshal([]byte(in))
+		desc, err := sdpunmarshaler.Unmarshal([]byte(in))
 		if err != nil || len(desc.MediaDescriptions) == 0 || len(desc.MediaDescriptions[0].MediaName.Formats) == 0 {
 			return
 		}
