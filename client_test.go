@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -315,6 +317,290 @@ func TestClientCloseReleasesUDPSourcePorts(t *testing.T) {
 		require.NoError(t, err)
 		l2.Close()
 	}
+}
+
+func TestClientUDPSourcePorts(t *testing.T) {
+	t.Run("range exhausted", func(t *testing.T) {
+		for _, port := range []string{"40000", "40001"} {
+			ln, err := net.ListenPacket("udp", net.JoinHostPort("127.0.0.1", port))
+			require.NoError(t, err)
+			defer ln.Close()
+		}
+
+		l, err := net.Listen("tcp", "localhost:8554")
+		require.NoError(t, err)
+		defer l.Close()
+
+		serverDone := make(chan struct{})
+		defer func() { <-serverDone }()
+
+		go func() {
+			defer close(serverDone)
+
+			nconn, err2 := l.Accept()
+			require.NoError(t, err2)
+			defer nconn.Close()
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
+
+			req, err2 := conn.ReadRequest()
+			require.NoError(t, err2)
+			require.Equal(t, base.Options, req.Method)
+
+			err2 = conn.WriteResponse(&base.Response{
+				StatusCode: base.StatusOK,
+				Header: base.Header{
+					"Public": base.HeaderValue{strings.Join([]string{
+						string(base.Describe),
+						string(base.Setup),
+					}, ", ")},
+				},
+			})
+			require.NoError(t, err2)
+
+			req, err2 = conn.ReadRequest()
+			require.NoError(t, err2)
+			require.Equal(t, base.Describe, req.Method)
+
+			medias := []*description.Media{testH264Media}
+
+			err2 = conn.WriteResponse(&base.Response{
+				StatusCode: base.StatusOK,
+				Header: base.Header{
+					"Content-Type": base.HeaderValue{"application/sdp"},
+					"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
+				},
+				Body: mediasToSDP(medias),
+			})
+			require.NoError(t, err2)
+
+			_, err2 = conn.ReadRequest()
+			require.True(t, err2 == nil || errors.Is(err2, io.EOF), "server error: %v", err2)
+		}()
+
+		u := mustParseURL("rtsp://localhost:8554/teststream")
+		c := Client{
+			Scheme:             u.Scheme,
+			Host:               u.Host,
+			Protocol:           ptrOf(ProtocolUDP),
+			UDPSourcePortRange: [2]uint16{40000, 40001},
+		}
+
+		err = c.Start()
+		require.NoError(t, err)
+		defer c.Close()
+
+		sd, _, err := c.Describe(u)
+		require.NoError(t, err)
+
+		err = c.SetupAll(sd.BaseURL, sd.Medias)
+		require.EqualError(t, err, "could not find two consecutive UDP ports in range 40000-40001")
+	})
+
+	t.Run("choose ports inside range", func(t *testing.T) { //nolint:dupl
+		for _, port := range []string{"40000", "40001"} {
+			ln, err := net.ListenPacket("udp", net.JoinHostPort("127.0.0.1", port))
+			require.NoError(t, err)
+			defer ln.Close()
+		}
+
+		l, err := net.Listen("tcp", "localhost:8554")
+		require.NoError(t, err)
+		defer l.Close()
+
+		serverDone := make(chan struct{})
+		defer func() { <-serverDone }()
+
+		go func() {
+			defer close(serverDone)
+
+			nconn, err2 := l.Accept()
+			require.NoError(t, err2)
+			defer nconn.Close()
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
+
+			req, err2 := conn.ReadRequest()
+			require.NoError(t, err2)
+			require.Equal(t, base.Options, req.Method)
+
+			err2 = conn.WriteResponse(&base.Response{
+				StatusCode: base.StatusOK,
+				Header: base.Header{
+					"Public": base.HeaderValue{strings.Join([]string{
+						string(base.Describe),
+						string(base.Setup),
+						string(base.Teardown),
+					}, ", ")},
+				},
+			})
+			require.NoError(t, err2)
+
+			req, err2 = conn.ReadRequest()
+			require.NoError(t, err2)
+			require.Equal(t, base.Describe, req.Method)
+
+			medias := []*description.Media{testH264Media}
+
+			err2 = conn.WriteResponse(&base.Response{
+				StatusCode: base.StatusOK,
+				Header: base.Header{
+					"Content-Type": base.HeaderValue{"application/sdp"},
+					"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
+				},
+				Body: mediasToSDP(medias),
+			})
+			require.NoError(t, err2)
+
+			req, err2 = conn.ReadRequest()
+			require.NoError(t, err2)
+			require.Equal(t, base.Setup, req.Method)
+
+			var inTH headers.Transport
+			err2 = inTH.Unmarshal(req.Header["Transport"])
+			require.NoError(t, err2)
+			require.Equal(t, [2]int{40002, 40003}, *inTH.ClientPorts)
+
+			err2 = conn.WriteResponse(&base.Response{
+				StatusCode: base.StatusOK,
+				Header: base.Header{
+					"Transport": headers.Transport{
+						Protocol:    headers.TransportProtocolUDP,
+						Delivery:    ptrOf(headers.TransportDeliveryUnicast),
+						ClientPorts: inTH.ClientPorts,
+						ServerPorts: &[2]int{34556, 34557},
+					}.Marshal(),
+				},
+			})
+			require.NoError(t, err2)
+
+			req, err2 = conn.ReadRequest()
+			require.NoError(t, err2)
+			require.Equal(t, base.Teardown, req.Method)
+
+			err2 = conn.WriteResponse(&base.Response{StatusCode: base.StatusOK})
+			require.NoError(t, err2)
+		}()
+
+		u := mustParseURL("rtsp://localhost:8554/teststream")
+		c := Client{
+			Scheme:             u.Scheme,
+			Host:               u.Host,
+			Protocol:           ptrOf(ProtocolUDP),
+			UDPSourcePortRange: [2]uint16{40000, 40003},
+		}
+
+		err = c.Start()
+		require.NoError(t, err)
+		defer c.Close()
+
+		sd, _, err := c.Describe(u)
+		require.NoError(t, err)
+
+		err = c.SetupAll(sd.BaseURL, sd.Medias)
+		require.NoError(t, err)
+	})
+
+	t.Run("choose consecutive ports with odd range start", func(t *testing.T) { //nolint:dupl
+		for _, port := range []string{"40002", "40003"} {
+			ln, err := net.ListenPacket("udp", net.JoinHostPort("127.0.0.1", port))
+			require.NoError(t, err)
+			defer ln.Close()
+		}
+
+		l, err := net.Listen("tcp", "localhost:8554")
+		require.NoError(t, err)
+		defer l.Close()
+
+		serverDone := make(chan struct{})
+		defer func() { <-serverDone }()
+
+		go func() {
+			defer close(serverDone)
+
+			nconn, err2 := l.Accept()
+			require.NoError(t, err2)
+			defer nconn.Close()
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
+
+			req, err2 := conn.ReadRequest()
+			require.NoError(t, err2)
+			require.Equal(t, base.Options, req.Method)
+
+			err2 = conn.WriteResponse(&base.Response{
+				StatusCode: base.StatusOK,
+				Header: base.Header{
+					"Public": base.HeaderValue{strings.Join([]string{
+						string(base.Describe),
+						string(base.Setup),
+						string(base.Teardown),
+					}, ", ")},
+				},
+			})
+			require.NoError(t, err2)
+
+			req, err2 = conn.ReadRequest()
+			require.NoError(t, err2)
+			require.Equal(t, base.Describe, req.Method)
+
+			medias := []*description.Media{testH264Media}
+
+			err2 = conn.WriteResponse(&base.Response{
+				StatusCode: base.StatusOK,
+				Header: base.Header{
+					"Content-Type": base.HeaderValue{"application/sdp"},
+					"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
+				},
+				Body: mediasToSDP(medias),
+			})
+			require.NoError(t, err2)
+
+			req, err2 = conn.ReadRequest()
+			require.NoError(t, err2)
+			require.Equal(t, base.Setup, req.Method)
+
+			var inTH headers.Transport
+			err2 = inTH.Unmarshal(req.Header["Transport"])
+			require.NoError(t, err2)
+			require.Equal(t, [2]int{40004, 40005}, *inTH.ClientPorts)
+
+			err2 = conn.WriteResponse(&base.Response{
+				StatusCode: base.StatusOK,
+				Header: base.Header{
+					"Transport": headers.Transport{
+						Protocol:    headers.TransportProtocolUDP,
+						Delivery:    ptrOf(headers.TransportDeliveryUnicast),
+						ClientPorts: inTH.ClientPorts,
+						ServerPorts: &[2]int{34556, 34557},
+					}.Marshal(),
+				},
+			})
+			require.NoError(t, err2)
+
+			req, err2 = conn.ReadRequest()
+			require.NoError(t, err2)
+			require.Equal(t, base.Teardown, req.Method)
+
+			err2 = conn.WriteResponse(&base.Response{StatusCode: base.StatusOK})
+			require.NoError(t, err2)
+		}()
+
+		u := mustParseURL("rtsp://localhost:8554/teststream")
+		c := Client{
+			Scheme:             u.Scheme,
+			Host:               u.Host,
+			Protocol:           ptrOf(ProtocolUDP),
+			UDPSourcePortRange: [2]uint16{40001, 40005},
+		}
+
+		err = c.Start()
+		require.NoError(t, err)
+		defer c.Close()
+
+		sd, _, err := c.Describe(u)
+		require.NoError(t, err)
+
+		err = c.SetupAll(sd.BaseURL, sd.Medias)
+		require.NoError(t, err)
+	})
 }
 
 func TestClientAuth(t *testing.T) {
