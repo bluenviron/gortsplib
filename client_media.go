@@ -81,13 +81,31 @@ func createUDPListenerPair(
 
 	// pick two consecutive ports.
 	// RTP port must be even and RTCP port odd.
-	for {
-		v, err := randInRange(int((c.UDPSourcePortRange[1] - c.UDPSourcePortRange[0]) / 2))
-		if err != nil {
-			return nil, nil, err
-		}
 
-		rtpPort := v*2 + int(c.UDPSourcePortRange[0])
+	firstRTPPort := int(c.UDPSourcePortRange[0])
+	if (firstRTPPort % 2) != 0 {
+		firstRTPPort++
+	}
+
+	lastRTPPort := int(c.UDPSourcePortRange[1]) - 1
+	if (lastRTPPort % 2) != 0 {
+		lastRTPPort--
+	}
+
+	if firstRTPPort > lastRTPPort {
+		return nil, nil, fmt.Errorf("could not find two consecutive UDP ports in range %d-%d",
+			c.UDPSourcePortRange[0], c.UDPSourcePortRange[1])
+	}
+
+	pairCount := ((lastRTPPort - firstRTPPort) / 2) + 1
+
+	offset, err := randInRange(pairCount - 1)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for i := range pairCount {
+		rtpPort := firstRTPPort + (((offset + i) % pairCount) * 2)
 		rtcpPort := rtpPort + 1
 
 		l1 := &clientUDPListener{
@@ -111,6 +129,9 @@ func createUDPListenerPair(
 
 		return l1, l2, nil
 	}
+
+	return nil, nil, fmt.Errorf("could not find two consecutive UDP ports in range %d-%d",
+		c.UDPSourcePortRange[0], c.UDPSourcePortRange[1])
 }
 
 type clientMedia struct {
