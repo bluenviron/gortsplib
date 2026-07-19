@@ -184,6 +184,11 @@ func (cm *clientMedia) close() {
 	for _, ct := range cm.formats {
 		ct.close()
 	}
+
+	if cm.udpRTPListener != nil {
+		cm.udpRTPListener.close()
+		cm.udpRTCPListener.close()
+	}
 }
 
 func (cm *clientMedia) start() {
