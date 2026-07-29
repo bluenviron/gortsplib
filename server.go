@@ -471,18 +471,21 @@ func (s *Server) runInner() error {
 			ss.Close()
 
 		case req := <-s.chGetMulticastIP:
-			ip32 := uint32(s.multicastNextIP[0])<<24 | uint32(s.multicastNextIP[1])<<16 |
-				uint32(s.multicastNextIP[2])<<8 | uint32(s.multicastNextIP[3])
-			mask := uint32(s.multicastNet.Mask[0])<<24 | uint32(s.multicastNet.Mask[1])<<16 |
-				uint32(s.multicastNet.Mask[2])<<8 | uint32(s.multicastNet.Mask[3])
-			ip32 = (ip32 & mask) | ((ip32 + 1) & ^mask)
-			ip := make(net.IP, 4)
-			ip[0] = byte(ip32 >> 24)
-			ip[1] = byte(ip32 >> 16)
-			ip[2] = byte(ip32 >> 8)
-			ip[3] = byte(ip32)
-			s.multicastNextIP = ip
-			req.res <- ip
+			nextIP := s.multicastNextIP
+			mask := s.multicastNet.Mask
+			carry := uint8(1)
+			for _i := range(nextIP) {
+				i := len(nextIP) - (_i + 1)
+
+				sum := uint16((nextIP[i] & mask[i]) | (nextIP[i] + carry) & ^mask[i])
+				carry = uint8(sum >> 8)
+				nextIP[i] = uint8(sum & 0xff);
+
+				if carry == 0 {
+					break
+				}
+			}
+			req.res <- nextIP
 
 		case <-s.ctx.Done():
 			return liberrors.ErrServerTerminated{}
