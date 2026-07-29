@@ -35,8 +35,9 @@ type Sender struct {
 	reportedLost       uint64
 	octetCount         uint32
 
-	terminate chan struct{}
-	done      chan struct{}
+	terminate   chan struct{}
+	done        chan struct{}
+	firstPacket chan struct{}
 }
 
 // Initialize initializes a Sender.
@@ -47,6 +48,7 @@ func (rs *Sender) Initialize() {
 
 	rs.terminate = make(chan struct{})
 	rs.done = make(chan struct{})
+	rs.firstPacket = make(chan struct{})
 
 	go rs.run()
 }
@@ -63,8 +65,37 @@ func (rs *Sender) run() {
 	t := time.NewTicker(rs.Period)
 	defer t.Stop()
 
+	// RFC 6051, section 3.2: a sender SHOULD transmit an initial compound RTCP packet
+	// immediately on joining a unicast session, so a receiver can establish the
+	// RTP-to-wall-clock mapping without waiting for the first periodic report.
+	//
+	// Emitting only on the ticker delays that mapping by Period (10s by default), and
+	// longer still when no RTP packet has been sent by the first tick -- report()
+	// returns nil then, so the next opportunity is another Period away. Any receiver
+	// that derives absolute time from sender reports is blind for that whole window on
+	// every connection and every reconnect: mediamtx's useAbsoluteTimestamp drops the
+	// packets outright, and GStreamer's rtpjitterbuffer attaches no
+	// reference-timestamp-meta. See bluenviron/gortsplib#1052.
+	//
+	// The channel is read into a local: setting it to nil after it fires makes that
+	// select case block forever, so the initial report is sent exactly once, without
+	// racing ProcessPacket for ownership of the field.
+	firstPacket := rs.firstPacket
+
 	for {
 		select {
+		case <-firstPacket:
+			firstPacket = nil
+
+			report := rs.report()
+			if report != nil {
+				rs.WritePacketRTCP(report)
+			}
+
+			// Restart the period from the initial report, so a tick that was already
+			// nearly due doesn't send a second report immediately after it.
+			t.Reset(rs.Period)
+
 		case <-t.C:
 			report := rs.report()
 			if report != nil {
@@ -104,11 +135,20 @@ func (rs *Sender) ProcessPacket(pkt *rtp.Packet, ntp time.Time, ptsEqualsDTS boo
 	defer rs.mutex.Unlock()
 
 	if ptsEqualsDTS {
+		isFirst := !rs.firstRTPPacketSent
+
 		rs.firstRTPPacketSent = true
 		rs.lastRTP = pkt.Timestamp
 		rs.lastNTP = ntp
 		rs.lastSystem = rs.TimeNow()
 		rs.localSSRC = pkt.SSRC
+
+		// Wakes run() to emit the initial sender report now that report() has the data
+		// it needs. Closed under the mutex and only on the false->true transition, so
+		// it happens exactly once.
+		if isFirst {
+			close(rs.firstPacket)
+		}
 	}
 
 	rs.lastSequenceNumber = pkt.SequenceNumber
