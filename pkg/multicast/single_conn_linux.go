@@ -73,12 +73,23 @@ func NewSingleConn(
 	address string,
 	_ func(network, address string) (net.PacketConn, error),
 ) (Conn, error) {
-	addr, err := net.ResolveUDPAddr("udp4", address)
+	addr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
 		return nil, err
 	}
 
-	sock, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
+	var gi genericIP
+	if addr.IP.To4() == nil {
+		gi.af_family = syscall.AF_INET6
+		gi.ipproto = syscall.IPPROTO_IPV6
+		gi.multicast_hops = syscall.IPV6_MULTICAST_HOPS
+	} else {
+		gi.af_family = syscall.AF_INET
+		gi.ipproto = syscall.IPPROTO_IP
+		gi.multicast_hops = syscall.IP_MULTICAST_TTL
+	}
+
+	sock, err := syscall.Socket(gi.ipproto, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
 	if err != nil {
 		return nil, err
 	}
@@ -95,39 +106,62 @@ func NewSingleConn(
 		return nil, err
 	}
 
-	var lsa syscall.SockaddrInet4
-	lsa.Port = addr.Port
-	copy(lsa.Addr[:], addr.IP.To4())
-	err = syscall.Bind(sock, &lsa)
+	if gi.af_family == syscall.AF_INET6 {
+		var lsa syscall.SockaddrInet6
+		lsa.Port = addr.Port
+		copy(lsa.Addr[:], addr.IP.To16())
+		err = syscall.Bind(sock, &lsa)
+	} else {
+		var lsa syscall.SockaddrInet4
+		lsa.Port = addr.Port
+		copy(lsa.Addr[:], addr.IP.To4())
+		err = syscall.Bind(sock, &lsa)
+	}
 	if err != nil {
 		syscall.Close(sock) //nolint:errcheck
 		return nil, err
 	}
 
-	var mreq syscall.IPMreq
-	copy(mreq.Multiaddr[:], addr.IP.To4())
-	err = setIPMreqInterface(&mreq, intf)
+	if gi.af_family == syscall.AF_INET6 {
+		var mreq syscall.IPv6Mreq
+		copy(mreq.Multiaddr[:], addr.IP.To16())
+		mreq.Interface = uint32(intf.Index)
+
+		err = syscall.SetsockoptIPv6Mreq(sock, syscall.IPPROTO_IPV6, syscall.IPV6_ADD_MEMBERSHIP, &mreq)
+		if err != nil {
+			syscall.Close(sock) //nolint:errcheck
+			return nil, err
+		}
+
+		err = syscall.SetsockoptInt(sock, syscall.IPPROTO_IPV6, syscall.IPV6_MULTICAST_IF, intf.Index)
+	} else {
+		var mreq syscall.IPMreq
+		copy(mreq.Multiaddr[:], addr.IP.To4())
+		err = setIPMreqInterface(&mreq, intf)
+		if err != nil {
+			syscall.Close(sock) //nolint:errcheck
+			return nil, err
+		}
+
+		err = syscall.SetsockoptIPMreq(sock, syscall.IPPROTO_IP, syscall.IP_ADD_MEMBERSHIP, &mreq)
+		if err != nil {
+			syscall.Close(sock) //nolint:errcheck
+			return nil, err
+		}
+
+		var mreqn syscall.IPMreqn
+		mreqn.Ifindex = int32(intf.Index)
+
+		err = syscall.SetsockoptIPMreqn(sock, syscall.IPPROTO_IP, syscall.IP_MULTICAST_IF, &mreqn)
+	}
+
 	if err != nil {
 		syscall.Close(sock) //nolint:errcheck
 		return nil, err
 	}
 
-	err = syscall.SetsockoptIPMreq(sock, syscall.IPPROTO_IP, syscall.IP_ADD_MEMBERSHIP, &mreq)
-	if err != nil {
-		syscall.Close(sock) //nolint:errcheck
-		return nil, err
-	}
 
-	var mreqn syscall.IPMreqn
-	mreqn.Ifindex = int32(intf.Index)
-
-	err = syscall.SetsockoptIPMreqn(sock, syscall.IPPROTO_IP, syscall.IP_MULTICAST_IF, &mreqn)
-	if err != nil {
-		syscall.Close(sock) //nolint:errcheck
-		return nil, err
-	}
-
-	err = syscall.SetsockoptInt(sock, syscall.IPPROTO_IP, syscall.IP_MULTICAST_TTL, multicastTTL)
+	err = syscall.SetsockoptInt(sock, gi.ipproto, gi.multicast_hops, multicastTTL)
 	if err != nil {
 		syscall.Close(sock) //nolint:errcheck
 		return nil, err

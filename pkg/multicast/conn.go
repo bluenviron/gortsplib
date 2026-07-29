@@ -12,3 +12,9 @@ type Conn interface {
 	SetReadBuffer(int) error
 	SyscallConn() (syscall.RawConn, error)
 }
+
+type genericIP struct {
+	af_family int
+	ipproto int
+	multicast_hops int
+}
