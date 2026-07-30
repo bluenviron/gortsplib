@@ -57,6 +57,27 @@ var casesVerify = []struct {
 				`uri="rtsp://myhost/mypath?key=val", response="c11a6e92b449f221dabf494a7a837ee3"`,
 		},
 	},
+	{
+		"digest relative uri",
+		base.HeaderValue{
+			`Digest username="myuser", realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce", ` +
+				`uri="/mypath?key=val/trackID=3", response="d78ea008e655a7218f0c7e53db6115a5"`,
+		},
+	},
+	{
+		"digest relative uri vlc",
+		base.HeaderValue{
+			`Digest username="myuser", realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce", ` +
+				`uri="/mypath?key=val/", response="bd06a80ca4d1fc6a57242e72fe04f896"`,
+		},
+	},
+	{
+		"digest relative uri happytime",
+		base.HeaderValue{
+			`Digest username="myuser", realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce", ` +
+				`uri="/mypath?key=val", response="4dde697b2c5268ce4f82cfab5d8bb4c2"`,
+		},
+	},
 }
 
 func TestVerify(t *testing.T) {

@@ -80,6 +80,11 @@ func (u *URL) CloneWithoutCredentials() *URL {
 	})
 }
 
+// RequestURI returns the path and query of the URL (abs_path).
+func (u *URL) RequestURI() string {
+	return (*url.URL)(u).RequestURI()
+}
+
 // Hostname returns u.Host, stripping any valid port number if present.
 //
 // If the result is enclosed in square brackets, as literal IPv6 addresses are,

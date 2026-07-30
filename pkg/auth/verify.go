@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
@@ -26,8 +27,15 @@ func sha256Hex(in string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func urlMatches(expected string, received string, isSetup bool) bool {
-	if received == expected {
+func urlMatches(expected *base.URL, received string, isSetup bool) bool {
+	// RFC 2617, section 3.2.2 allows the digest URI to be either an absolute URI
+	// or an abs_path. Some clients (e.g. Bosch BVMS) use the latter.
+	expectedStr := expected.String()
+	if strings.HasPrefix(received, "/") {
+		expectedStr = expected.RequestURI()
+	}
+
+	if received == expectedStr {
 		return true
 	}
 
@@ -35,7 +43,8 @@ func urlMatches(expected string, received string, isSetup bool) bool {
 	// - VLC uses the stream base URL (with trailing slash)
 	// - HappyTime NVR uses the stream URL (without trailing slash)
 	if isSetup {
-		if m := reControlAttribute.FindStringSubmatch(expected); m != nil && (received == m[1] || (received+"/") == m[1]) {
+		if m := reControlAttribute.FindStringSubmatch(expectedStr); m != nil &&
+			(received == m[1] || (received+"/") == m[1]) {
 			return true
 		}
 	}
@@ -92,7 +101,7 @@ func Verify(
 			return fmt.Errorf("authentication failed")
 		}
 
-		if !urlMatches(req.URL.String(), auth.URI, req.Method == base.Setup) {
+		if !urlMatches(req.URL, auth.URI, req.Method == base.Setup) {
 			return fmt.Errorf("wrong URL")
 		}
 
