@@ -1,4 +1,4 @@
-package base
+package base_test
 
 import (
 	"bufio"
@@ -6,7 +6,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
 )
+
+type InterleavedFrame = base.InterleavedFrame
 
 var casesInterleavedFrame = []struct {
 	name string

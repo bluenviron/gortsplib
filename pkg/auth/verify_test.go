@@ -1,8 +1,9 @@
-package auth
+package auth_test
 
 import (
 	"testing"
 
+	"github.com/bluenviron/gortsplib/v5/pkg/auth"
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/stretchr/testify/require"
 )
@@ -68,11 +69,11 @@ func TestVerify(t *testing.T) {
 				},
 			}
 
-			err := Verify(
+			err := auth.Verify(
 				req,
 				"myuser",
 				"mypass",
-				[]VerifyMethod{VerifyMethodBasic, VerifyMethodDigestMD5, VerifyMethodDigestSHA256},
+				[]auth.VerifyMethod{auth.VerifyMethodBasic, auth.VerifyMethodDigestMD5, auth.VerifyMethodDigestSHA256},
 				"myrealm",
 				"f49ac6dd0ba708d4becddc9692d1f2ce")
 			require.NoError(t, err)
@@ -86,7 +87,7 @@ func FuzzVerify(f *testing.F) {
 	}
 
 	f.Fuzz(func(_ *testing.T, a string) {
-		Verify( //nolint:errcheck
+		auth.Verify( //nolint:errcheck
 			&base.Request{
 				Method: base.Describe,
 				URL:    nil,

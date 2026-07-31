@@ -1,4 +1,4 @@
-package asyncprocessor
+package asyncprocessor_test
 
 import (
 	"context"
@@ -6,10 +6,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	asyncprocessor "github.com/bluenviron/gortsplib/v5/internal/asyncprocessor"
 )
 
 func TestCloseBeforeStart(_ *testing.T) {
-	p := &Processor{
+	p := &asyncprocessor.Processor{
 		BufferSize: 8,
 	}
 	p.Initialize()
@@ -19,7 +21,7 @@ func TestCloseBeforeStart(_ *testing.T) {
 func TestCloseAfterError(t *testing.T) {
 	done := make(chan struct{})
 
-	p := &Processor{
+	p := &asyncprocessor.Processor{
 		BufferSize: 8,
 		OnError: func(_ context.Context, err error) {
 			require.EqualError(t, err, "ok")
@@ -39,7 +41,7 @@ func TestCloseAfterError(t *testing.T) {
 }
 
 func TestCloseBeforeError(_ *testing.T) {
-	p := &Processor{
+	p := &asyncprocessor.Processor{
 		BufferSize: 8,
 		OnError:    func(_ context.Context, _ error) {},
 	}
@@ -54,7 +56,7 @@ func TestCloseBeforeError(_ *testing.T) {
 }
 
 func TestCloseDuringError(_ *testing.T) {
-	p := &Processor{
+	p := &asyncprocessor.Processor{
 		BufferSize: 8,
 		OnError: func(ctx context.Context, _ error) {
 			<-ctx.Done()

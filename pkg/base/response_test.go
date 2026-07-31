@@ -1,4 +1,4 @@
-package base
+package base_test
 
 import (
 	"bufio"
@@ -6,7 +6,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
 )
+
+type Response = base.Response
 
 var casesResponse = []struct {
 	name string
@@ -25,7 +29,7 @@ var casesResponse = []struct {
 			"\r\n",
 		),
 		Response{
-			StatusCode:    StatusOK,
+			StatusCode:    base.StatusOK,
 			StatusMessage: "OK",
 			Header: Header{
 				"CSeq":    HeaderValue{"2"},
@@ -142,7 +146,7 @@ var casesResponse = []struct {
 			"\r\n",
 		),
 		Response{
-			StatusCode:    StatusOK,
+			StatusCode:    base.StatusOK,
 			StatusMessage: "",
 			Header: Header{
 				"CSeq":    HeaderValue{"2"},
@@ -190,7 +194,7 @@ func TestResponseMarshal(t *testing.T) {
 
 func TestResponseMarshalAutoFillStatus(t *testing.T) {
 	res := &Response{
-		StatusCode: StatusMethodNotAllowed,
+		StatusCode: base.StatusMethodNotAllowed,
 		Header: Header{
 			"CSeq":    HeaderValue{"2"},
 			"Session": HeaderValue{"645252166"},

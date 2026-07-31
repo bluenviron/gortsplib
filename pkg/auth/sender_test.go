@@ -1,8 +1,9 @@
-package auth
+package auth_test
 
 import (
 	"testing"
 
+	"github.com/bluenviron/gortsplib/v5/pkg/auth"
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/stretchr/testify/require"
 )
@@ -84,7 +85,7 @@ var casesSender = []struct {
 func TestSender(t *testing.T) {
 	for _, ca := range casesSender {
 		t.Run(ca.name, func(t *testing.T) {
-			se := &Sender{
+			se := &auth.Sender{
 				WWWAuth: ca.wwwAuthenticate,
 				User:    "myuser",
 				Pass:    "mypass",
@@ -109,7 +110,7 @@ func FuzzSender(f *testing.F) {
 	}
 
 	f.Fuzz(func(_ *testing.T, a string) {
-		se := &Sender{
+		se := &auth.Sender{
 			WWWAuth: base.HeaderValue{a},
 			User:    "myuser",
 			Pass:    "mypass",

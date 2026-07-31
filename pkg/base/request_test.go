@@ -1,4 +1,4 @@
-package base
+package base_test
 
 import (
 	"bufio"
@@ -6,6 +6,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
+)
+
+type (
+	Request     = base.Request
+	Header      = base.Header
+	HeaderValue = base.HeaderValue
 )
 
 var casesRequest = []struct {
