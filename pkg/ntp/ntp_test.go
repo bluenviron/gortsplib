@@ -1,10 +1,12 @@
-package ntp
+package ntp_test
 
 import (
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
 )
 
 var cases = []struct {
@@ -27,7 +29,7 @@ var cases = []struct {
 func TestEncode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			v := Encode(ca.dec)
+			v := ntp.Encode(ca.dec)
 			require.Equal(t, ca.enc, v)
 		})
 	}
@@ -36,7 +38,7 @@ func TestEncode(t *testing.T) {
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			v := Decode(ca.enc)
+			v := ntp.Decode(ca.enc)
 			require.Equal(t, ca.dec, v)
 		})
 	}

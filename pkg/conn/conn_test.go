@@ -1,4 +1,4 @@
-package conn
+package conn_test
 
 import (
 	"bufio"
@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/conn"
 )
 
 func mustParseURL(s string) *base.URL {
@@ -69,7 +70,7 @@ func TestRead(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			buf := bytes.NewBuffer(ca.enc)
-			conn := NewConn(bufio.NewReader(buf), buf)
+			conn := conn.NewConn(bufio.NewReader(buf), buf)
 			dec, err := conn.Read()
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, dec)
@@ -86,7 +87,7 @@ func TestReadConsecutiveFrameMagicBytes(t *testing.T) {
 		// another interleaved frame
 		0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4,
 	})
-	conn := NewConn(bufio.NewReader(buf), buf)
+	conn := conn.NewConn(bufio.NewReader(buf), buf)
 	dec1, err := conn.Read()
 	require.NoError(t, err)
 	require.Equal(t,
@@ -105,14 +106,14 @@ func TestReadConsecutiveFrameMagicBytes(t *testing.T) {
 
 func TestReadError(t *testing.T) {
 	var buf bytes.Buffer
-	conn := NewConn(bufio.NewReader(&buf), &buf)
+	conn := conn.NewConn(bufio.NewReader(&buf), &buf)
 	_, err := conn.Read()
 	require.Error(t, err)
 }
 
 func TestWriteRequest(t *testing.T) {
 	var buf bytes.Buffer
-	conn := NewConn(bufio.NewReader(&buf), &buf)
+	conn := conn.NewConn(bufio.NewReader(&buf), &buf)
 	err := conn.WriteRequest(&base.Request{
 		Method: "OPTIONS",
 		URL:    mustParseURL("rtsp://example.com/media.mp4"),
@@ -127,7 +128,7 @@ func TestWriteRequest(t *testing.T) {
 
 func TestWriteResponse(t *testing.T) {
 	var buf bytes.Buffer
-	conn := NewConn(bufio.NewReader(&buf), &buf)
+	conn := conn.NewConn(bufio.NewReader(&buf), &buf)
 	err := conn.WriteResponse(&base.Response{
 		StatusCode:    base.StatusOK,
 		StatusMessage: "OK",
@@ -146,7 +147,7 @@ func TestWriteResponse(t *testing.T) {
 
 func TestWriteInterleavedFrame(t *testing.T) {
 	var buf bytes.Buffer
-	conn := NewConn(bufio.NewReader(&buf), &buf)
+	conn := conn.NewConn(bufio.NewReader(&buf), &buf)
 	err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
 		Channel: 6,
 		Payload: []byte{0x01, 0x02, 0x03, 0x04},

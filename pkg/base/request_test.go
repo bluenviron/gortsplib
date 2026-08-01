@@ -1,4 +1,4 @@
-package base
+package base_test
 
 import (
 	"bufio"
@@ -6,12 +6,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
 )
 
 var casesRequest = []struct {
 	name string
 	byts []byte
-	req  Request
+	req  base.Request
 }{
 	{
 		"options",
@@ -20,13 +22,13 @@ var casesRequest = []struct {
 			"Proxy-Require: gzipped-messages\r\n" +
 			"Require: implicit-play\r\n" +
 			"\r\n"),
-		Request{
+		base.Request{
 			Method: "OPTIONS",
 			URL:    mustParseURL("rtsp://example.com/media.mp4"),
-			Header: Header{
-				"CSeq":          HeaderValue{"1"},
-				"Require":       HeaderValue{"implicit-play"},
-				"Proxy-Require": HeaderValue{"gzipped-messages"},
+			Header: base.Header{
+				"CSeq":          base.HeaderValue{"1"},
+				"Require":       base.HeaderValue{"implicit-play"},
+				"Proxy-Require": base.HeaderValue{"gzipped-messages"},
 			},
 		},
 	},
@@ -36,12 +38,12 @@ var casesRequest = []struct {
 			"Accept: application/sdp\r\n" +
 			"CSeq: 2\r\n" +
 			"\r\n"),
-		Request{
+		base.Request{
 			Method: "DESCRIBE",
 			URL:    mustParseURL("rtsp://example.com/media.mp4"),
-			Header: Header{
-				"Accept": HeaderValue{"application/sdp"},
-				"CSeq":   HeaderValue{"2"},
+			Header: base.Header{
+				"Accept": base.HeaderValue{"application/sdp"},
+				"CSeq":   base.HeaderValue{"2"},
 			},
 		},
 	},
@@ -51,12 +53,12 @@ var casesRequest = []struct {
 			"Accept: application/sdp\r\n" +
 			"CSeq: 3\r\n" +
 			"\r\n"),
-		Request{
+		base.Request{
 			Method: "DESCRIBE",
 			URL:    mustParseURL("rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
-			Header: Header{
-				"Accept": HeaderValue{"application/sdp"},
-				"CSeq":   HeaderValue{"3"},
+			Header: base.Header{
+				"Accept": base.HeaderValue{"application/sdp"},
+				"CSeq":   base.HeaderValue{"3"},
 			},
 		},
 	},
@@ -80,15 +82,15 @@ var casesRequest = []struct {
 			"a=recvonly\n" +
 			"m=audio 3456 RTP/AVP 0\n" +
 			"m=video 2232 RTP/AVP 31\n"),
-		Request{
+		base.Request{
 			Method: "ANNOUNCE",
 			URL:    mustParseURL("rtsp://example.com/media.mp4"),
-			Header: Header{
-				"CSeq":           HeaderValue{"7"},
-				"Date":           HeaderValue{"23 Jan 1997 15:35:06 GMT"},
-				"Session":        HeaderValue{"12345678"},
-				"Content-Type":   HeaderValue{"application/sdp"},
-				"Content-Length": HeaderValue{"306"},
+			Header: base.Header{
+				"CSeq":           base.HeaderValue{"7"},
+				"Date":           base.HeaderValue{"23 Jan 1997 15:35:06 GMT"},
+				"Session":        base.HeaderValue{"12345678"},
+				"Content-Type":   base.HeaderValue{"application/sdp"},
+				"Content-Length": base.HeaderValue{"306"},
 			},
 			Body: []byte("v=0\n" +
 				"o=mhandley 2890844526 2890845468 IN IP4 126.16.64.4\n" +
@@ -114,14 +116,14 @@ var casesRequest = []struct {
 			"\r\n" +
 			"packets_received\n" +
 			"jitter\n"),
-		Request{
+		base.Request{
 			Method: "GET_PARAMETER",
 			URL:    mustParseURL("rtsp://example.com/media.mp4"),
-			Header: Header{
-				"CSeq":           HeaderValue{"9"},
-				"Content-Type":   HeaderValue{"text/parameters"},
-				"Session":        HeaderValue{"12345678"},
-				"Content-Length": HeaderValue{"24"},
+			Header: base.Header{
+				"CSeq":           base.HeaderValue{"9"},
+				"Content-Type":   base.HeaderValue{"text/parameters"},
+				"Session":        base.HeaderValue{"12345678"},
+				"Content-Length": base.HeaderValue{"24"},
 			},
 			Body: []byte("packets_received\n" +
 				"jitter\n",
@@ -134,12 +136,12 @@ var casesRequest = []struct {
 			"CSeq: 1\r\n" +
 			"User-Agent: RDIPCamera\r\n" +
 			"\r\n"),
-		Request{
+		base.Request{
 			Method: "OPTIONS",
 			URL:    nil,
-			Header: Header{
-				"CSeq":       HeaderValue{"1"},
-				"User-Agent": HeaderValue{"RDIPCamera"},
+			Header: base.Header{
+				"CSeq":       base.HeaderValue{"1"},
+				"User-Agent": base.HeaderValue{"RDIPCamera"},
 			},
 		},
 	},
@@ -147,7 +149,7 @@ var casesRequest = []struct {
 
 func TestRequestUnmarshal(t *testing.T) {
 	// keep req global to make sure that all its fields are overridden.
-	var req Request
+	var req base.Request
 
 	for _, ca := range casesRequest {
 		t.Run(ca.name, func(t *testing.T) {
@@ -175,7 +177,7 @@ func TestRequestString(t *testing.T) {
 		"\r\n" +
 		"testing")
 
-	var req Request
+	var req base.Request
 	err := req.Unmarshal(bufio.NewReader(bytes.NewBuffer(byts)))
 	require.NoError(t, err)
 	require.Equal(t, string(byts), req.String())
@@ -187,7 +189,7 @@ func FuzzRequestUnmarshal(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, b []byte) {
-		var req Request
+		var req base.Request
 		err := req.Unmarshal(bufio.NewReader(bytes.NewBuffer(b)))
 		if err != nil {
 			return

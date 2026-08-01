@@ -1,10 +1,12 @@
-package base64streamreader
+package base64streamreader_test
 
 import (
 	"io"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/internal/base64streamreader"
 )
 
 type dummyReader struct {
@@ -94,7 +96,7 @@ func TestReader(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			dr := &dummyReader{input: ca.input}
-			r := New(dr)
+			r := base64streamreader.New(dr)
 
 			var output []string
 

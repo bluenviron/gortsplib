@@ -1,4 +1,4 @@
-package ringbuffer
+package ringbuffer_test
 
 import (
 	"bytes"
@@ -6,15 +6,17 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/ringbuffer"
 )
 
 func TestCreateError(t *testing.T) {
-	_, err := New(1000)
+	_, err := ringbuffer.New(1000)
 	require.EqualError(t, err, "size must be a power of two")
 }
 
 func TestPushBeforePull(t *testing.T) {
-	r, err := New(1024)
+	r, err := ringbuffer.New(1024)
 	require.NoError(t, err)
 	defer r.Close()
 
@@ -27,7 +29,7 @@ func TestPushBeforePull(t *testing.T) {
 }
 
 func TestPullBeforePush(t *testing.T) {
-	r, err := New(1024)
+	r, err := ringbuffer.New(1024)
 	require.NoError(t, err)
 	defer r.Close()
 
@@ -48,7 +50,7 @@ func TestPullBeforePush(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
-	r, err := New(1024)
+	r, err := ringbuffer.New(1024)
 	require.NoError(t, err)
 
 	ok := r.Push([]byte{1, 2, 3, 4})
@@ -76,7 +78,7 @@ func TestClose(t *testing.T) {
 }
 
 func TestOverflow(t *testing.T) {
-	r, err := New(32)
+	r, err := ringbuffer.New(32)
 	require.NoError(t, err)
 
 	for range 32 {
@@ -95,7 +97,7 @@ func TestOverflow(t *testing.T) {
 }
 
 func BenchmarkPushPullContinuous(b *testing.B) {
-	r, _ := New(1024 * 8)
+	r, _ := ringbuffer.New(1024 * 8)
 	defer r.Close()
 
 	data := make([]byte, 1024)
@@ -118,7 +120,7 @@ func BenchmarkPushPullContinuous(b *testing.B) {
 }
 
 func BenchmarkPushPullPaused5(b *testing.B) {
-	r, _ := New(128)
+	r, _ := ringbuffer.New(128)
 	defer r.Close()
 
 	data := make([]byte, 1024)
@@ -142,7 +144,7 @@ func BenchmarkPushPullPaused5(b *testing.B) {
 }
 
 func BenchmarkPushPullPaused10(b *testing.B) {
-	r, _ := New(128)
+	r, _ := ringbuffer.New(128)
 	defer r.Close()
 
 	data := make([]byte, 1024)

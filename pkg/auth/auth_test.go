@@ -1,10 +1,11 @@
-package auth
+package auth_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/bluenviron/gortsplib/v5/pkg/auth"
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 )
 
@@ -19,19 +20,19 @@ func mustParseURL(s string) *base.URL {
 func TestCombined(t *testing.T) {
 	for _, c1 := range []struct {
 		name    string
-		methods []VerifyMethod
+		methods []auth.VerifyMethod
 	}{
 		{
 			"basic",
-			[]VerifyMethod{VerifyMethodBasic},
+			[]auth.VerifyMethod{auth.VerifyMethodBasic},
 		},
 		{
 			"digest md5",
-			[]VerifyMethod{VerifyMethodDigestMD5},
+			[]auth.VerifyMethod{auth.VerifyMethodDigestMD5},
 		},
 		{
 			"digest sha256",
-			[]VerifyMethod{VerifyMethodDigestSHA256},
+			[]auth.VerifyMethod{auth.VerifyMethodDigestSHA256},
 		},
 		{
 			"all",
@@ -49,11 +50,11 @@ func TestCombined(t *testing.T) {
 			}
 
 			t.Run(c1.name+"_"+conf, func(t *testing.T) {
-				nonce, err := GenerateNonce()
+				nonce, err := auth.GenerateNonce()
 				require.NoError(t, err)
 
-				se := &Sender{
-					WWWAuth: GenerateWWWAuthenticate(c1.methods, "IPCAM", nonce),
+				se := &auth.Sender{
+					WWWAuth: auth.GenerateWWWAuthenticate(c1.methods, "IPCAM", nonce),
 					User: func() string {
 						if conf == "wronguser" {
 							return "test1user"
@@ -83,7 +84,7 @@ func TestCombined(t *testing.T) {
 
 				req.URL = mustParseURL("rtsp://myhost/mypath")
 
-				err = Verify(req, "testuser", "testpass", c1.methods, "IPCAM", nonce)
+				err = auth.Verify(req, "testuser", "testpass", c1.methods, "IPCAM", nonce)
 
 				if conf != "nofail" {
 					require.Error(t, err)
