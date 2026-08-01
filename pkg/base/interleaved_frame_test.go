@@ -10,17 +10,15 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 )
 
-type InterleavedFrame = base.InterleavedFrame
-
 var casesInterleavedFrame = []struct {
 	name string
 	enc  []byte
-	dec  InterleavedFrame
+	dec  base.InterleavedFrame
 }{
 	{
 		name: "rtp",
 		enc:  []byte{0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4},
-		dec: InterleavedFrame{
+		dec: base.InterleavedFrame{
 			Channel: 6,
 			Payload: []byte{0x01, 0x02, 0x03, 0x04},
 		},
@@ -28,7 +26,7 @@ var casesInterleavedFrame = []struct {
 	{
 		name: "rtcp",
 		enc:  []byte{0x24, 0xd, 0x0, 0x4, 0x5, 0x6, 0x7, 0x8},
-		dec: InterleavedFrame{
+		dec: base.InterleavedFrame{
 			Channel: 13,
 			Payload: []byte{0x05, 0x06, 0x07, 0x08},
 		},
@@ -37,7 +35,7 @@ var casesInterleavedFrame = []struct {
 
 func TestInterleavedFrameUnmarshal(t *testing.T) {
 	// keep f global to make sure that all its fields are overridden.
-	var f InterleavedFrame
+	var f base.InterleavedFrame
 
 	for _, ca := range casesInterleavedFrame {
 		t.Run(ca.name, func(t *testing.T) {
@@ -63,7 +61,7 @@ func FuzzInterleavedFrameUnmarshal(f *testing.F) {
 		f.Add(ca.enc)
 	}
 	f.Fuzz(func(t *testing.T, b []byte) {
-		var f InterleavedFrame
+		var f base.InterleavedFrame
 		err := f.Unmarshal(bufio.NewReader(bytes.NewBuffer(b)))
 		if err != nil {
 			return

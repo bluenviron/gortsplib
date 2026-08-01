@@ -10,12 +10,10 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 )
 
-type Response = base.Response
-
 var casesResponse = []struct {
 	name string
 	in   []byte
-	res  Response
+	res  base.Response
 	out  []byte
 }{
 	{
@@ -28,17 +26,17 @@ var casesResponse = []struct {
 			"WWW-Authenticate: Basic realm=\"4419b63f5e51\"\r\n" +
 			"\r\n",
 		),
-		Response{
+		base.Response{
 			StatusCode:    base.StatusOK,
 			StatusMessage: "OK",
-			Header: Header{
-				"CSeq":    HeaderValue{"2"},
-				"Session": HeaderValue{"645252166"},
-				"WWW-Authenticate": HeaderValue{
+			Header: base.Header{
+				"CSeq":    base.HeaderValue{"2"},
+				"Session": base.HeaderValue{"645252166"},
+				"WWW-Authenticate": base.HeaderValue{
 					"Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"",
 					"Basic realm=\"4419b63f5e51\"",
 				},
-				"Date": HeaderValue{"Sat, Aug 16 2014 02:22:28 GMT"},
+				"Date": base.HeaderValue{"Sat, Aug 16 2014 02:22:28 GMT"},
 			},
 		},
 		[]byte("RTSP/1.0 200 OK\r\n" +
@@ -75,14 +73,14 @@ var casesResponse = []struct {
 			"a=AvgBitRate:integer;65790\n" +
 			"a=StreamName:string;\"hinted audio track\"\n",
 		),
-		Response{
+		base.Response{
 			StatusCode:    200,
 			StatusMessage: "OK",
-			Header: Header{
-				"Content-Base":   HeaderValue{"rtsp://example.com/media.mp4"},
-				"Content-Length": HeaderValue{"444"},
-				"Content-Type":   HeaderValue{"application/sdp"},
-				"CSeq":           HeaderValue{"2"},
+			Header: base.Header{
+				"Content-Base":   base.HeaderValue{"rtsp://example.com/media.mp4"},
+				"Content-Length": base.HeaderValue{"444"},
+				"Content-Type":   base.HeaderValue{"application/sdp"},
+				"CSeq":           base.HeaderValue{"2"},
 			},
 			Body: []byte("m=video 0 RTP/AVP 96\n" +
 				"a=control:streamid=0\n" +
@@ -129,9 +127,9 @@ var casesResponse = []struct {
 	{
 		"empty status message",
 		[]byte("RTSP/1.0 200 \r\n\r\n"),
-		Response{
+		base.Response{
 			StatusCode: 200,
-			Header:     Header{},
+			Header:     base.Header{},
 		},
 		[]byte("RTSP/1.0 200 OK\r\n\r\n"),
 	},
@@ -145,17 +143,17 @@ var casesResponse = []struct {
 			"WWW-Authenticate: Basic realm=\"4419b63f5e51\"\r\n" +
 			"\r\n",
 		),
-		Response{
+		base.Response{
 			StatusCode:    base.StatusOK,
 			StatusMessage: "",
-			Header: Header{
-				"CSeq":    HeaderValue{"2"},
-				"Session": HeaderValue{"645252166"},
-				"WWW-Authenticate": HeaderValue{
+			Header: base.Header{
+				"CSeq":    base.HeaderValue{"2"},
+				"Session": base.HeaderValue{"645252166"},
+				"WWW-Authenticate": base.HeaderValue{
 					"Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"",
 					"Basic realm=\"4419b63f5e51\"",
 				},
-				"Date": HeaderValue{"Sat, Aug 16 2014 02:22:28 GMT"},
+				"Date": base.HeaderValue{"Sat, Aug 16 2014 02:22:28 GMT"},
 			},
 		},
 		[]byte("RTSP/1.0 200 OK\r\n" +
@@ -171,7 +169,7 @@ var casesResponse = []struct {
 
 func TestResponseUnmarshal(t *testing.T) {
 	// keep res global to make sure that all its fields are overridden.
-	var res Response
+	var res base.Response
 
 	for _, c := range casesResponse {
 		t.Run(c.name, func(t *testing.T) {
@@ -193,16 +191,16 @@ func TestResponseMarshal(t *testing.T) {
 }
 
 func TestResponseMarshalAutoFillStatus(t *testing.T) {
-	res := &Response{
+	res := &base.Response{
 		StatusCode: base.StatusMethodNotAllowed,
-		Header: Header{
-			"CSeq":    HeaderValue{"2"},
-			"Session": HeaderValue{"645252166"},
-			"WWW-Authenticate": HeaderValue{
+		Header: base.Header{
+			"CSeq":    base.HeaderValue{"2"},
+			"Session": base.HeaderValue{"645252166"},
+			"WWW-Authenticate": base.HeaderValue{
 				"Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"",
 				"Basic realm=\"4419b63f5e51\"",
 			},
-			"Date": HeaderValue{"Sat, Aug 16 2014 02:22:28 GMT"},
+			"Date": base.HeaderValue{"Sat, Aug 16 2014 02:22:28 GMT"},
 		},
 	}
 	byts := []byte("RTSP/1.0 405 Method Not Allowed\r\n" +
@@ -226,7 +224,7 @@ func TestResponseString(t *testing.T) {
 		"\r\n" +
 		"testing")
 
-	var res Response
+	var res base.Response
 	err := res.Unmarshal(bufio.NewReader(bytes.NewBuffer(byts)))
 	require.NoError(t, err)
 	require.Equal(t, string(byts), res.String())
@@ -238,7 +236,7 @@ func FuzzResponseUnmarshal(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, b []byte) {
-		var res Response
+		var res base.Response
 		err := res.Unmarshal(bufio.NewReader(bytes.NewBuffer(b)))
 		if err != nil {
 			return

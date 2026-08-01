@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	bytecounter "github.com/bluenviron/gortsplib/v5/internal/bytecounter"
+	"github.com/bluenviron/gortsplib/v5/internal/bytecounter"
 )
 
 func TestByteCounter(t *testing.T) {

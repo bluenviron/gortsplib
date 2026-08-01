@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	base64streamreader "github.com/bluenviron/gortsplib/v5/internal/base64streamreader"
+	"github.com/bluenviron/gortsplib/v5/internal/base64streamreader"
 )
 
 type dummyReader struct {

@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	asyncprocessor "github.com/bluenviron/gortsplib/v5/internal/asyncprocessor"
+	"github.com/bluenviron/gortsplib/v5/internal/asyncprocessor"
 )
 
 func TestCloseBeforeStart(_ *testing.T) {

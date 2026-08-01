@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	gortsplib "github.com/bluenviron/gortsplib/v5"
+	"github.com/bluenviron/gortsplib/v5"
 )
 
 func TestProtocolString(t *testing.T) {
