@@ -62,7 +62,9 @@ func (smm *serverMulticastWriterMedia) initialize() error {
 
 	smm.writer = &asyncprocessor.Processor{
 		BufferSize: smm.writeQueueSize,
-		OnError:    func(_ context.Context, _ error) {},
+		OnError: func(_ context.Context, _ error) {
+			panic("should not happen")
+		},
 	}
 	smm.writer.Initialize()
 	smm.writer.Start()
@@ -113,7 +115,12 @@ func (smm *serverMulticastWriterMedia) writePacketRTCP(pkt rtcp.Packet) error {
 
 func (smm *serverMulticastWriterMedia) writePacketRTCPEncoded(payload []byte) error {
 	ok := smm.writer.Push(func() error {
-		return smm.rtcpl.write(payload, smm.rtcpAddr)
+		smm.rtcpl.write(payload, smm.rtcpAddr) //nolint:errcheck
+
+		// do not report write errors for two reasons:
+		// - errors make the async processor stop silently, and there's no error reporting mechanism
+		// - we're writing to several interfaces at once, and the error might be located on a single one
+		return nil
 	})
 	if !ok {
 		return liberrors.ErrServerWriteQueueFull{}
