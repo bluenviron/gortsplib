@@ -48,7 +48,12 @@ func (smf *serverMulticastWriterFormat) writePacketRTPEncoded(
 	smf.rtpSender.ProcessPacket(pkt, ntp, ptsEqualsDTS)
 
 	ok := smf.smm.writer.Push(func() error {
-		return smf.smm.rtpl.write(payload, smf.smm.rtpAddr)
+		smf.smm.rtpl.write(payload, smf.smm.rtpAddr) //nolint:errcheck
+
+		// do not report write errors for two reasons:
+		// - errors make the async processor stop silently, and there's no error reporting mechanism
+		// - we're writing to several interfaces at once, and the error might be located on a single one
+		return nil
 	})
 	if !ok {
 		return liberrors.ErrServerWriteQueueFull{}

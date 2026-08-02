@@ -48,20 +48,20 @@ func (w *Processor) Start() {
 func (w *Processor) run() {
 	defer close(w.done)
 
-	err := w.runInner()
-	w.OnError(w.ctx, err)
+	w.runInner()
 }
 
-func (w *Processor) runInner() error {
+func (w *Processor) runInner() {
 	for {
 		tmp, ok := w.buffer.Pull()
 		if !ok {
-			return nil
+			return
 		}
 
 		err := tmp.(func() error)()
 		if err != nil {
-			return err
+			w.OnError(w.ctx, err)
+			return
 		}
 	}
 }
