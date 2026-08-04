@@ -4,8 +4,9 @@ import (
 	"bufio"
 	"os"
 
-	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 func multiplyAndDivide(v, m, d int64) int64 {

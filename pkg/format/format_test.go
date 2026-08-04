@@ -3,9 +3,10 @@ package format //nolint:revive
 import (
 	"testing"
 
-	"github.com/bluenviron/gortsplib/v5/pkg/sdpunmarshaler"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/sdpunmarshaler"
 )
 
 var casesFormat = []struct {

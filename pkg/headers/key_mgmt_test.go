@@ -3,9 +3,10 @@ package headers
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
-	"github.com/stretchr/testify/require"
 )
 
 var casesKeyMgmt = []struct {

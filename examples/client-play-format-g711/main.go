@@ -4,11 +4,12 @@ package main
 import (
 	"log"
 
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/g711"
+	"github.com/pion/rtp"
+
 	"github.com/bluenviron/gortsplib/v5"
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/g711"
-	"github.com/pion/rtp"
 )
 
 // This example shows how to:

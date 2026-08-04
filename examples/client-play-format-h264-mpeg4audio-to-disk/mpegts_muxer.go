@@ -5,10 +5,11 @@ import (
 	"os"
 	"sync"
 
-	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
 	tscodecs "github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts/codecs"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 func multiplyAndDivide(v, m, d int64) int64 {

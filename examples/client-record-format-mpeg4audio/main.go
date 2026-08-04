@@ -8,10 +8,11 @@ import (
 	"log"
 	"time"
 
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
+
 	"github.com/bluenviron/gortsplib/v5"
 	"github.com/bluenviron/gortsplib/v5/pkg/description"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 )
 
 // This example shows how to:

@@ -3,8 +3,9 @@ package headers
 import (
 	"testing"
 
-	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
 )
 
 var casesTransports = []struct {
