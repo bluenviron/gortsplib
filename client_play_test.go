@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
@@ -26,7 +27,6 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
 	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 )
 
 func mediasToSDP(medias []*description.Media) []byte {

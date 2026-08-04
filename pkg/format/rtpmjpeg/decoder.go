@@ -4,9 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/pion/rtp"
-
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/jpeg"
+	"github.com/pion/rtp"
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.

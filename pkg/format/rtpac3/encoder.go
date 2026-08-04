@@ -3,9 +3,8 @@ package rtpac3
 import (
 	"crypto/rand"
 
-	"github.com/pion/rtp"
-
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/ac3"
+	"github.com/pion/rtp"
 )
 
 const (

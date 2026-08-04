@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/pion/rtp"
-
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/jpeg"
+	"github.com/pion/rtp"
 )
 
 const (

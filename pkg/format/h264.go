@@ -9,10 +9,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/format/rtph264"
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 )
 
 // H264 is the RTP format for the H264 codec.

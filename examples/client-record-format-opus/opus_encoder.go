@@ -1,14 +1,14 @@
 package main
 
-import (
-	"fmt"
-	"unsafe"
-)
-
 // #cgo pkg-config: libavcodec libavutil
 // #include <libavcodec/avcodec.h>
 // #include <libavutil/channel_layout.h>
 import "C"
+
+import (
+	"fmt"
+	"unsafe"
+)
 
 func frameData(frame *C.AVFrame) **C.uint8_t {
 	return (**C.uint8_t)(unsafe.Pointer(&frame.data[0]))

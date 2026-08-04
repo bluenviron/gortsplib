@@ -79,9 +79,9 @@ linters:
         - testingcontext
 
     revive:
-       enable-default-rules: true
-       rules:
-         - name: redundant-import-alias
+      enable-default-rules: true
+      rules:
+        - name: redundant-import-alias
 
   exclusions:
     rules:
@@ -91,6 +91,14 @@ linters:
 
 formatters:
   enable:
+    - gci
     - gofmt
     - gofumpt
     - goimports
+
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - localmodule

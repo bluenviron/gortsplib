@@ -4,10 +4,11 @@ package main
 import (
 	"log"
 
+	"github.com/pion/rtp"
+
 	"github.com/bluenviron/gortsplib/v5"
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
-	"github.com/pion/rtp"
 )
 
 // This example shows how to:

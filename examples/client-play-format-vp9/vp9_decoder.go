@@ -1,17 +1,17 @@
 package main
 
+// #cgo pkg-config: libavcodec libavutil libswscale
+// #include <libavcodec/avcodec.h>
+// #include <libavutil/imgutils.h>
+// #include <libswscale/swscale.h>
+import "C"
+
 import (
 	"fmt"
 	"image"
 	"runtime"
 	"unsafe"
 )
-
-// #cgo pkg-config: libavcodec libavutil libswscale
-// #include <libavcodec/avcodec.h>
-// #include <libavutil/imgutils.h>
-// #include <libswscale/swscale.h>
-import "C"
 
 func frameData(frame *C.AVFrame) **C.uint8_t {
 	return (**C.uint8_t)(unsafe.Pointer(&frame.data[0]))

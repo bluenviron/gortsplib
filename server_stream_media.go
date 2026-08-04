@@ -7,10 +7,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pion/rtcp"
+
 	"github.com/bluenviron/gortsplib/v5/pkg/description"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
-	"github.com/pion/rtcp"
 )
 
 type serverStreamMedia struct {

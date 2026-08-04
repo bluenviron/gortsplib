@@ -9,11 +9,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/bluenviron/mediacommon/v2/pkg/rewindablereader"
+	"github.com/gorilla/websocket"
+
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/bluenviron/gortsplib/v5/pkg/conn"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
-	"github.com/bluenviron/mediacommon/v2/pkg/rewindablereader"
-	"github.com/gorilla/websocket"
 )
 
 func isHTTPTunnel(req *http.Request) bool {

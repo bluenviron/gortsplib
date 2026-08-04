@@ -3,9 +3,10 @@ package auth_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bluenviron/gortsplib/v5/pkg/auth"
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
-	"github.com/stretchr/testify/require"
 )
 
 var casesVerify = []struct {
