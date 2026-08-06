@@ -29,13 +29,8 @@ func sha256Hex(in string) string {
 
 func urlMatches(expected *base.URL, received string, isSetup bool) bool {
 	// RFC 2617, section 3.2.2 allows the digest URI to be either an absolute URI
-	// or an abs_path. Some clients (e.g. Bosch BVMS) use the latter.
-	expectedStr := expected.String()
-	if strings.HasPrefix(received, "/") {
-		expectedStr = expected.RequestURI()
-	}
-
-	if received == expectedStr {
+	// or a relative path. Some clients (e.g. Bosch BVMS) use the latter.
+	if (strings.HasPrefix(received, "/") && received == expected.RequestURI()) || received == expected.String() {
 		return true
 	}
 
@@ -43,7 +38,7 @@ func urlMatches(expected *base.URL, received string, isSetup bool) bool {
 	// - VLC uses the stream base URL (with trailing slash)
 	// - HappyTime NVR uses the stream URL (without trailing slash)
 	if isSetup {
-		if m := reControlAttribute.FindStringSubmatch(expectedStr); m != nil &&
+		if m := reControlAttribute.FindStringSubmatch(expected.String()); m != nil &&
 			(received == m[1] || (received+"/") == m[1]) {
 			return true
 		}
