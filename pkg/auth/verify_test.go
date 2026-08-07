@@ -57,6 +57,13 @@ var casesVerify = []struct {
 				`uri="rtsp://myhost/mypath?key=val", response="c11a6e92b449f221dabf494a7a837ee3"`,
 		},
 	},
+	{
+		"digest Bosch BVMS",
+		base.HeaderValue{
+			`Digest username="myuser", realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce", ` +
+				`uri="/mypath?key=val/trackID=3", response="d78ea008e655a7218f0c7e53db6115a5"`,
+		},
+	},
 }
 
 func TestVerify(t *testing.T) {

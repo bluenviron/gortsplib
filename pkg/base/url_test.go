@@ -76,6 +76,44 @@ func TestURLParseErrors(t *testing.T) {
 	}
 }
 
+func TestURLRequestURI(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		enc  string
+		uri  string
+	}{
+		{
+			"base",
+			"rtsp://localhost:8554/test/stream",
+			"/test/stream",
+		},
+		{
+			"query",
+			"rtsp://localhost:8554/test/stream?key=val",
+			"/test/stream?key=val",
+		},
+		{
+			"credentials",
+			"rtsp://user:pass@localhost:8554/test/stream",
+			"/test/stream",
+		},
+		{
+			"escaped",
+			"rtsp://localhost:8554/test/prox%23ied",
+			"/test/prox%23ied",
+		},
+		{
+			"no path",
+			"rtsp://localhost:8554",
+			"/",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			require.Equal(t, ca.uri, mustParseURL(ca.enc).RequestURI())
+		})
+	}
+}
+
 func TestURLClone(t *testing.T) {
 	u := mustParseURL("rtsp://localhost:8554/test/stream")
 	u2 := u.Clone()
