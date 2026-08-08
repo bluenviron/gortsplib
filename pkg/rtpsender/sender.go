@@ -69,9 +69,7 @@ func (rs *Sender) run() {
 	select {
 	case <-rs.firstPacket:
 		report := rs.report()
-		if report != nil {
-			rs.WritePacketRTCP(report)
-		}
+		rs.WritePacketRTCP(report)
 
 	case <-rs.terminate:
 		return
@@ -84,9 +82,7 @@ func (rs *Sender) run() {
 		select {
 		case <-t.C:
 			report := rs.report()
-			if report != nil {
-				rs.WritePacketRTCP(report)
-			}
+			rs.WritePacketRTCP(report)
 
 		case <-rs.terminate:
 			return

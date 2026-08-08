@@ -1581,6 +1581,19 @@ func TestServerPlayRTCPReport(t *testing.T) {
 
 			var buf []byte
 
+			// drain the initial sender report (sent at t0 with no drift)
+			if ca == "udp" || ca == "multicast" {
+				tmp := make([]byte, 2048)
+				_, _, err = l2.ReadFrom(tmp)
+				require.NoError(t, err)
+			} else {
+				_, err = conn.ReadInterleavedFrame()
+				require.NoError(t, err)
+				_, err = conn.ReadInterleavedFrame()
+				require.NoError(t, err)
+			}
+
+			// read the periodic sender report (sent after senderReportPeriod, with drift)
 			if ca == "udp" || ca == "multicast" {
 				buf = make([]byte, 2048)
 				var n int
@@ -1588,9 +1601,6 @@ func TestServerPlayRTCPReport(t *testing.T) {
 				require.NoError(t, err)
 				buf = buf[:n]
 			} else {
-				_, err = conn.ReadInterleavedFrame()
-				require.NoError(t, err)
-
 				var f *base.InterleavedFrame
 				f, err = conn.ReadInterleavedFrame()
 				require.NoError(t, err)
