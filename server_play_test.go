@@ -1522,6 +1522,7 @@ func TestServerPlayRTCPReport(t *testing.T) {
 				l2, err = net.ListenPacket("udp", "localhost:35467")
 				require.NoError(t, err)
 				defer l2.Close()
+
 			case "multicast":
 				l1, err = net.ListenPacket("udp", "224.0.0.0:"+strconv.FormatInt(int64(th.Ports[0]), 10))
 				require.NoError(t, err)
@@ -1575,40 +1576,58 @@ func TestServerPlayRTCPReport(t *testing.T) {
 				time.Date(2017, 8, 10, 12, 22, 0, 0, time.UTC))
 			require.NoError(t, err)
 
+			readRTCP := func() []byte {
+				if ca == "udp" || ca == "multicast" {
+					buf := make([]byte, 2048)
+					n, _, err2 := l2.ReadFrom(buf)
+					require.NoError(t, err2)
+					return buf[:n]
+				}
+
+				for {
+					f, err2 := conn.ReadInterleavedFrame()
+					require.NoError(t, err2)
+					if f.Channel == 1 { // skip the RTP packet
+						return f.Payload
+					}
+				}
+			}
+
+			buf := readRTCP()
+			packets, err := rtcp.Unmarshal(buf)
+			require.NoError(t, err)
+			require.Equal(t, []rtcp.Packet{
+				&rtcp.SenderReport{
+					SSRC:        packets[0].(*rtcp.SenderReport).SSRC,
+					NTPTime:     ntp.Encode(time.Date(2017, 8, 10, 12, 22, 0, 0, time.UTC)),
+					RTPTime:     240000,
+					PacketCount: 1,
+					OctetCount:  1,
+				},
+			}, packets)
+
 			curTimeMutex.Lock()
 			curTime = time.Date(2014, 6, 7, 15, 0, 30, 0, time.UTC)
 			curTimeMutex.Unlock()
 
-			var buf []byte
+			buf = readRTCP()
 
-			// drain the initial sender report (sent at t0 with no drift)
-			if ca == "udp" || ca == "multicast" {
-				tmp := make([]byte, 2048)
-				_, _, err = l2.ReadFrom(tmp)
-				require.NoError(t, err)
-			} else {
-				_, err = conn.ReadInterleavedFrame()
-				require.NoError(t, err)
-				_, err = conn.ReadInterleavedFrame()
-				require.NoError(t, err)
+			// the multicast listener can receive the initial sender report several times
+			// because we've joined several interfaces, and because writing to some interfaces
+			// (like docker0) might result in several packets being written anyway.
+			if ca == "multicast" {
+				for {
+					var pkts []rtcp.Packet
+					if pkts, err = rtcp.Unmarshal(buf); err == nil && len(pkts) > 0 {
+						if sr, ok := pkts[0].(*rtcp.SenderReport); ok && sr.RTPTime != 240000 {
+							break
+						}
+					}
+					buf = readRTCP()
+				}
 			}
 
-			// read the periodic sender report (sent after senderReportPeriod, with drift)
-			if ca == "udp" || ca == "multicast" {
-				buf = make([]byte, 2048)
-				var n int
-				n, _, err = l2.ReadFrom(buf)
-				require.NoError(t, err)
-				buf = buf[:n]
-			} else {
-				var f *base.InterleavedFrame
-				f, err = conn.ReadInterleavedFrame()
-				require.NoError(t, err)
-				require.Equal(t, 1, f.Channel)
-				buf = f.Payload
-			}
-
-			packets, err := rtcp.Unmarshal(buf)
+			packets, err = rtcp.Unmarshal(buf)
 			require.NoError(t, err)
 			require.Equal(t, []rtcp.Packet{
 				&rtcp.SenderReport{

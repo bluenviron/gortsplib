@@ -1385,9 +1385,15 @@ func TestClientRecordAutomaticProtocol(t *testing.T) {
 		})
 		require.NoError(t, err2)
 
-		f, err2 := conn.ReadInterleavedFrame()
-		require.NoError(t, err2)
-		require.Equal(t, 0, f.Channel)
+		var f *base.InterleavedFrame
+		for {
+			f, err2 = conn.ReadInterleavedFrame()
+			require.NoError(t, err2)
+			if f.Channel == 0 {
+				break
+			}
+		}
+
 		var pkt rtp.Packet
 		err2 = pkt.Unmarshal(f.Payload)
 		require.NoError(t, err2)
@@ -1395,7 +1401,6 @@ func TestClientRecordAutomaticProtocol(t *testing.T) {
 
 		close(recv)
 
-		// initial RTCP sender report may arrive before TEARDOWN on TCP
 		req, err2 = readRequestIgnoreFrames(conn)
 		require.NoError(t, err2)
 		require.Equal(t, base.Teardown, req.Method)
@@ -1603,7 +1608,8 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 func TestClientRecordRTCPReport(t *testing.T) {
 	for _, ca := range []string{"udp", "tcp"} {
 		t.Run(ca, func(t *testing.T) {
-			reportReceived := make(chan struct{})
+			report1Received := make(chan struct{})
+			report2Received := make(chan struct{})
 
 			l, err := net.Listen("tcp", "localhost:8554")
 			require.NoError(t, err)
@@ -1691,28 +1697,40 @@ func TestClientRecordRTCPReport(t *testing.T) {
 				})
 				require.NoError(t, err2)
 
-				var buf []byte
-
-				if ca == "udp" {
-					buf = make([]byte, 2048)
-					var n int
-					n, _, err2 = l2.ReadFrom(buf)
-					require.NoError(t, err2)
-					buf = buf[:n]
-				} else {
-					for range 2 {
-						_, err2 = conn.ReadInterleavedFrame()
-						require.NoError(t, err2)
+				readRTCP := func() []byte {
+					if ca == "udp" {
+						buf := make([]byte, 2048)
+						n, _, err3 := l2.ReadFrom(buf)
+						require.NoError(t, err3)
+						return buf[:n]
 					}
 
-					var f *base.InterleavedFrame
-					f, err2 = conn.ReadInterleavedFrame()
-					require.NoError(t, err2)
-					require.Equal(t, 1, f.Channel)
-					buf = f.Payload
+					for {
+						f, err3 := conn.ReadInterleavedFrame()
+						require.NoError(t, err3)
+						if f.Channel == 1 { // skip the RTP packet
+							return f.Payload
+						}
+					}
 				}
 
+				buf := readRTCP()
 				packets, err2 := rtcp.Unmarshal(buf)
+				require.NoError(t, err2)
+				require.Equal(t, []rtcp.Packet{
+					&rtcp.SenderReport{
+						SSRC:        packets[0].(*rtcp.SenderReport).SSRC,
+						NTPTime:     ntp.Encode(time.Date(1996, 2, 13, 14, 32, 5, 0, time.UTC)),
+						RTPTime:     1300000, // +60*90000,
+						PacketCount: 1,
+						OctetCount:  1,
+					},
+				}, packets)
+
+				close(report1Received)
+
+				buf = readRTCP()
+				packets, err2 = rtcp.Unmarshal(buf)
 				require.NoError(t, err2)
 				require.Equal(t, []rtcp.Packet{
 					&rtcp.SenderReport{
@@ -1724,7 +1742,7 @@ func TestClientRecordRTCPReport(t *testing.T) {
 					},
 				}, packets)
 
-				close(reportReceived)
+				close(report2Received)
 
 				req, err2 = conn.ReadRequest()
 				require.NoError(t, err2)
@@ -1781,11 +1799,13 @@ func TestClientRecordRTCPReport(t *testing.T) {
 				time.Date(1996, 2, 13, 14, 32, 5, 0, time.UTC))
 			require.NoError(t, err)
 
+			<-report1Received
+
 			curTimeMutex.Lock()
 			curTime = time.Date(2013, 6, 10, 1, 1, 0, 0, time.UTC)
 			curTimeMutex.Unlock()
 
-			<-reportReceived
+			<-report2Received
 		})
 	}
 }
