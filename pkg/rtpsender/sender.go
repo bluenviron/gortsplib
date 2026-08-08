@@ -35,8 +35,9 @@ type Sender struct {
 	reportedLost       uint64
 	octetCount         uint32
 
-	terminate chan struct{}
-	done      chan struct{}
+	terminate   chan struct{}
+	done        chan struct{}
+	firstPacket chan struct{}
 }
 
 // Initialize initializes a Sender.
@@ -47,6 +48,7 @@ func (rs *Sender) Initialize() {
 
 	rs.terminate = make(chan struct{})
 	rs.done = make(chan struct{})
+	rs.firstPacket = make(chan struct{})
 
 	go rs.run()
 }
@@ -60,6 +62,19 @@ func (rs *Sender) Close() {
 func (rs *Sender) run() {
 	defer close(rs.done)
 
+	if rs.ClockRate == 0 {
+		return
+	}
+
+	select {
+	case <-rs.firstPacket:
+		report := rs.report()
+		rs.WritePacketRTCP(report)
+
+	case <-rs.terminate:
+		return
+	}
+
 	t := time.NewTicker(rs.Period)
 	defer t.Stop()
 
@@ -67,9 +82,7 @@ func (rs *Sender) run() {
 		select {
 		case <-t.C:
 			report := rs.report()
-			if report != nil {
-				rs.WritePacketRTCP(report)
-			}
+			rs.WritePacketRTCP(report)
 
 		case <-rs.terminate:
 			return
@@ -80,10 +93,6 @@ func (rs *Sender) run() {
 func (rs *Sender) report() rtcp.Packet {
 	rs.mutex.RLock()
 	defer rs.mutex.RUnlock()
-
-	if !rs.firstRTPPacketSent || rs.ClockRate == 0 {
-		return nil
-	}
 
 	systemDiff := rs.TimeNow().Sub(rs.lastSystem)
 	ntpTime := rs.lastNTP.Add(systemDiff)
@@ -104,11 +113,17 @@ func (rs *Sender) ProcessPacket(pkt *rtp.Packet, ntp time.Time, ptsEqualsDTS boo
 	defer rs.mutex.Unlock()
 
 	if ptsEqualsDTS {
+		isFirst := !rs.firstRTPPacketSent
+
 		rs.firstRTPPacketSent = true
 		rs.lastRTP = pkt.Timestamp
 		rs.lastNTP = ntp
 		rs.lastSystem = rs.TimeNow()
 		rs.localSSRC = pkt.SSRC
+
+		if isFirst {
+			close(rs.firstPacket)
+		}
 	}
 
 	rs.lastSequenceNumber = pkt.SequenceNumber

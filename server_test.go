@@ -78,6 +78,18 @@ NkxNic7oHgsZpIkZ8HK+QjAAWA==
 -----END PRIVATE KEY-----
 `)
 
+func readResponseIgnoreFrames(c *conn.Conn) (*base.Response, error) {
+	for {
+		what, err := c.Read()
+		if err != nil {
+			return nil, err
+		}
+		if res, ok := what.(*base.Response); ok {
+			return res, nil
+		}
+	}
+}
+
 func writeReqReadRes(
 	conn *conn.Conn,
 	req base.Request,
@@ -87,7 +99,7 @@ func writeReqReadRes(
 		return nil, err
 	}
 
-	return conn.ReadResponse()
+	return readResponseIgnoreFrames(conn)
 }
 
 func doDescribe(t *testing.T, conn *conn.Conn, backChannels bool) *description.Session {

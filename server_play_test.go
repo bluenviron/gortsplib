@@ -656,7 +656,7 @@ func TestServerPlay(t *testing.T) {
 						if ca.transport != "multicast" {
 							s := ctx.Session.Stats()
 							require.Greater(t, s.BytesSent, uint64(50))
-							require.Less(t, s.BytesSent, uint64(130))
+							require.Less(t, s.BytesSent, uint64(300))
 							require.Greater(t, s.BytesReceived, uint64(15))
 							require.Less(t, s.BytesReceived, uint64(35))
 
@@ -1581,6 +1581,19 @@ func TestServerPlayRTCPReport(t *testing.T) {
 
 			var buf []byte
 
+			// drain the initial sender report (sent at t0 with no drift)
+			if ca == "udp" || ca == "multicast" {
+				tmp := make([]byte, 2048)
+				_, _, err = l2.ReadFrom(tmp)
+				require.NoError(t, err)
+			} else {
+				_, err = conn.ReadInterleavedFrame()
+				require.NoError(t, err)
+				_, err = conn.ReadInterleavedFrame()
+				require.NoError(t, err)
+			}
+
+			// read the periodic sender report (sent after senderReportPeriod, with drift)
 			if ca == "udp" || ca == "multicast" {
 				buf = make([]byte, 2048)
 				var n int
@@ -1588,9 +1601,6 @@ func TestServerPlayRTCPReport(t *testing.T) {
 				require.NoError(t, err)
 				buf = buf[:n]
 			} else {
-				_, err = conn.ReadInterleavedFrame()
-				require.NoError(t, err)
-
 				var f *base.InterleavedFrame
 				f, err = conn.ReadInterleavedFrame()
 				require.NoError(t, err)
@@ -2607,10 +2617,15 @@ func TestServerPlayNoInterleavedIDs(t *testing.T) {
 		err = stream.WritePacketRTP(stream.Desc.Medias[i], &testRTPPacket)
 		require.NoError(t, err)
 
+		// skip any initial RTCP sender reports that arrive before the RTP frame
 		var f *base.InterleavedFrame
-		f, err = conn.ReadInterleavedFrame()
-		require.NoError(t, err)
-		require.Equal(t, i*2, f.Channel)
+		for {
+			f, err = conn.ReadInterleavedFrame()
+			require.NoError(t, err)
+			if f.Channel == i*2 {
+				break
+			}
+		}
 
 		var pkt rtp.Packet
 		err = pkt.Unmarshal(f.Payload)
