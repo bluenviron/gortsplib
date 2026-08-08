@@ -4101,7 +4101,8 @@ func TestClientPlayBackChannel(t *testing.T) {
 					defer close(recv)
 					var req2 *base.Request
 					var err3 error
-					req2, err3 = conn.ReadRequest()
+					// on TCP, RTCP sender/receiver reports may arrive before OPTIONS
+					req2, err3 = readRequestIgnoreFrames(conn)
 					require.NoError(t, err3)
 					require.Equal(t, base.Options, req2.Method)
 				}()

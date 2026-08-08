@@ -693,7 +693,8 @@ func TestClientRecord(t *testing.T) {
 					require.NoError(t, err2)
 				}
 
-				req, err2 = conn.ReadRequest()
+				// on TCP the initial RTCP sender report may arrive before TEARDOWN
+				req, err2 = readRequestIgnoreFrames(conn)
 				require.NoError(t, err2)
 				require.Equal(t, base.Teardown, req.Method)
 				require.Equal(t, mustParseURL(ca.scheme+"://localhost:8554/teststream"), req.URL)
@@ -770,7 +771,7 @@ func TestClientRecord(t *testing.T) {
 			require.Equal(t, formatStats.OutboundRTPPacketsLastNTP, formatStats.RTPPacketsLastNTP)
 
 			require.Greater(t, s.Session.BytesSent, uint64(15))
-			require.Less(t, s.Session.BytesSent, uint64(30))
+			require.Less(t, s.Session.BytesSent, uint64(150))
 			require.Greater(t, s.Session.BytesReceived, uint64(19))
 			require.Less(t, s.Session.BytesReceived, uint64(40))
 
@@ -1394,7 +1395,8 @@ func TestClientRecordAutomaticProtocol(t *testing.T) {
 
 		close(recv)
 
-		req, err2 = conn.ReadRequest()
+		// initial RTCP sender report may arrive before TEARDOWN on TCP
+		req, err2 = readRequestIgnoreFrames(conn)
 		require.NoError(t, err2)
 		require.Equal(t, base.Teardown, req.Method)
 
