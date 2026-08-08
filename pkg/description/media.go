@@ -88,6 +88,9 @@ type Media struct {
 	// Control attribute.
 	Control string
 
+	// Language (ISO 639) of the media (optional).
+	Language string
+
 	// Formats contained into the media.
 	Formats []format.Format
 }
