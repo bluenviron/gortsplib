@@ -214,6 +214,90 @@ func TestClientSession(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestClientNetConn(t *testing.T) {
+	l, err := net.Listen("tcp", "localhost:0")
+	require.NoError(t, err)
+	defer l.Close()
+
+	releaseServer := make(chan struct{})
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+
+	go func() {
+		defer close(serverDone)
+
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
+		defer nconn.Close()
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
+
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Options, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+				}, ", ")},
+			},
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Describe, req.Method)
+
+		medias := []*description.Media{testH264Media}
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+			},
+			Body: mediasToSDP(medias),
+		})
+		require.NoError(t, err2)
+
+		<-releaseServer
+	}()
+
+	u, err := base.ParseURL("rtsp://" + l.Addr().String() + "/stream")
+	require.NoError(t, err)
+
+	c := Client{
+		Scheme: u.Scheme,
+		Host:   u.Host,
+	}
+
+	err = c.Start()
+	require.NoError(t, err)
+
+	// before any request, the control connection is not open
+	require.Nil(t, c.NetConn())
+
+	_, _, err = c.Describe(u)
+	require.NoError(t, err)
+
+	// after a request, NetConn returns the control connection
+	nc := c.NetConn()
+	require.NotNil(t, nc)
+
+	remoteAddr := nc.RemoteAddr().(*net.TCPAddr)
+	require.True(t, remoteAddr.IP.IsLoopback())
+	require.Equal(t, l.Addr().(*net.TCPAddr).Port, remoteAddr.Port)
+
+	localAddr := nc.LocalAddr().(*net.TCPAddr)
+	require.True(t, localAddr.IP.IsLoopback())
+
+	close(releaseServer)
+	c.Close()
+
+	// after Close, the control connection is gone
+	require.Nil(t, c.NetConn())
+}
+
 func TestClientCloseReleasesUDPSourcePorts(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:0")
 	require.NoError(t, err)
