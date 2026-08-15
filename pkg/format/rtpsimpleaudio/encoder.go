@@ -69,6 +69,8 @@ func (e *Encoder) Init() error {
 }
 
 // Encode encodes an audio frame into a RTP packet.
+// Frame must contain at least 1 byte.
+// The method might panic otherwise.
 func (e *Encoder) Encode(frame []byte) (*rtp.Packet, error) {
 	pkt := &rtp.Packet{
 		Header: rtp.Header{
