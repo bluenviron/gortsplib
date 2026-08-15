@@ -79,6 +79,8 @@ func (e *Encoder) Init() error {
 }
 
 // Encode encodes frames into RTP packets.
+// Frames must contain at least 1 element, each element must contain at least 1 byte.
+// The method might panic otherwise.
 func (e *Encoder) Encode(frames [][]byte) ([]*rtp.Packet, error) {
 	var rets []*rtp.Packet
 	var batch [][]byte

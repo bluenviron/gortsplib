@@ -89,6 +89,8 @@ func (e *Encoder) Init() error {
 }
 
 // Encode encodes AUs (non-LATM) or AudioMuxElements (LATM) into RTP packets.
+// AUs must contain at least 1 element, each element must contain at least 1 byte.
+// The method might panic otherwise.
 func (e *Encoder) Encode(aus [][]byte) ([]*rtp.Packet, error) {
 	var rets []*rtp.Packet
 	var batch [][]byte

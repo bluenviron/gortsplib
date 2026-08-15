@@ -2,7 +2,6 @@ package rtpsimpleaudio
 
 import (
 	"crypto/rand"
-	"fmt"
 
 	"github.com/pion/rtp"
 )
@@ -71,10 +70,6 @@ func (e *Encoder) Init() error {
 
 // Encode encodes an audio frame into a RTP packet.
 func (e *Encoder) Encode(frame []byte) (*rtp.Packet, error) {
-	if len(frame) > e.PayloadMaxSize {
-		return nil, fmt.Errorf("frame is too big")
-	}
-
 	pkt := &rtp.Packet{
 		Header: rtp.Header{
 			Version:        rtpVersion,

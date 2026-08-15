@@ -2,7 +2,6 @@ package rtpvp9
 
 import (
 	"crypto/rand"
-	"fmt"
 
 	"github.com/pion/rtp"
 	"github.com/pion/rtp/codecs"
@@ -89,10 +88,12 @@ func (e *Encoder) Init() error {
 }
 
 // Encode encodes a VP9 frame into RTP/VP9 packets.
+// Frame must contain at least 1 byte.
+// The method might panic otherwise.
 func (e *Encoder) Encode(frame []byte) ([]*rtp.Packet, error) {
 	payloads := e.vp.Payload(uint16(e.PayloadMaxSize), frame)
 	if payloads == nil {
-		return nil, fmt.Errorf("payloader failed")
+		panic("should not happen")
 	}
 
 	plen := len(payloads)

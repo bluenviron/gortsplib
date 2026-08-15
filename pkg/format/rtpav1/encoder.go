@@ -71,6 +71,8 @@ func (e *Encoder) Init() error {
 }
 
 // Encode encodes OBUs into RTP packets.
+// OBUs must contain at least 1 element, each element must contain at least 1 byte.
+// The method might panic otherwise.
 func (e *Encoder) Encode(obus [][]byte) ([]*rtp.Packet, error) {
 	var curPacket *rtp.Packet
 	var packets []*rtp.Packet

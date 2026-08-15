@@ -3,6 +3,7 @@ package rtpmpeg1video
 import (
 	"bytes"
 	"crypto/rand"
+	"fmt"
 
 	"github.com/pion/rtp"
 )
@@ -85,6 +86,9 @@ func (e *Encoder) Init() error {
 }
 
 // Encode encodes frames into RTP packets.
+// Frame must contain at least 4 bytes and must be a sequence of slices,
+// each prefixed with 001 and at least 4 bytes long.
+// The method might panic otherwise.
 func (e *Encoder) Encode(frame []byte) ([]*rtp.Packet, error) {
 	var rets []*rtp.Packet
 	var batch [][]byte
@@ -124,6 +128,10 @@ func (e *Encoder) Encode(frame []byte) ([]*rtp.Packet, error) {
 
 		switch slice[3] {
 		case 0:
+			if len(slice) < 6 {
+				return nil, fmt.Errorf("invalid slice")
+			}
+
 			temporalReference = uint16(slice[4])<<2 | uint16(slice[5])>>6
 			frameType = (slice[5] >> 3) & 0b111
 

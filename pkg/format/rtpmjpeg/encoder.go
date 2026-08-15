@@ -2,7 +2,6 @@ package rtpmjpeg
 
 import (
 	"crypto/rand"
-	"fmt"
 	"slices"
 
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/jpeg"
@@ -71,12 +70,10 @@ func (e *Encoder) Init() error {
 }
 
 // Encode encodes an image into RTP/M-JPEG packets.
+// Image must be a valid JPEG image and satisfy the RTP/M-JPEG constraints
+// (width and height must be less than 2040 and must be a multiple of 8).
+// The method might panic otherwise.
 func (e *Encoder) Encode(image []byte) ([]*rtp.Packet, error) {
-	l := len(image)
-	if l < 2 || image[0] != 0xFF || image[1] != jpeg.MarkerStartOfImage {
-		return nil, fmt.Errorf("SOI not found")
-	}
-
 	image = image[2:]
 	var sof *jpeg.StartOfFrame1
 	var dri *jpeg.DefineRestartInterval
@@ -85,33 +82,23 @@ func (e *Encoder) Encode(image []byte) ([]*rtp.Packet, error) {
 
 outer:
 	for len(image) >= 2 {
-		h0, h1 := image[0], image[1]
+		h1 := image[1]
 		image = image[2:]
-
-		if h0 != 0xFF {
-			return nil, fmt.Errorf("invalid image")
-		}
 
 		switch h1 {
 		case 0xE0, 0xE1, 0xE2, // JFIF
 			jpeg.MarkerDefineHuffmanTable,
 			jpeg.MarkerComment:
 			mlen := int(image[0])<<8 | int(image[1])
-			if len(image) < mlen {
-				return nil, fmt.Errorf("image is too short")
-			}
 			image = image[mlen:]
 
 		case jpeg.MarkerDefineQuantizationTable:
 			mlen := int(image[0])<<8 | int(image[1])
-			if len(image) < mlen {
-				return nil, fmt.Errorf("image is too short")
-			}
 
 			var dqt jpeg.DefineQuantizationTable
 			err := dqt.Unmarshal(image[2:mlen])
 			if err != nil {
-				return nil, err
+				panic(err)
 			}
 			image = image[mlen:]
 
@@ -121,51 +108,26 @@ outer:
 
 		case jpeg.MarkerDefineRestartInterval:
 			mlen := int(image[0])<<8 | int(image[1])
-			if len(image) < mlen {
-				return nil, fmt.Errorf("image is too short")
-			}
 
 			dri = &jpeg.DefineRestartInterval{}
 			err := dri.Unmarshal(image[2:mlen])
 			if err != nil {
-				return nil, err
+				panic(err)
 			}
 			image = image[mlen:]
 
 		case jpeg.MarkerStartOfFrame1:
 			mlen := int(image[0])<<8 | int(image[1])
-			if len(image) < mlen {
-				return nil, fmt.Errorf("image is too short")
-			}
 
 			sof = &jpeg.StartOfFrame1{}
 			err := sof.Unmarshal(image[2:mlen])
 			if err != nil {
-				return nil, err
+				panic(err)
 			}
 			image = image[mlen:]
 
-			if sof.Width > maxDimension {
-				return nil, fmt.Errorf("an image with width of %d can't be sent with RTSP", sof.Width)
-			}
-
-			if sof.Height > maxDimension {
-				return nil, fmt.Errorf("an image with height of %d can't be sent with RTSP", sof.Height)
-			}
-
-			if (sof.Width % 8) != 0 {
-				return nil, fmt.Errorf("width must be multiple of 8")
-			}
-
-			if (sof.Height % 8) != 0 {
-				return nil, fmt.Errorf("height must be multiple of 8")
-			}
-
 		case jpeg.MarkerStartOfScan:
 			mlen := int(image[0])<<8 | int(image[1])
-			if len(image) < mlen {
-				return nil, fmt.Errorf("image is too short")
-			}
 
 			var sos jpeg.StartOfScan
 			err := sos.Unmarshal(image[2:mlen])
@@ -176,22 +138,7 @@ outer:
 
 			data = image
 			break outer
-
-		default:
-			return nil, fmt.Errorf("unknown marker: 0x%.2x", h1)
 		}
-	}
-
-	if sof == nil {
-		return nil, fmt.Errorf("SOF not found")
-	}
-
-	if sof.Type > 63 {
-		return nil, fmt.Errorf("JPEG type %d is not supported", sof.Type)
-	}
-
-	if len(data) == 0 {
-		return nil, fmt.Errorf("image data not found")
 	}
 
 	jh := headerJPEG{
