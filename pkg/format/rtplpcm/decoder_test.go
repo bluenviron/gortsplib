@@ -114,9 +114,7 @@ func FuzzDecoder(f *testing.F) {
 				continue
 			}
 
-			if len(samples) == 0 {
-				t.Errorf("should not happen")
-			}
+			require.NotEmpty(t, samples)
 
 			e := &Encoder{
 				BitDepth:              24,

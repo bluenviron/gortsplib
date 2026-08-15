@@ -634,14 +634,10 @@ func FuzzDecoder(f *testing.F) {
 				continue
 			}
 
-			if len(au) == 0 {
-				t.Errorf("should not happen")
-			}
+			require.NotEmpty(t, au)
 
 			for _, nalu := range au {
-				if len(nalu) == 0 {
-					t.Errorf("should not happen")
-				}
+				require.NotEmpty(t, nalu)
 			}
 
 			e := &Encoder{

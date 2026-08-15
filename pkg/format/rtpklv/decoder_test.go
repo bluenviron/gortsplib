@@ -118,9 +118,7 @@ func FuzzDecoder(f *testing.F) {
 				continue
 			}
 
-			if len(unit) == 0 {
-				t.Errorf("should not happen")
-			}
+			require.NotEmpty(t, unit)
 
 			e := &Encoder{
 				SSRC:                  ptrOf(uint32(12321)),
