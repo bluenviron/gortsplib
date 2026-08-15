@@ -14,7 +14,7 @@ import (
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			d := &Decoder{}
+			var d Decoder
 			err := d.Init()
 			require.NoError(t, err)
 
@@ -255,7 +255,7 @@ var casesDecodeOnly = []struct {
 func TestDecodeOnly(t *testing.T) {
 	for _, ca := range casesDecodeOnly {
 		t.Run(ca.name, func(t *testing.T) {
-			d := &Decoder{}
+			var d Decoder
 			err := d.Init()
 			require.NoError(t, err)
 
@@ -277,7 +277,7 @@ func TestDecodeOnly(t *testing.T) {
 }
 
 func TestDecodeErrorNALUSize(t *testing.T) {
-	d := &Decoder{}
+	var d Decoder
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -313,7 +313,7 @@ func TestDecodeErrorNALUSize(t *testing.T) {
 }
 
 func TestDecodeErrorNALUCount(t *testing.T) {
-	d := &Decoder{}
+	var d Decoder
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -335,7 +335,7 @@ func TestDecodeErrorNALUCount(t *testing.T) {
 }
 
 func TestDecodeErrorMissingPacket(t *testing.T) {
-	d := &Decoder{}
+	var d Decoder
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -450,22 +450,35 @@ func FuzzDecoder(f *testing.F) {
 			return
 		}
 
-		d := &Decoder{}
+		var d Decoder
 		err = d.Init()
 		require.NoError(t, err)
 
 		for _, pkt := range packets {
-			if au, err2 := d.Decode(pkt); err2 == nil {
-				if len(au) == 0 {
+			var au [][]byte
+			au, err = d.Decode(pkt)
+			if err != nil {
+				continue
+			}
+
+			if len(au) == 0 {
+				t.Errorf("should not happen")
+			}
+
+			for _, nalu := range au {
+				if len(nalu) == 0 {
 					t.Errorf("should not happen")
 				}
-
-				for _, nalu := range au {
-					if len(nalu) == 0 {
-						t.Errorf("should not happen")
-					}
-				}
 			}
+
+			e := &Encoder{
+				SSRC:                  ptrOf(uint32(12321)),
+				InitialSequenceNumber: ptrOf(uint16(45432)),
+			}
+			err = e.Init()
+			require.NoError(t, err)
+
+			e.Encode(au) //nolint:errcheck
 		}
 	})
 }
