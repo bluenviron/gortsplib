@@ -108,11 +108,26 @@ func FuzzDecoder(f *testing.F) {
 		require.NoError(t, err)
 
 		for _, pkt := range packets {
-			if samples, err2 := d.Decode(pkt); err2 == nil {
-				if len(samples) == 0 {
-					t.Errorf("should not happen")
-				}
+			var samples []byte
+			samples, err = d.Decode(pkt)
+			if err != nil {
+				continue
 			}
+
+			if len(samples) == 0 {
+				t.Errorf("should not happen")
+			}
+
+			e := &Encoder{
+				BitDepth:              24,
+				ChannelCount:          2,
+				SSRC:                  ptrOf(uint32(12321)),
+				InitialSequenceNumber: ptrOf(uint16(45432)),
+			}
+			err = e.Init()
+			require.NoError(t, err)
+
+			e.Encode(samples) //nolint:errcheck
 		}
 	})
 }
