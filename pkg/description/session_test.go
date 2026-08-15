@@ -1115,7 +1115,7 @@ func FuzzSessionUnmarshal(f *testing.F) {
 			return
 		}
 
-		require.NotZero(t, len(desc.Medias))
+		require.NotEmpty(t, desc.Medias)
 
 		_, err = desc.Marshal()
 		require.NoError(t, err)
