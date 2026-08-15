@@ -70,6 +70,8 @@ func (e *Encoder) Init() error {
 }
 
 // Encode encodes a KLV unit into RTP packets.
+// Unit must contain at least 1 byte.
+// The method might panic otherwise.
 func (e *Encoder) Encode(unit []byte) ([]*rtp.Packet, error) {
 	var packets []*rtp.Packet
 

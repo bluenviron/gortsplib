@@ -2,7 +2,6 @@ package rtplpcm
 
 import (
 	"crypto/rand"
-	"fmt"
 
 	"github.com/pion/rtp"
 )
@@ -89,12 +88,10 @@ func (e *Encoder) packetCount(slen int) int {
 }
 
 // Encode encodes audio samples into RTP packets.
+// Samples must be an array of LPCM samples compatible with given bit depth and channel count.
+// The method might panic otherwise.
 func (e *Encoder) Encode(samples []byte) ([]*rtp.Packet, error) {
 	slen := len(samples)
-	if (slen % e.sampleSize) != 0 {
-		return nil, fmt.Errorf("invalid samples")
-	}
-
 	packetCount := e.packetCount(slen)
 	ret := make([]*rtp.Packet, packetCount)
 	pos := 0

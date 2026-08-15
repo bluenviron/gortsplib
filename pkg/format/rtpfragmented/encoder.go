@@ -77,6 +77,8 @@ func (e *Encoder) Init() error {
 }
 
 // Encode encodes a frame into RTP packets.
+// Frame must contain at least 1 byte.
+// The method might panic otherwise.
 func (e *Encoder) Encode(frame []byte) ([]*rtp.Packet, error) {
 	avail := e.PayloadMaxSize
 	le := len(frame)

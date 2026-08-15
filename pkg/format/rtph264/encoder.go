@@ -102,6 +102,8 @@ func (e *Encoder) Init() error {
 }
 
 // Encode encodes an access unit into RTP/H264 packets.
+// AU must contain at least 1 element, each element must contain at least 1 byte.
+// The method might panic otherwise.
 func (e *Encoder) Encode(au [][]byte) ([]*rtp.Packet, error) {
 	var rets []*rtp.Packet
 	var batch [][]byte
