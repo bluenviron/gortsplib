@@ -88,7 +88,8 @@ func (e *Encoder) packetCount(slen int) int {
 }
 
 // Encode encodes audio samples into RTP packets.
-// Samples must be an array of LPCM samples compatible with given bit depth and channel count.
+// Samples must be not empty and with a size that satisfies
+// ((size * 8) % (bit depth * channel count) == 0).
 // The method might panic otherwise.
 func (e *Encoder) Encode(samples []byte) ([]*rtp.Packet, error) {
 	slen := len(samples)
