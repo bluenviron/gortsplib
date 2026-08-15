@@ -72,9 +72,6 @@ func (e *mpegtsMuxer) writeH265(au [][]byte, pts int64) error {
 			e.pps = nalu
 			continue
 
-		case h265.NALUType_AUD_NUT:
-			continue
-
 		case h265.NALUType_IDR_W_RADL, h265.NALUType_IDR_N_LP, h265.NALUType_CRA_NUT:
 			isRandomAccess = true
 		}
