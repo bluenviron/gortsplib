@@ -9,7 +9,7 @@ import (
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			d := &Decoder{}
+			var d Decoder
 			err := d.Init()
 			require.NoError(t, err)
 

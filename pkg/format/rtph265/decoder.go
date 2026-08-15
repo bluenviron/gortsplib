@@ -30,28 +30,40 @@ func joinFragments(fragments [][]byte, size int) []byte {
 
 // Even though fragments must contain only
 // one NAL unit, some vendors put multiple anyway.
-func splitNALUs(b []byte) [][]byte {
+func splitNALUs(b []byte) ([][]byte, error) {
 	startCode := []byte{0x00, 0x00, 0x01}
 	nalus := make([][]byte, 0, 1)
+
 	for len(b) > 0 {
 		idx := bytes.Index(b, startCode)
 		if idx == -1 {
+			if len(b) < 2 {
+				return nil, fmt.Errorf("invalid NALU")
+			}
+
 			nalus = append(nalus, b)
 			break
 		}
+
 		sz := 3
 		if idx > 0 && b[idx-1] == 0x00 {
 			idx--
 			sz++
 		}
+
 		if idx == 0 {
 			b = b[sz:]
 			continue
 		}
+
+		if idx < 2 {
+			return nil, fmt.Errorf("invalid NALU")
+		}
+
 		nalus = append(nalus, b[:idx])
 		b = b[idx+sz:]
 	}
-	return nalus
+	return nalus, nil
 }
 
 func auSize(au [][]byte) int {
@@ -115,7 +127,7 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 			size := uint16(payload[0])<<8 | uint16(payload[1])
 			payload = payload[2:]
 
-			if size == 0 || int(size) > len(payload) {
+			if size < 2 || int(size) > len(payload) {
 				return nil, fmt.Errorf("invalid aggregation unit (invalid size)")
 			}
 
@@ -184,8 +196,12 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 			return nil, ErrMorePacketsNeeded
 		}
 
-		nalus = splitNALUs(joinFragments(d.fragments, d.fragmentsSize))
+		var err error
+		nalus, err = splitNALUs(joinFragments(d.fragments, d.fragmentsSize))
 		d.resetFragments()
+		if err != nil {
+			return nil, err
+		}
 
 	case h265.NALUType_PACI:
 		d.resetFragments()

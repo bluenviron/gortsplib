@@ -13,7 +13,7 @@ import (
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			d := &Decoder{}
+			var d Decoder
 			err := d.Init()
 			require.NoError(t, err)
 
@@ -30,7 +30,7 @@ func TestDecode(t *testing.T) {
 }
 
 func TestDecodeErrorMissingPacket(t *testing.T) {
-	d := &Decoder{}
+	var d Decoder
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -134,16 +134,30 @@ func FuzzDecoder(f *testing.F) {
 			return
 		}
 
-		d := &Decoder{}
+		var d Decoder
 		err = d.Init()
 		require.NoError(t, err)
 
 		for _, pkt := range packets {
-			if frame, err2 := d.Decode(pkt); err2 == nil {
-				if len(frame) == 0 {
-					t.Errorf("should not happen")
-				}
+			var frame []byte
+			frame, err = d.Decode(pkt)
+			if err != nil {
+				continue
 			}
+
+			if len(frame) == 0 {
+				t.Errorf("should not happen")
+			}
+
+			e := &Encoder{
+				SSRC:                  ptrOf(uint32(12321)),
+				InitialSequenceNumber: ptrOf(uint16(45432)),
+			}
+			err = e.Init()
+			require.NoError(t, err)
+
+			_, err = e.Encode(frame)
+			require.NoError(t, err)
 		}
 	})
 }

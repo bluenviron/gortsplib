@@ -1,6 +1,7 @@
 package rtpmpeg1video
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
@@ -28,6 +29,33 @@ func joinFragments(fragments [][]byte, size int) []byte {
 		n += copy(ret[n:], p)
 	}
 	return ret
+}
+
+// validateFrame checks that frame can be safely split into slices by Encoder.Encode(),
+// which uses the 4th byte of each slice (found by locating "00 00 01" occurrences) as
+// its type, and additionally reads 2 more bytes when that type is a picture start code.
+func validateFrame(frame []byte) error {
+	for {
+		if len(frame) < 4 {
+			return fmt.Errorf("frame is too short")
+		}
+
+		var slice []byte
+		end := bytes.Index(frame[4:], []byte{0, 0, 1})
+		if end >= 0 {
+			slice, frame = frame[:end+4], frame[end+4:]
+		} else {
+			slice, frame = frame, nil
+		}
+
+		if slice[3] == 0 && len(slice) < 6 {
+			return fmt.Errorf("invalid picture header")
+		}
+
+		if frame == nil {
+			return nil
+		}
+	}
 }
 
 // Decoder is a RTP/MPEG-1/2 Video decoder.
@@ -158,6 +186,11 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	// do not reuse sliceBuffer to avoid race conditions
 	d.sliceBuffer = nil
 	d.sliceBufferSize = 0
+
+	err = validateFrame(ret)
+	if err != nil {
+		return nil, err
+	}
 
 	return ret, nil
 }
