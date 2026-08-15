@@ -39,6 +39,9 @@ func (f *H265) unmarshal(ctx *unmarshalContext) error {
 
 			// some cameras ship parameters with Annex-B prefix
 			f.VPS = bytes.TrimPrefix(f.VPS, []byte{0, 0, 0, 1})
+			if len(f.VPS) < 2 {
+				return fmt.Errorf("invalid VPS")
+			}
 
 		case "sprop-sps":
 			var err error
@@ -49,6 +52,9 @@ func (f *H265) unmarshal(ctx *unmarshalContext) error {
 
 			// some cameras ship parameters with Annex-B prefix
 			f.SPS = bytes.TrimPrefix(f.SPS, []byte{0, 0, 0, 1})
+			if len(f.SPS) < 2 {
+				return fmt.Errorf("invalid SPS")
+			}
 
 			var spsp h265.SPS
 			err = spsp.Unmarshal(f.SPS)
@@ -65,6 +71,9 @@ func (f *H265) unmarshal(ctx *unmarshalContext) error {
 
 			// some cameras ship parameters with Annex-B prefix
 			f.PPS = bytes.TrimPrefix(f.PPS, []byte{0, 0, 0, 1})
+			if len(f.PPS) < 2 {
+				return fmt.Errorf("invalid PPS")
+			}
 
 			var ppsp h265.PPS
 			err = ppsp.Unmarshal(f.PPS)
