@@ -27,8 +27,8 @@ func SetReadBuffer(pc PacketConn, size int) error {
 	}
 
 	if v != size {
-		return fmt.Errorf("unable to set read buffer size to %v, check that the operating system allows that",
-			size)
+		return fmt.Errorf("unable to set UDP read buffer size to %d, got %d, check that the operating system allows that",
+			size, v)
 	}
 
 	return nil
