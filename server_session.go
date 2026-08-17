@@ -1340,7 +1340,9 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		})
 
 		if res.StatusCode == base.StatusOK {
+			ss.propsMutex.Lock()
 			ss.state = ServerSessionStateRecord
+			ss.propsMutex.Unlock()
 
 			ss.udpLastPacketTime.Store(ss.s.timeNow().Unix())
 
