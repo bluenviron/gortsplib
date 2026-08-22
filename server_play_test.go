@@ -3054,7 +3054,7 @@ func TestServerPlayMulticastParams(t *testing.T) {
 				Type:          mpeg4audio.ObjectTypeAACLC,
 				SampleRate:    48000,
 				ChannelConfig: 2,
-				ChannelCount:  2,
+				ChannelCount:  2, //nolint:staticcheck
 			},
 			SizeLength:       13,
 			IndexLength:      3,

@@ -60,10 +60,10 @@ func (d *h264Encoder) initialize() error {
 	C.av_opt_set(d.codecCtx.priv_data, key, val, 0)
 
 	d.codecCtx.pix_fmt = C.AV_PIX_FMT_YUV420P
-	d.codecCtx.width = (C.int)(d.Width)
-	d.codecCtx.height = (C.int)(d.Height)
+	d.codecCtx.width = C.int(d.Width)
+	d.codecCtx.height = C.int(d.Height)
 	d.codecCtx.time_base.num = 1
-	d.codecCtx.time_base.den = (C.int)(d.FPS)
+	d.codecCtx.time_base.den = C.int(d.FPS)
 	d.codecCtx.gop_size = 10
 	d.codecCtx.max_b_frames = 0
 	d.codecCtx.bit_rate = 600000
@@ -110,8 +110,8 @@ func (d *h264Encoder) initialize() error {
 		return fmt.Errorf("av_frame_get_buffer() failed")
 	}
 
-	d.swsCtx = C.sws_getContext(d.rgbaFrame.width, d.rgbaFrame.height, (int32)(d.rgbaFrame.format),
-		d.yuv420Frame.width, d.yuv420Frame.height, (int32)(d.yuv420Frame.format), C.SWS_BILINEAR, nil, nil, nil)
+	d.swsCtx = C.sws_getContext(d.rgbaFrame.width, d.rgbaFrame.height, int32(d.rgbaFrame.format),
+		d.yuv420Frame.width, d.yuv420Frame.height, int32(d.yuv420Frame.format), C.SWS_BILINEAR, nil, nil, nil)
 	if d.swsCtx == nil {
 		C.av_frame_free(&d.yuv420Frame)
 		C.av_frame_free(&d.rgbaFrame)
@@ -152,7 +152,7 @@ func (d *h264Encoder) encode(img *image.RGBA, pts int64) ([][]byte, int64, error
 	}
 
 	// send frame to the encoder
-	d.yuv420Frame.pts = (C.int64_t)(pts)
+	d.yuv420Frame.pts = C.int64_t(pts)
 	res = C.avcodec_send_frame(d.codecCtx, d.yuv420Frame)
 	if res < 0 {
 		return nil, 0, fmt.Errorf("avcodec_send_frame() failed")
@@ -169,7 +169,7 @@ func (d *h264Encoder) encode(img *image.RGBA, pts int64) ([][]byte, int64, error
 
 	// perform a deep copy of the data before unreferencing the packet
 	data := C.GoBytes(unsafe.Pointer(d.pkt.data), d.pkt.size)
-	pts = (int64)(d.pkt.pts)
+	pts = int64(d.pkt.pts)
 	C.av_packet_unref(d.pkt)
 
 	// decompress

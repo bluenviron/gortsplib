@@ -147,7 +147,7 @@ func TestClientPlayFormats(t *testing.T) {
 					Config: &mpeg4audio.AudioSpecificConfig{
 						Type:         mpeg4audio.ObjectTypeAACLC,
 						SampleRate:   44100,
-						ChannelCount: 2,
+						ChannelCount: 2, //nolint:staticcheck
 					},
 					SizeLength:       13,
 					IndexLength:      3,
@@ -161,7 +161,7 @@ func TestClientPlayFormats(t *testing.T) {
 					Config: &mpeg4audio.AudioSpecificConfig{
 						Type:         mpeg4audio.ObjectTypeAACLC,
 						SampleRate:   96000,
-						ChannelCount: 2,
+						ChannelCount: 2, //nolint:staticcheck
 					},
 					SizeLength:       13,
 					IndexLength:      3,

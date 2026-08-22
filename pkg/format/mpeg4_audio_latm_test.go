@@ -19,7 +19,7 @@ func TestMPEG4AudioLATMAttributes(t *testing.T) {
 						Type:          2,
 						SampleRate:    44100,
 						ChannelConfig: 2,
-						ChannelCount:  2,
+						ChannelCount:  2, //nolint:staticcheck
 					},
 					LatmBufferFullness: 255,
 				}},
@@ -42,7 +42,7 @@ func TestMPEG4AudioLATMDecEncoder(t *testing.T) {
 						Type:          2,
 						SampleRate:    48000,
 						ChannelConfig: 2,
-						ChannelCount:  2,
+						ChannelCount:  2, //nolint:staticcheck
 					},
 					LatmBufferFullness: 255,
 				}},

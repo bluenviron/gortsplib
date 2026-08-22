@@ -98,12 +98,12 @@ func (d *h264Decoder) reinitDynamicStuff() error {
 	}
 
 	d.swsCtx = C.sws_getContext(d.yuv420Frame.width, d.yuv420Frame.height, int32(d.yuv420Frame.format),
-		d.rgbaFrame.width, d.rgbaFrame.height, (int32)(d.rgbaFrame.format), C.SWS_BILINEAR, nil, nil, nil)
+		d.rgbaFrame.width, d.rgbaFrame.height, int32(d.rgbaFrame.format), C.SWS_BILINEAR, nil, nil, nil)
 	if d.swsCtx == nil {
 		return fmt.Errorf("sws_getContext() failed")
 	}
 
-	rgbaFrameSize := C.av_image_get_buffer_size((int32)(d.rgbaFrame.format), d.rgbaFrame.width, d.rgbaFrame.height, 1)
+	rgbaFrameSize := C.av_image_get_buffer_size(int32(d.rgbaFrame.format), d.rgbaFrame.width, d.rgbaFrame.height, 1)
 	d.rgbaFramePtr = (*[1 << 30]uint8)(unsafe.Pointer(d.rgbaFrame.data[0]))[:rgbaFrameSize:rgbaFrameSize]
 	return nil
 }
@@ -122,7 +122,7 @@ func (d *h264Decoder) decode(au [][]byte) (*image.RGBA, error) {
 	var p runtime.Pinner
 	p.Pin(ptr)
 	pkt.data = (*C.uint8_t)(ptr)
-	pkt.size = (C.int)(len(annexb))
+	pkt.size = C.int(len(annexb))
 	res := C.avcodec_send_packet(d.codecCtx, &pkt)
 	p.Unpin()
 	if res < 0 {
@@ -153,9 +153,9 @@ func (d *h264Decoder) decode(au [][]byte) (*image.RGBA, error) {
 	// embed frame into an image.RGBA
 	return &image.RGBA{
 		Pix:    d.rgbaFramePtr,
-		Stride: 4 * (int)(d.rgbaFrame.width),
+		Stride: 4 * int(d.rgbaFrame.width),
 		Rect: image.Rectangle{
-			Max: image.Point{(int)(d.rgbaFrame.width), (int)(d.rgbaFrame.height)},
+			Max: image.Point{int(d.rgbaFrame.width), int(d.rgbaFrame.height)},
 		},
 	}, nil
 }

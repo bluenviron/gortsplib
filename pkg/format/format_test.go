@@ -279,7 +279,7 @@ var casesFormat = []struct {
 				Type:          mpeg4audio.ObjectTypeAACLC,
 				SampleRate:    48000,
 				ChannelConfig: 2,
-				ChannelCount:  2,
+				ChannelCount:  2, //nolint:staticcheck
 			},
 			SizeLength:       13,
 			IndexLength:      3,
@@ -312,7 +312,7 @@ var casesFormat = []struct {
 				Type:          mpeg4audio.ObjectTypeAACLC,
 				SampleRate:    48000,
 				ChannelConfig: 2,
-				ChannelCount:  2,
+				ChannelCount:  2, //nolint:staticcheck
 			},
 			SizeLength:       13,
 			IndexLength:      3,
@@ -345,7 +345,7 @@ var casesFormat = []struct {
 				Type:          mpeg4audio.ObjectTypeAACLC,
 				SampleRate:    48000,
 				ChannelConfig: 2,
-				ChannelCount:  2,
+				ChannelCount:  2, //nolint:staticcheck
 			},
 			SizeLength: 13,
 		},
@@ -376,7 +376,7 @@ var casesFormat = []struct {
 				ExtensionSampleRate: 48000,
 				SampleRate:          24000,
 				ChannelConfig:       1,
-				ChannelCount:        1,
+				ChannelCount:        1, //nolint:staticcheck
 			},
 			SizeLength: 13,
 		},
@@ -410,7 +410,7 @@ var casesFormat = []struct {
 							Type:          2,
 							SampleRate:    24000,
 							ChannelConfig: 2,
-							ChannelCount:  2,
+							ChannelCount:  2, //nolint:staticcheck
 						},
 						LatmBufferFullness: 255,
 					}},
@@ -447,7 +447,7 @@ var casesFormat = []struct {
 							Type:          2,
 							SampleRate:    24000,
 							ChannelConfig: 1,
-							ChannelCount:  1,
+							ChannelCount:  1, //nolint:staticcheck
 						},
 						LatmBufferFullness: 255,
 					}},
@@ -487,7 +487,7 @@ var casesFormat = []struct {
 							ExtensionSampleRate: 48000,
 							SampleRate:          24000,
 							ChannelConfig:       2,
-							ChannelCount:        2,
+							ChannelCount:        2, //nolint:staticcheck
 						},
 						LatmBufferFullness: 255,
 					}},
@@ -527,7 +527,7 @@ var casesFormat = []struct {
 							ExtensionSampleRate: 48000,
 							SampleRate:          24000,
 							ChannelConfig:       1,
-							ChannelCount:        1,
+							ChannelCount:        1, //nolint:staticcheck
 						},
 						LatmBufferFullness: 255,
 					}},
@@ -563,7 +563,7 @@ var casesFormat = []struct {
 							Type:          2,
 							SampleRate:    48000,
 							ChannelConfig: 1,
-							ChannelCount:  1,
+							ChannelCount:  1, //nolint:staticcheck
 						},
 						LatmBufferFullness: 255,
 					}},
@@ -1225,7 +1225,7 @@ var casesFormat = []struct {
 				Type:          2,
 				SampleRate:    48000,
 				ChannelConfig: 2,
-				ChannelCount:  2,
+				ChannelCount:  2, //nolint:staticcheck
 			},
 			SizeLength:       13,
 			IndexLength:      3,
