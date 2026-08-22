@@ -793,9 +793,12 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 		for _, media := range desc.Medias {
 			if hasH264PacketizationMode0(media.Formats) {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerH264PacketizationMode0{}
+				// reject only if UDP/multicast is available
+				if ss.s.UDPRTPAddress != "" || ss.s.MulticastIPRange != "" {
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, liberrors.ErrServerH264PacketizationMode0{}
+				}
 			}
 		}
 

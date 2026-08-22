@@ -45,7 +45,11 @@ type serverStreamFormat struct {
 
 func (ssf *serverStreamFormat) initialize() error {
 	if h264Forma, ok := ssf.format.(*format.H264); ok && h264Forma.PacketizationMode == 0 {
-		return liberrors.ErrServerH264PacketizationMode0{}
+		// allow on TCP-only servers; isTransportSupported prevents UDP
+		srv := ssf.ssm.st.Server
+		if srv.UDPRTPAddress != "" || srv.MulticastIPRange != "" {
+			return liberrors.ErrServerH264PacketizationMode0{}
+		}
 	}
 
 	ssf.formatForDesc = cloneFormatShallow(ssf.format)
