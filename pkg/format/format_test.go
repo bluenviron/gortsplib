@@ -1,4 +1,4 @@
-package format //nolint:revive
+package format_test
 
 import (
 	"testing"
@@ -6,13 +6,18 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/stretchr/testify/require"
 
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/gortsplib/v5/pkg/sdpunmarshaler"
 )
+
+func ptrOf[T any](v T) *T {
+	return &v
+}
 
 var casesFormat = []struct {
 	name           string
 	in             string
-	dec            Format
+	dec            format.Format
 	encPayloadType uint8
 	encRtpMap      string
 	encFmtp        map[string]string
@@ -22,7 +27,7 @@ var casesFormat = []struct {
 		"v=0\n" +
 			"s=\n" +
 			"m=audio 0 RTP/AVP 8\n",
-		&G711{
+		&format.G711{
 			PayloadTyp:   8,
 			MULaw:        false,
 			SampleRate:   8000,
@@ -37,7 +42,7 @@ var casesFormat = []struct {
 		"v=0\n" +
 			"s=\n" +
 			"m=audio 0 RTP/AVP 0\n",
-		&G711{
+		&format.G711{
 			PayloadTyp:   0,
 			MULaw:        true,
 			SampleRate:   8000,
@@ -53,7 +58,7 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=audio 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 PCMA/16000/2",
-		&G711{
+		&format.G711{
 			PayloadTyp:   96,
 			MULaw:        false,
 			SampleRate:   16000,
@@ -69,7 +74,7 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=audio 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 PCMU/16000/2\n",
-		&G711{
+		&format.G711{
 			PayloadTyp:   96,
 			MULaw:        true,
 			SampleRate:   16000,
@@ -84,7 +89,7 @@ var casesFormat = []struct {
 		"v=0\n" +
 			"s=\n" +
 			"m=audio 0 RTP/AVP 9\n",
-		&G722{},
+		&format.G722{},
 		9,
 		"G722/8000",
 		nil,
@@ -95,7 +100,7 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=audio 0 RTP/AVP 97\n" +
 			"a=rtpmap:97 G726-16/8000\n",
-		&G726{
+		&format.G726{
 			PayloadTyp: 97,
 			BitRate:    16,
 		},
@@ -109,7 +114,7 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=audio 0 RTP/AVP 97\n" +
 			"a=rtpmap:97 G726-24/8000\n",
-		&G726{
+		&format.G726{
 			PayloadTyp: 97,
 			BitRate:    24,
 		},
@@ -123,7 +128,7 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=audio 0 RTP/AVP 97\n" +
 			"a=rtpmap:97 G726-32/8000\n",
-		&G726{
+		&format.G726{
 			PayloadTyp: 97,
 			BitRate:    32,
 		},
@@ -137,7 +142,7 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=audio 0 RTP/AVP 97\n" +
 			"a=rtpmap:97 G726-40/8000\n",
-		&G726{
+		&format.G726{
 			PayloadTyp: 97,
 			BitRate:    40,
 		},
@@ -151,7 +156,7 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=audio 0 RTP/AVP 97\n" +
 			"a=rtpmap:97 AAL2-G726-32/8000\n",
-		&G726{
+		&format.G726{
 			PayloadTyp: 97,
 			BitRate:    32,
 			BigEndian:  true,
@@ -166,7 +171,7 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=audio 0 RTP/AVP 97\n" +
 			"a=rtpmap:97 L8/48000/2\n",
-		&LPCM{
+		&format.LPCM{
 			PayloadTyp:   97,
 			BitDepth:     8,
 			SampleRate:   48000,
@@ -182,7 +187,7 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=audio 0 RTP/AVP 97\n" +
 			"a=rtpmap:97 L16/96000/2\n",
-		&LPCM{
+		&format.LPCM{
 			PayloadTyp:   97,
 			BitDepth:     16,
 			SampleRate:   96000,
@@ -197,7 +202,7 @@ var casesFormat = []struct {
 		"v=0\n" +
 			"s=\n" +
 			"m=audio 0 RTP/AVP 10\n",
-		&LPCM{
+		&format.LPCM{
 			PayloadTyp:   10,
 			BitDepth:     16,
 			SampleRate:   44100,
@@ -212,7 +217,7 @@ var casesFormat = []struct {
 		"v=0\n" +
 			"s=\n" +
 			"m=audio 0 RTP/AVP 11\n",
-		&LPCM{
+		&format.LPCM{
 			PayloadTyp:   11,
 			BitDepth:     16,
 			SampleRate:   44100,
@@ -228,7 +233,7 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=audio 0 RTP/AVP 97\n" +
 			"a=rtpmap:97 L16/16000\n",
-		&LPCM{
+		&format.LPCM{
 			PayloadTyp:   97,
 			BitDepth:     16,
 			SampleRate:   16000,
@@ -244,7 +249,7 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=audio 0 RTP/AVP 98\n" +
 			"a=rtpmap:98 L24/44100/4\n",
-		&LPCM{
+		&format.LPCM{
 			PayloadTyp:   98,
 			BitDepth:     24,
 			SampleRate:   44100,
@@ -259,7 +264,7 @@ var casesFormat = []struct {
 		"v=0\n" +
 			"s=\n" +
 			"m=audio 0 RTP/AVP 14\n",
-		&MPEG1Audio{},
+		&format.MPEG1Audio{},
 		14,
 		"",
 		nil,
@@ -272,7 +277,7 @@ var casesFormat = []struct {
 			"a=rtpmap:96 mpeg4-generic/48000/2\n" +
 			"a=fmtp:96 streamtype=5; profile-level-id=1; mode=AAC-hbr; " +
 			"config=11900810; SizeLength=13; IndexLength=3; IndexDeltaLength=3\n",
-		&MPEG4Audio{
+		&format.MPEG4Audio{
 			PayloadTyp:     96,
 			ProfileLevelID: 1,
 			Config: &mpeg4audio.AudioSpecificConfig{
@@ -305,7 +310,7 @@ var casesFormat = []struct {
 			"a=rtpmap:96 mpeg4-generic/48000/2\n" +
 			"a=fmtp:96 profile-level-id=1; mode=AAC-hbr; " +
 			"config=1190; SizeLength=13; IndexLength=3; IndexDeltaLength=3\n",
-		&MPEG4Audio{
+		&format.MPEG4Audio{
 			PayloadTyp:     96,
 			ProfileLevelID: 1,
 			Config: &mpeg4audio.AudioSpecificConfig{
@@ -338,7 +343,7 @@ var casesFormat = []struct {
 			"a=rtpmap:96 mpeg4-generic/48000/2\n" +
 			"a=fmtp:96 streamtype=5; profile-level-id=14; mode=AAC-hbr; " +
 			"config=1190; SizeLength=13\n",
-		&MPEG4Audio{
+		&format.MPEG4Audio{
 			PayloadTyp:     96,
 			ProfileLevelID: 14,
 			Config: &mpeg4audio.AudioSpecificConfig{
@@ -367,7 +372,7 @@ var casesFormat = []struct {
 			"a=rtpmap:96 mpeg4-generic/48000/2\n" +
 			"a=fmtp:96 streamtype=5; profile-level-id=48; mode=AAC-hbr; " +
 			"config=eb098800; SizeLength=13\n",
-		&MPEG4Audio{
+		&format.MPEG4Audio{
 			PayloadTyp:     96,
 			ProfileLevelID: 48,
 			Config: &mpeg4audio.AudioSpecificConfig{
@@ -398,7 +403,7 @@ var casesFormat = []struct {
 			"a=rtpmap:96 MP4A-LATM/24000/2\n" +
 			"a=fmtp:96 profile-level-id=1; " +
 			"bitrate=64000; cpresent=0; object=2; config=400026203fc0\n",
-		&MPEG4AudioLATM{
+		&format.MPEG4AudioLATM{
 			PayloadTyp:     96,
 			ProfileLevelID: 1,
 			Bitrate:        ptrOf(64000),
@@ -435,7 +440,7 @@ var casesFormat = []struct {
 			"a=rtpmap:110 MP4A-LATM/24000/1\n" +
 			"a=fmtp:110 profile-level-id=15; " +
 			"cpresent=0; object=2; config=400026103fc0; sbr-enabled=1\n",
-		&MPEG4AudioLATM{
+		&format.MPEG4AudioLATM{
 			PayloadTyp:     110,
 			ProfileLevelID: 15,
 			CPresent:       false,
@@ -472,7 +477,7 @@ var casesFormat = []struct {
 			"a=rtpmap:110 MP4A-LATM/48000/2\n" +
 			"a=fmtp:110 profile-level-id=44; " +
 			"bitrate=64000; cpresent=0; config=40005623101fe0; sbr-enabled=1\n",
-		&MPEG4AudioLATM{
+		&format.MPEG4AudioLATM{
 			PayloadTyp:     110,
 			ProfileLevelID: 44,
 			CPresent:       false,
@@ -513,7 +518,7 @@ var casesFormat = []struct {
 			"a=rtpmap:110 MP4A-LATM/48000/2\n" +
 			"a=fmtp:110 profile-level-id=48; " +
 			"bitrate=64000; cpresent=0; config=4001d613101fe0\n",
-		&MPEG4AudioLATM{
+		&format.MPEG4AudioLATM{
 			PayloadTyp:     110,
 			ProfileLevelID: 48,
 			Bitrate:        ptrOf(64000),
@@ -552,7 +557,7 @@ var casesFormat = []struct {
 			"a=rtpmap:110 MP4A-LATM/48000\n" +
 			"a=fmtp:110 profile-level-id=30; " +
 			"cpresent=0; config=40002310\n",
-		&MPEG4AudioLATM{
+		&format.MPEG4AudioLATM{
 			PayloadTyp:     110,
 			ProfileLevelID: 30,
 			CPresent:       false,
@@ -586,7 +591,7 @@ var casesFormat = []struct {
 			"m=audio 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 MP4A-LATM/90000/1\n" +
 			"a=fmtp:96 cpresent=1\n",
-		&MPEG4AudioLATM{
+		&format.MPEG4AudioLATM{
 			PayloadTyp:     96,
 			ProfileLevelID: 30,
 			CPresent:       true,
@@ -605,7 +610,7 @@ var casesFormat = []struct {
 			"m=audio 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 speex/16000\n" +
 			"a=fmtp:96 vbr=off\n",
-		&Speex{
+		&format.Speex{
 			PayloadTyp: 96,
 			SampleRate: 16000,
 			VBR:        ptrOf(false),
@@ -623,7 +628,7 @@ var casesFormat = []struct {
 			"m=audio 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 VORBIS/44100/2\n" +
 			"a=fmtp:96 configuration=AQIDBA==\n",
-		&Vorbis{
+		&format.Vorbis{
 			PayloadTyp:    96,
 			SampleRate:    44100,
 			ChannelCount:  2,
@@ -642,7 +647,7 @@ var casesFormat = []struct {
 			"m=audio 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 opus/48000/2\n" +
 			"a=fmtp:96 sprop-stereo=1\n",
-		&Opus{
+		&format.Opus{
 			PayloadTyp:   96,
 			ChannelCount: 2,
 		},
@@ -659,7 +664,7 @@ var casesFormat = []struct {
 			"m=audio 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 multiopus/48000/6\n" +
 			"a=fmtp:96 num_streams=4; coupled_streams=2; channel_mapping=0,4,1,2,3,5\n",
-		&Opus{
+		&format.Opus{
 			PayloadTyp:   96,
 			ChannelCount: 6,
 		},
@@ -678,7 +683,7 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=audio 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 AC3/48000/2\n",
-		&AC3{
+		&format.AC3{
 			PayloadTyp:   96,
 			SampleRate:   48000,
 			ChannelCount: 2,
@@ -693,7 +698,7 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=audio 0 RTP/AVP 97\n" +
 			"a=rtpmap:97 AC3/48000\n",
-		&AC3{
+		&format.AC3{
 			PayloadTyp:   97,
 			SampleRate:   48000,
 			ChannelCount: 6,
@@ -707,7 +712,7 @@ var casesFormat = []struct {
 		"v=0\n" +
 			"s=\n" +
 			"m=video 0 RTP/AVP 26\n",
-		&MJPEG{},
+		&format.MJPEG{},
 		26,
 		"JPEG/90000",
 		nil,
@@ -717,7 +722,7 @@ var casesFormat = []struct {
 		"v=0\n" +
 			"s=\n" +
 			"m=video 0 RTP/AVP 32\n",
-		&MPEG1Video{},
+		&format.MPEG1Video{},
 		32,
 		"",
 		nil,
@@ -727,7 +732,7 @@ var casesFormat = []struct {
 		"v=0\n" +
 			"s=\n" +
 			"m=video 0 RTP/AVP 33\n",
-		&MPEGTS{},
+		&format.MPEGTS{},
 		33,
 		"MP2T/90000",
 		nil,
@@ -740,7 +745,7 @@ var casesFormat = []struct {
 			"a=rtpmap:96 MP4V-ES/90000\n" +
 			"a=fmtp:96 profile-level-id=1; " +
 			"config=000001B001000001B58913000001000000012000C48D8AEE053C04641443000001B24C61766335382E3133342E313030\n",
-		&MPEG4Video{
+		&format.MPEG4Video{
 			PayloadTyp:     96,
 			ProfileLevelID: 1,
 			Config: []byte{
@@ -768,7 +773,7 @@ var casesFormat = []struct {
 			"a=rtpmap:96 H264/90000\n" +
 			"a=fmtp:96 packetization-mode=1; profile-level-id=64000C; " +
 			"sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==\n",
-		&H264{
+		&format.H264{
 			PayloadTyp: 96,
 			SPS: []byte{
 				0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
@@ -796,7 +801,7 @@ var casesFormat = []struct {
 			"a=rtpmap:96 H264/90000\n" +
 			"a=fmtp:96 packetization-mode=1; profile-level-id=64001f; " +
 			"sprop-parameter-sets=Z2QAH6zZQFAFuwFsgAAAAwCAAAAeB4wYyw==,aOvjyyLA\n",
-		&H264{
+		&format.H264{
 			PayloadTyp: 96,
 			SPS: []byte{
 				0x67, 0x64, 0x00, 0x1f, 0xac, 0xd9, 0x40, 0x50,
@@ -825,7 +830,7 @@ var casesFormat = []struct {
 			"a=rtpmap:96 H264/90000\n" +
 			"a=fmtp:96 packetization-mode=1; profile-level-id=640029; " +
 			"sprop-parameter-sets=Z2QAKawTMUB4BEfeA+oCAgPgAAADACAAAAZSgA==,aPqPLA==,aF6jzAMA\n",
-		&H264{
+		&format.H264{
 			PayloadTyp: 96,
 			SPS: []byte{
 				0x67, 0x64, 0x00, 0x29, 0xac, 0x13, 0x31, 0x40,
@@ -853,7 +858,7 @@ var casesFormat = []struct {
 			"m=video 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 H264/90000\n" +
 			"a=fmtp:96 packetization-mode=1; sprop-parameter-sets=\n",
-		&H264{
+		&format.H264{
 			PayloadTyp:        96,
 			PacketizationMode: 1,
 		},
@@ -871,7 +876,7 @@ var casesFormat = []struct {
 			"a=rtpmap:96 H264/90000\n" +
 			"a=fmtp:96 packetization-mode=1; profile-level-id=4DE028; " +
 			"sprop-parameter-sets=AAAAAWdNAB6NjUBaHtCAAAOEAACvyAI=,AAAAAWjuOIA=\n",
-		&H264{
+		&format.H264{
 			PayloadTyp: 96,
 			SPS: []byte{
 				0x67, 0x4d, 0x00, 0x1e, 0x8d, 0x8d, 0x40, 0x5a,
@@ -899,7 +904,7 @@ var casesFormat = []struct {
 			"a=rtpmap:96 H264/90000\n" +
 			"a=fmtp:96 packetization-mode=1; profile-level-id=010101; " +
 			"sprop-parameter-sets=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Y2uSTJrlnAIAAADAAgAAAMAyEA=,RAHgdrAmQA==\n",
-		&H264{
+		&format.H264{
 			PayloadTyp:        96,
 			PacketizationMode: 1,
 		},
@@ -918,7 +923,7 @@ var casesFormat = []struct {
 			"m=video 42504 RTP/AVP 96\r\n" +
 			"a=rtpmap:96 H264/90000 \r\n" +
 			"a=fmtp:96 packetization-mode=1\r\n",
-		&H264{
+		&format.H264{
 			PayloadTyp:        96,
 			PacketizationMode: 1,
 		},
@@ -941,7 +946,7 @@ var casesFormat = []struct {
 			"a=control:rtsp://10.100.14.102:554/?inst=2&h26x=4&stream=video\n" +
 			"a=recvonly\n" +
 			"a=fmtp:35 packetization-mode=1;profile-level-id=4d4029;sprop-parameter-sets=Z01AKY2NYDwBE/LgLcBDQECA,aO44gA==\n",
-		&H264{
+		&format.H264{
 			PayloadTyp: 35,
 			SPS: []byte{
 				0x67, 0x4d, 0x40, 0x29, 0x8d, 0x8d, 0x60, 0x3c,
@@ -970,7 +975,7 @@ var casesFormat = []struct {
 			"a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAkAAAAwAAAwB4mZgJ; " +
 			"sprop-sps=QgEBAWAAAAMAkAAAAwAAAwB4oAPAgBDllmZpJMrgEAAAAwAQAAADAeCA; " +
 			"sprop-pps=RAHBcrRiQA==; sprop-max-don-diff=2\n",
-		&H265{
+		&format.H265{
 			PayloadTyp: 96,
 			VPS: []byte{
 				0x40, 0x1, 0xc, 0x1, 0xff, 0xff, 0x1, 0x60,
@@ -1008,7 +1013,7 @@ var casesFormat = []struct {
 			"a=fmtp:96 sprop-vps=AAAAAUABDAH//wFgAAADAAADAAADAAADAJasCQ==; " +
 			"sprop-sps=AAAAAUIBAQFgAAADAAADAAADAAADAJagBaIB4WNrkkya5Zk=; " +
 			"sprop-pps=AAAAAUQB4HawJkA=\n",
-		&H265{
+		&format.H265{
 			PayloadTyp: 96,
 			VPS: []byte{
 				0x40, 0x01, 0x0c, 0x01, 0xff, 0xff, 0x01, 0x60,
@@ -1040,7 +1045,7 @@ var casesFormat = []struct {
 			"m=video 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 VP8/90000\n" +
 			"a=fmtp:96 max-fr=123; max-fs=456\n",
-		&VP8{
+		&format.VP8{
 			PayloadTyp: 96,
 			MaxFR:      ptrOf(123),
 			MaxFS:      ptrOf(456),
@@ -1059,7 +1064,7 @@ var casesFormat = []struct {
 			"m=video 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 VP9/90000\n" +
 			"a=fmtp:96 max-fr=123; max-fs=456; profile-id=789\n",
-		&VP9{
+		&format.VP9{
 			PayloadTyp: 96,
 			MaxFR:      ptrOf(123),
 			MaxFS:      ptrOf(456),
@@ -1080,7 +1085,7 @@ var casesFormat = []struct {
 			"m=video 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 AV1/90000\n" +
 			"a=fmtp:96 profile=2; level-idx=8; tier=1\n",
-		&AV1{
+		&format.AV1{
 			PayloadTyp: 96,
 			Profile:    ptrOf(2),
 			LevelIdx:   ptrOf(8),
@@ -1100,7 +1105,7 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=application 0 RTP/AVP 98\n" +
 			"a=rtpmap:98 MetaData/80000\n",
-		&Generic{
+		&format.Generic{
 			PayloadTyp: 98,
 			RTPMa:      "MetaData/80000",
 			ClockRat:   80000,
@@ -1114,7 +1119,7 @@ var casesFormat = []struct {
 		"v=0\n" +
 			"s=\n" +
 			"m=application 0 RTP/AVP 107\n",
-		&Generic{
+		&format.Generic{
 			PayloadTyp: 107,
 		},
 		107,
@@ -1127,7 +1132,7 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=application 0 RTP/AVP 98\n" +
 			"a=rtpmap:98 custom\n",
-		&Generic{
+		&format.Generic{
 			PayloadTyp: 98,
 			RTPMa:      "custom",
 		},
@@ -1145,7 +1150,7 @@ var casesFormat = []struct {
 			"m=application/tp-link 0 RTP/AVP smart/0/25000\n" +
 			"a=rtpmap:95 tp-link/25000\n" +
 			"a=control:track3\n",
-		&Generic{
+		&format.Generic{
 			PayloadTyp: 95,
 			RTPMa:      "tp-link/25000",
 			ClockRat:   25000,
@@ -1163,7 +1168,7 @@ var casesFormat = []struct {
 			"a=smart_encoder:virtualIFrame=1\n" +
 			"m=application/MERCURY 0 RTP/AVP smart/1/90000\n" +
 			"a=rtpmap:95 MERCURY/90000\n",
-		&Generic{
+		&format.Generic{
 			PayloadTyp: 95,
 			RTPMa:      "MERCURY/90000",
 			ClockRat:   90000,
@@ -1180,7 +1185,7 @@ var casesFormat = []struct {
 			"t=0 0\r\n" +
 			"m=application/TP-LINK 0 RTP/AVP smart/1/90000\r\n" +
 			"a=rtpmap:95 TP-LINK/90000\r\n",
-		&Generic{
+		&format.Generic{
 			PayloadTyp: 95,
 			RTPMa:      "TP-LINK/90000",
 			ClockRat:   90000,
@@ -1195,7 +1200,7 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=application 0 RTP/AVP 97\n" +
 			"a=rtpmap:97 SMPTE336M/90000\n",
-		&KLV{
+		&format.KLV{
 			PayloadTyp: 97,
 		},
 		97,
@@ -1219,7 +1224,7 @@ var casesFormat = []struct {
 			"a=rtpmap:100 mpeg4-generic/48000/2\r\n" +
 			"a=fmtp:100 streamtype=5; sizeLength=13; indexLength=3; indexDeltaLength=3; mode=AAC_hbr; config=1190\r\n" +
 			"a=control:track1\r\n",
-		&MPEG4Audio{
+		&format.MPEG4Audio{
 			PayloadTyp: 100,
 			Config: &mpeg4audio.AudioSpecificConfig{
 				Type:          2,
@@ -1253,7 +1258,7 @@ func TestUnmarshal(t *testing.T) {
 			require.Equal(t, 1, len(desc.MediaDescriptions))
 			require.Equal(t, 1, len(desc.MediaDescriptions[0].MediaName.Formats))
 
-			dec, err := Unmarshal(desc.MediaDescriptions[0], desc.MediaDescriptions[0].MediaName.Formats[0])
+			dec, err := format.Unmarshal(desc.MediaDescriptions[0], desc.MediaDescriptions[0].MediaName.Formats[0])
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, dec)
 		})
@@ -1281,13 +1286,13 @@ func FuzzUnmarshal(f *testing.F) {
 			return
 		}
 
-		f, err := Unmarshal(desc.MediaDescriptions[0], desc.MediaDescriptions[0].MediaName.Formats[0])
+		f, err := format.Unmarshal(desc.MediaDescriptions[0], desc.MediaDescriptions[0].MediaName.Formats[0])
 		if err != nil {
 			return
 		}
 
 		// only Generic can return zero ClockRate
-		if _, ok := f.(*Generic); !ok {
+		if _, ok := f.(*format.Generic); !ok {
 			require.NotZero(t, f.ClockRate())
 		} else {
 			f.ClockRate()
@@ -1299,19 +1304,19 @@ func FuzzUnmarshal(f *testing.F) {
 		f.FMTP()
 
 		switch f := f.(type) {
-		case *AC3:
+		case *format.AC3:
 			require.NotZero(t, f.ChannelCount)
 
-		case *G711:
+		case *format.G711:
 			require.NotZero(t, f.ChannelCount)
 
-		case *LPCM:
+		case *format.LPCM:
 			require.NotZero(t, f.ChannelCount)
 
-		case *Opus:
+		case *format.Opus:
 			require.NotZero(t, f.ChannelCount)
 
-		case *Vorbis:
+		case *format.Vorbis:
 			require.NotZero(t, f.ChannelCount)
 		}
 	})

@@ -1,14 +1,16 @@
-package format //nolint:revive
+package format_test //nolint:revive
 
 import (
 	"testing"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 func TestSpeexAttributes(t *testing.T) {
-	format := &Speex{
+	format := &format.Speex{
 		PayloadTyp: 96,
 		SampleRate: 16000,
 	}

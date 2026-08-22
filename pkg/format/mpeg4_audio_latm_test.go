@@ -1,4 +1,4 @@
-package format //nolint:revive
+package format_test //nolint:revive
 
 import (
 	"testing"
@@ -6,10 +6,12 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 func TestMPEG4AudioLATMAttributes(t *testing.T) {
-	format := &MPEG4AudioLATM{
+	format := &format.MPEG4AudioLATM{
 		PayloadTyp:     96,
 		ProfileLevelID: 1,
 		StreamMuxConfig: &mpeg4audio.StreamMuxConfig{
@@ -32,7 +34,7 @@ func TestMPEG4AudioLATMAttributes(t *testing.T) {
 }
 
 func TestMPEG4AudioLATMDecEncoder(t *testing.T) {
-	format := &MPEG4AudioLATM{
+	format := &format.MPEG4AudioLATM{
 		PayloadTyp:     96,
 		ProfileLevelID: 1,
 		StreamMuxConfig: &mpeg4audio.StreamMuxConfig{

@@ -1,14 +1,16 @@
-package format //nolint:revive
+package format_test //nolint:revive
 
 import (
 	"testing"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 func TestMPEG4VideoAttributes(t *testing.T) {
-	format := &MPEG4Video{
+	format := &format.MPEG4Video{
 		PayloadTyp:     96,
 		ProfileLevelID: 1,
 		Config:         []byte{0x01, 0x02, 0x03},
@@ -19,7 +21,7 @@ func TestMPEG4VideoAttributes(t *testing.T) {
 }
 
 func TestMPEG4VideoDecEncoder(t *testing.T) {
-	format := &MPEG4Video{
+	format := &format.MPEG4Video{
 		PayloadTyp: 96,
 	}
 

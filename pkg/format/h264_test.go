@@ -1,14 +1,16 @@
-package format //nolint:revive
+package format_test //nolint:revive
 
 import (
 	"testing"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 func TestH264Attributes(t *testing.T) {
-	format := &H264{
+	format := &format.H264{
 		PayloadTyp:        96,
 		SPS:               []byte{0x01, 0x02},
 		PPS:               []byte{0x03, 0x04},
@@ -29,7 +31,7 @@ func TestH264Attributes(t *testing.T) {
 }
 
 func TestH264PTSEqualsDTS(t *testing.T) {
-	format := &H264{
+	format := &format.H264{
 		PayloadTyp:        96,
 		SPS:               []byte{0x01, 0x02},
 		PPS:               []byte{0x03, 0x04},
@@ -45,7 +47,7 @@ func TestH264PTSEqualsDTS(t *testing.T) {
 }
 
 func TestH264DecEncoder(t *testing.T) {
-	format := &H264{PacketizationMode: 1}
+	format := &format.H264{PacketizationMode: 1}
 
 	enc, err := format.CreateEncoder()
 	require.NoError(t, err)
@@ -64,6 +66,6 @@ func TestH264DecEncoder(t *testing.T) {
 
 func FuzzH264PTSEqualsDTS(f *testing.F) {
 	f.Fuzz(func(_ *testing.T, b []byte) {
-		(&H264{}).PTSEqualsDTS(&rtp.Packet{Payload: b})
+		(&format.H264{}).PTSEqualsDTS(&rtp.Packet{Payload: b})
 	})
 }

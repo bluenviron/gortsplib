@@ -1,14 +1,16 @@
-package format //nolint:revive
+package format_test //nolint:revive
 
 import (
 	"testing"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 func TestLPCMAttributes(t *testing.T) {
-	format := &LPCM{
+	format := &format.LPCM{
 		PayloadTyp:   96,
 		BitDepth:     24,
 		SampleRate:   44100,
@@ -20,7 +22,7 @@ func TestLPCMAttributes(t *testing.T) {
 }
 
 func TestLPCMDecEncoder(t *testing.T) {
-	format := &LPCM{
+	format := &format.LPCM{
 		PayloadTyp:   96,
 		BitDepth:     16,
 		SampleRate:   96000,

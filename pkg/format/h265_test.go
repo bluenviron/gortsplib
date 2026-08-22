@@ -1,4 +1,4 @@
-package format //nolint:revive
+package format_test //nolint:revive
 
 import (
 	"testing"
@@ -6,10 +6,12 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 func TestH265Attributes(t *testing.T) {
-	format := &H265{
+	format := &format.H265{
 		PayloadTyp: 96,
 		VPS:        []byte{0x01, 0x02},
 		SPS:        []byte{0x03, 0x04},
@@ -32,7 +34,7 @@ func TestH265Attributes(t *testing.T) {
 }
 
 func TestH265PTSEqualsDTS(t *testing.T) {
-	format := &H265{
+	format := &format.H265{
 		PayloadTyp: 96,
 		VPS:        []byte{0x01, 0x02},
 		SPS:        []byte{0x03, 0x04},
@@ -54,7 +56,7 @@ func TestH265PTSEqualsDTS(t *testing.T) {
 }
 
 func TestH265DecEncoder(t *testing.T) {
-	format := &H265{}
+	format := &format.H265{}
 
 	enc, err := format.CreateEncoder()
 	require.NoError(t, err)
@@ -73,6 +75,6 @@ func TestH265DecEncoder(t *testing.T) {
 
 func FuzzH265PTSEqualsDTS(f *testing.F) {
 	f.Fuzz(func(_ *testing.T, b []byte) {
-		(&H265{}).PTSEqualsDTS(&rtp.Packet{Payload: b})
+		(&format.H265{}).PTSEqualsDTS(&rtp.Packet{Payload: b})
 	})
 }

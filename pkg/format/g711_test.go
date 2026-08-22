@@ -1,21 +1,23 @@
-package format //nolint:revive
+package format_test //nolint:revive
 
 import (
 	"testing"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 func TestG711Attributes(t *testing.T) {
 	for _, ca := range []struct {
 		name      string
-		format    *G711
+		format    *format.G711
 		clockRate int
 	}{
 		{
 			"pcma 8khz",
-			&G711{
+			&format.G711{
 				PayloadTyp:   8,
 				MULaw:        false,
 				SampleRate:   8000,
@@ -25,7 +27,7 @@ func TestG711Attributes(t *testing.T) {
 		},
 		{
 			"pcmu 8khz",
-			&G711{
+			&format.G711{
 				PayloadTyp:   0,
 				MULaw:        true,
 				SampleRate:   8000,
@@ -35,7 +37,7 @@ func TestG711Attributes(t *testing.T) {
 		},
 		{
 			"pcma 16khz",
-			&G711{
+			&format.G711{
 				PayloadTyp:   96,
 				MULaw:        true,
 				SampleRate:   16000,
@@ -53,7 +55,7 @@ func TestG711Attributes(t *testing.T) {
 }
 
 func TestG711DecEncoder(t *testing.T) {
-	format := &G711{
+	format := &format.G711{
 		PayloadTyp:   8,
 		MULaw:        false,
 		SampleRate:   8000,

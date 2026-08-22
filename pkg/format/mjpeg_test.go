@@ -1,21 +1,23 @@
-package format //nolint:revive
+package format_test //nolint:revive
 
 import (
 	"testing"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 func TestMJPEGAttributes(t *testing.T) {
-	format := &MJPEG{}
+	format := &format.MJPEG{}
 	require.Equal(t, "M-JPEG", format.Codec())
 	require.Equal(t, 90000, format.ClockRate())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
 func TestMJPEGDecEncoder(t *testing.T) {
-	format := &MJPEG{}
+	format := &format.MJPEG{}
 
 	b := []byte{
 		0xff, 0xd8, 0xff, 0xdb, 0x00, 0x84, 0x00, 0x0d,

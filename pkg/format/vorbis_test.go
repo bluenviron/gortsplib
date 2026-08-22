@@ -1,14 +1,16 @@
-package format //nolint:revive
+package format_test //nolint:revive
 
 import (
 	"testing"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 func TestVorbisAttributes(t *testing.T) {
-	format := &Vorbis{
+	format := &format.Vorbis{
 		PayloadTyp:    96,
 		SampleRate:    48000,
 		ChannelCount:  2,

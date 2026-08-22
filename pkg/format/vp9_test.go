@@ -1,14 +1,16 @@
-package format //nolint:revive,dupl
+package format_test //nolint:revive,dupl
 
 import (
 	"testing"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 func TestVP9Attributes(t *testing.T) {
-	format := &VP9{
+	format := &format.VP9{
 		PayloadTyp: 100,
 	}
 	require.Equal(t, "VP9", format.Codec())
@@ -17,7 +19,7 @@ func TestVP9Attributes(t *testing.T) {
 }
 
 func TestVP9DecEncoder(t *testing.T) {
-	format := &VP9{}
+	format := &format.VP9{}
 
 	enc, err := format.CreateEncoder()
 	require.NoError(t, err)
