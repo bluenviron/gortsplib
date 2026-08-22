@@ -2,34 +2,20 @@
 package readbuffer
 
 import (
-	"fmt"
-	"net"
 	"syscall"
 )
 
 // PacketConn is a packet connection.
 type PacketConn interface {
-	net.PacketConn
 	SyscallConn() (syscall.RawConn, error)
-	SetReadBuffer(bytes int) error
 }
 
 // SetReadBuffer sets the read buffer size of the UDP connection and checks that it was set correctly.
 func SetReadBuffer(pc PacketConn, size int) error {
-	err := pc.SetReadBuffer(size)
+	rawConn, err := pc.SyscallConn()
 	if err != nil {
-		return err
+		panic(err)
 	}
 
-	v, err := ReadBuffer(pc)
-	if err != nil {
-		return err
-	}
-
-	if v != size {
-		return fmt.Errorf("unable to set UDP read buffer size to %d, got %d, check that the operating system allows that",
-			size, v)
-	}
-
-	return nil
+	return SetReadBufferRaw(rawConn, size)
 }

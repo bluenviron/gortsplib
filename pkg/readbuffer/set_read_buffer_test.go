@@ -1,10 +1,12 @@
-package readbuffer
+package readbuffer_test
 
 import (
 	"net"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/readbuffer"
 )
 
 func TestSetReadBuffer(t *testing.T) {
@@ -15,6 +17,6 @@ func TestSetReadBuffer(t *testing.T) {
 	require.NoError(t, err)
 	defer pc.Close() //nolint:errcheck
 
-	err = SetReadBuffer(pc, 10000)
+	err = readbuffer.SetReadBuffer(pc, 10000)
 	require.NoError(t, err)
 }
