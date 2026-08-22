@@ -6,6 +6,7 @@ import (
 
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
 	tscodecs "github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts/codecs"
+	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts/substructs"
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v5"
@@ -62,7 +63,9 @@ func main() {
 		format:   forma,
 		track: &mpegts.Track{
 			Codec: &tscodecs.Opus{
-				ChannelCount: forma.ChannelCount,
+				Desc: &substructs.OpusAudioDescriptor{
+					ChannelConfigCode: 2,
+				},
 			},
 		},
 	}

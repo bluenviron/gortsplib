@@ -69,7 +69,7 @@ func (d *opusEncoder) initialize() error {
 	}
 
 	d.frame.nb_samples = d.codecCtx.frame_size
-	d.frame.format = (C.int)(d.codecCtx.sample_fmt)
+	d.frame.format = C.int(d.codecCtx.sample_fmt)
 	C.av_channel_layout_copy(&d.frame.ch_layout, &d.codecCtx.ch_layout)
 
 	res = C.av_frame_get_buffer(d.frame, 0)
@@ -105,7 +105,7 @@ func (d *opusEncoder) encode(samples []byte) ([][]byte, int64, error) {
 	d.samplesBuffer = append(d.samplesBuffer, samples...)
 
 	// split buffer into AVFrames
-	requiredSampleSize := (int)(d.codecCtx.frame_size) * 2
+	requiredSampleSize := int(d.codecCtx.frame_size) * 2
 	frameCount := len(d.samplesBuffer) / requiredSampleSize
 	if frameCount == 0 {
 		return nil, 0, fmt.Errorf("sample buffer is not filled enough")
@@ -125,7 +125,7 @@ func (d *opusEncoder) encode(samples []byte) ([][]byte, int64, error) {
 		d.frame.data[0] = (*C.uint8_t)(&samples[0])
 
 		// send frame to the encoder
-		d.frame.pts = (C.int64_t)(samplePTS)
+		d.frame.pts = C.int64_t(samplePTS)
 		res := C.avcodec_send_frame(d.codecCtx, d.frame)
 		if res < 0 {
 			return nil, 0, fmt.Errorf("avcodec_send_frame() failed")
@@ -141,7 +141,7 @@ func (d *opusEncoder) encode(samples []byte) ([][]byte, int64, error) {
 		data := C.GoBytes(unsafe.Pointer(d.pkt.data), d.pkt.size)
 
 		if i == 0 {
-			pts = (int64)(d.pkt.pts)
+			pts = int64(d.pkt.pts)
 		}
 
 		C.av_packet_unref(d.pkt)

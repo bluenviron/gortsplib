@@ -116,10 +116,7 @@ func (f *LPCM) PTSEqualsDTS(*rtp.Packet) bool {
 
 // CreateDecoder creates a decoder able to decode the content of the format.
 func (f *LPCM) CreateDecoder() (*rtplpcm.Decoder, error) {
-	d := &rtplpcm.Decoder{
-		BitDepth:     f.BitDepth,
-		ChannelCount: f.ChannelCount,
-	}
+	d := &rtplpcm.Decoder{}
 
 	err := d.Init()
 	if err != nil {
