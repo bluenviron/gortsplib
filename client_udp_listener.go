@@ -12,10 +12,6 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/readbuffer"
 )
 
-func ptrOf[T any](v T) *T {
-	return &v
-}
-
 func randInRange(maxVal int) (int, error) {
 	b := big.NewInt(int64(maxVal + 1))
 	n, err := rand.Int(rand.Reader, b)

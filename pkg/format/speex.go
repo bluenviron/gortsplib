@@ -30,7 +30,7 @@ func (f *Speex) unmarshal(ctx *unmarshalContext) error {
 				return fmt.Errorf("invalid vbr value: %v", val)
 			}
 
-			f.VBR = ptrOf((val == "on"))
+			f.VBR = new((val == "on"))
 		}
 	}
 

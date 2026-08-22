@@ -456,14 +456,12 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 	}
 
 	// handle auth errors
-	var eerr1 liberrors.ErrServerAuth
-	if errors.As(err, &eerr1) {
+	if _, ok := errors.AsType[liberrors.ErrServerAuth](err); ok {
 		err = sc.handleAuthError(req, res)
 	}
 
 	// add cseq
-	var eerr2 liberrors.ErrServerCSeqMissing
-	if !errors.As(err, &eerr2) {
+	if _, ok := errors.AsType[liberrors.ErrServerCSeqMissing](err); !ok {
 		res.Header["CSeq"] = req.Header["CSeq"]
 	}
 
@@ -498,8 +496,7 @@ func (sc *ServerConn) handleRequestInSession(
 			create: create,
 		})
 		if err != nil {
-			var terr1 liberrors.ErrServerSessionNotFound
-			if errors.As(err, &terr1) {
+			if _, ok := errors.AsType[liberrors.ErrServerSessionNotFound](err); ok {
 				return &base.Response{
 					StatusCode: base.StatusSessionNotFound,
 				}, err

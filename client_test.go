@@ -276,7 +276,7 @@ func TestClientCloseReleasesUDPSourcePorts(t *testing.T) {
 			Header: base.Header{
 				"Transport": headers.Transport{
 					Protocol:    headers.TransportProtocolUDP,
-					Delivery:    ptrOf(headers.TransportDeliveryUnicast),
+					Delivery:    new(headers.TransportDeliveryUnicast),
 					ClientPorts: inTH.ClientPorts,
 					ServerPorts: &[2]int{34556, 34557},
 				}.Marshal(),
@@ -296,7 +296,7 @@ func TestClientCloseReleasesUDPSourcePorts(t *testing.T) {
 	c := Client{
 		Scheme:             u.Scheme,
 		Host:               u.Host,
-		Protocol:           ptrOf(ProtocolUDP),
+		Protocol:           new(ProtocolUDP),
 		UDPSourcePortRange: [2]uint16{40000, 40001},
 	}
 
@@ -381,7 +381,7 @@ func TestClientUDPSourcePorts(t *testing.T) {
 		c := Client{
 			Scheme:             u.Scheme,
 			Host:               u.Host,
-			Protocol:           ptrOf(ProtocolUDP),
+			Protocol:           new(ProtocolUDP),
 			UDPSourcePortRange: [2]uint16{40000, 40001},
 		}
 
@@ -464,7 +464,7 @@ func TestClientUDPSourcePorts(t *testing.T) {
 				Header: base.Header{
 					"Transport": headers.Transport{
 						Protocol:    headers.TransportProtocolUDP,
-						Delivery:    ptrOf(headers.TransportDeliveryUnicast),
+						Delivery:    new(headers.TransportDeliveryUnicast),
 						ClientPorts: inTH.ClientPorts,
 						ServerPorts: &[2]int{34556, 34557},
 					}.Marshal(),
@@ -484,7 +484,7 @@ func TestClientUDPSourcePorts(t *testing.T) {
 		c := Client{
 			Scheme:             u.Scheme,
 			Host:               u.Host,
-			Protocol:           ptrOf(ProtocolUDP),
+			Protocol:           new(ProtocolUDP),
 			UDPSourcePortRange: [2]uint16{40000, 40003},
 		}
 
@@ -567,7 +567,7 @@ func TestClientUDPSourcePorts(t *testing.T) {
 				Header: base.Header{
 					"Transport": headers.Transport{
 						Protocol:    headers.TransportProtocolUDP,
-						Delivery:    ptrOf(headers.TransportDeliveryUnicast),
+						Delivery:    new(headers.TransportDeliveryUnicast),
 						ClientPorts: inTH.ClientPorts,
 						ServerPorts: &[2]int{34556, 34557},
 					}.Marshal(),
@@ -587,7 +587,7 @@ func TestClientUDPSourcePorts(t *testing.T) {
 		c := Client{
 			Scheme:             u.Scheme,
 			Host:               u.Host,
-			Protocol:           ptrOf(ProtocolUDP),
+			Protocol:           new(ProtocolUDP),
 			UDPSourcePortRange: [2]uint16{40001, 40005},
 		}
 
