@@ -1,21 +1,23 @@
-package format //nolint:revive
+package format_test //nolint:revive
 
 import (
 	"testing"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 func TestMPEGTSAttributes(t *testing.T) {
-	format := &MPEGTS{}
+	format := &format.MPEGTS{}
 	require.Equal(t, "MPEG-TS", format.Codec())
 	require.Equal(t, 90000, format.ClockRate())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
 func TestMPEGTSDecEncoder(t *testing.T) {
-	format := &MPEGTS{}
+	format := &format.MPEGTS{}
 
 	enc, err := format.CreateEncoder()
 	require.NoError(t, err)

@@ -1,14 +1,16 @@
-package format //nolint:revive
+package format_test //nolint:revive
 
 import (
 	"testing"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 func TestAC3Attributes(t *testing.T) {
-	format := &AC3{
+	format := &format.AC3{
 		PayloadTyp:   96,
 		SampleRate:   44100,
 		ChannelCount: 2,
@@ -19,7 +21,7 @@ func TestAC3Attributes(t *testing.T) {
 }
 
 func TestAC3DecEncoder(t *testing.T) {
-	format := &AC3{
+	format := &format.AC3{
 		PayloadTyp:   96,
 		SampleRate:   44100,
 		ChannelCount: 2,

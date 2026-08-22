@@ -1,21 +1,23 @@
-package format //nolint:revive
+package format_test //nolint:revive
 
 import (
 	"testing"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 func TestMPEG1AudioAttributes(t *testing.T) {
-	format := &MPEG1Audio{}
+	format := &format.MPEG1Audio{}
 	require.Equal(t, "MPEG-1/2 Audio", format.Codec())
 	require.Equal(t, 90000, format.ClockRate())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
 func TestMPEG1AudioDecEncoder(t *testing.T) {
-	format := &MPEG1Audio{}
+	format := &format.MPEG1Audio{}
 
 	enc, err := format.CreateEncoder()
 	require.NoError(t, err)

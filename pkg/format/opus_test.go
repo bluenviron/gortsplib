@@ -1,14 +1,16 @@
-package format //nolint:revive
+package format_test //nolint:revive
 
 import (
 	"testing"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 func TestOpusAttributes(t *testing.T) {
-	format := &Opus{
+	format := &format.Opus{
 		PayloadTyp:   96,
 		ChannelCount: 2,
 	}
@@ -18,7 +20,7 @@ func TestOpusAttributes(t *testing.T) {
 }
 
 func TestOpusDecEncoder(t *testing.T) {
-	format := &Opus{}
+	format := &format.Opus{}
 
 	enc, err := format.CreateEncoder()
 	require.NoError(t, err)

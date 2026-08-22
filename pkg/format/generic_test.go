@@ -1,14 +1,16 @@
-package format //nolint:revive
+package format_test //nolint:revive
 
 import (
 	"testing"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 func TestGenericAttributes(t *testing.T) {
-	format := &Generic{
+	format := &format.Generic{
 		PayloadTyp: 98,
 		RTPMa:      "H265/90000",
 		FMT: map[string]string{
