@@ -10,10 +10,6 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/sdpunmarshaler"
 )
 
-func ptrOf[T any](v T) *T {
-	return &v
-}
-
 var casesFormat = []struct {
 	name           string
 	in             string
@@ -406,7 +402,7 @@ var casesFormat = []struct {
 		&format.MPEG4AudioLATM{
 			PayloadTyp:     96,
 			ProfileLevelID: 1,
-			Bitrate:        ptrOf(64000),
+			Bitrate:        new(64000),
 			CPresent:       false,
 			StreamMuxConfig: &mpeg4audio.StreamMuxConfig{
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
@@ -444,7 +440,7 @@ var casesFormat = []struct {
 			PayloadTyp:     110,
 			ProfileLevelID: 15,
 			CPresent:       false,
-			SBREnabled:     ptrOf(true),
+			SBREnabled:     new(true),
 			StreamMuxConfig: &mpeg4audio.StreamMuxConfig{
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
 					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
@@ -481,8 +477,8 @@ var casesFormat = []struct {
 			PayloadTyp:     110,
 			ProfileLevelID: 44,
 			CPresent:       false,
-			SBREnabled:     ptrOf(true),
-			Bitrate:        ptrOf(64000),
+			SBREnabled:     new(true),
+			Bitrate:        new(64000),
 			StreamMuxConfig: &mpeg4audio.StreamMuxConfig{
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
 					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
@@ -521,7 +517,7 @@ var casesFormat = []struct {
 		&format.MPEG4AudioLATM{
 			PayloadTyp:     110,
 			ProfileLevelID: 48,
-			Bitrate:        ptrOf(64000),
+			Bitrate:        new(64000),
 			CPresent:       false,
 			StreamMuxConfig: &mpeg4audio.StreamMuxConfig{
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
@@ -613,7 +609,7 @@ var casesFormat = []struct {
 		&format.Speex{
 			PayloadTyp: 96,
 			SampleRate: 16000,
-			VBR:        ptrOf(false),
+			VBR:        new(false),
 		},
 		96,
 		"speex/16000",
@@ -1047,8 +1043,8 @@ var casesFormat = []struct {
 			"a=fmtp:96 max-fr=123; max-fs=456\n",
 		&format.VP8{
 			PayloadTyp: 96,
-			MaxFR:      ptrOf(123),
-			MaxFS:      ptrOf(456),
+			MaxFR:      new(123),
+			MaxFS:      new(456),
 		},
 		96,
 		"VP8/90000",
@@ -1066,9 +1062,9 @@ var casesFormat = []struct {
 			"a=fmtp:96 max-fr=123; max-fs=456; profile-id=789\n",
 		&format.VP9{
 			PayloadTyp: 96,
-			MaxFR:      ptrOf(123),
-			MaxFS:      ptrOf(456),
-			ProfileID:  ptrOf(789),
+			MaxFR:      new(123),
+			MaxFS:      new(456),
+			ProfileID:  new(789),
 		},
 		96,
 		"VP9/90000",
@@ -1087,9 +1083,9 @@ var casesFormat = []struct {
 			"a=fmtp:96 profile=2; level-idx=8; tier=1\n",
 		&format.AV1{
 			PayloadTyp: 96,
-			Profile:    ptrOf(2),
-			LevelIdx:   ptrOf(8),
-			Tier:       ptrOf(1),
+			Profile:    new(2),
+			LevelIdx:   new(8),
+			Tier:       new(1),
 		},
 		96,
 		"AV1/90000",

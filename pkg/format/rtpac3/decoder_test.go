@@ -160,8 +160,8 @@ func FuzzDecoder(f *testing.F) {
 
 			e := &Encoder{
 				PayloadType:           96,
-				SSRC:                  ptrOf(uint32(12321)),
-				InitialSequenceNumber: ptrOf(uint16(45432)),
+				SSRC:                  new(uint32(12321)),
+				InitialSequenceNumber: new(uint16(45432)),
 				PayloadMaxSize:        1400,
 			}
 			err = e.Init()

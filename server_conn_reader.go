@@ -101,8 +101,7 @@ func (cr *serverConnReader) runInner() error {
 	for {
 		err := readFunc()
 
-		var eerr switchReadFuncError
-		if errors.As(err, &eerr) {
+		if eerr, ok := errors.AsType[switchReadFuncError](err); ok {
 			if eerr.tcp {
 				readFunc = cr.readFuncTCP
 			} else {

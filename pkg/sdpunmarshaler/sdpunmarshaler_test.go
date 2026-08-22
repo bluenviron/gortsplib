@@ -8,10 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func ptrOf[T any](v T) *T {
-	return &v
-}
-
 var cases = []struct {
 	name string
 	dec  []byte
@@ -41,7 +37,7 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: ptrOf(sdp.Information("A Seminar on the session description protocol")),
+			SessionInformation: new(sdp.Information("A Seminar on the session description protocol")),
 			TimeDescriptions: []sdp.TimeDescription{
 				{Timing: sdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -69,7 +65,7 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: ptrOf(sdp.Information("A Seminar on the session description protocol")),
+			SessionInformation: new(sdp.Information("A Seminar on the session description protocol")),
 			TimeDescriptions: []sdp.TimeDescription{
 				{Timing: sdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -101,7 +97,7 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: ptrOf(sdp.Information("A Seminar on the session description protocol")),
+			SessionInformation: new(sdp.Information("A Seminar on the session description protocol")),
 			TimeDescriptions: []sdp.TimeDescription{
 				{Timing: sdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -169,12 +165,12 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: ptrOf(sdp.Information("A Seminar on the session description protocol")),
+			SessionInformation: new(sdp.Information("A Seminar on the session description protocol")),
 			URI: func() *url.URL {
 				u, _ := url.Parse("http://www.example.com/seminars/sdp.pdf")
 				return u
 			}(),
-			EmailAddress: ptrOf(sdp.EmailAddress("j.doe@example.com (Jane Doe)")),
+			EmailAddress: new(sdp.EmailAddress("j.doe@example.com (Jane Doe)")),
 			PhoneNumber: func() *sdp.PhoneNumber {
 				v := sdp.PhoneNumber("+1 617 555-6011")
 				return &v
@@ -228,7 +224,7 @@ var cases = []struct {
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"0"},
 					},
-					MediaTitle: ptrOf(sdp.Information("Vivamus a posuere nisl")),
+					MediaTitle: new(sdp.Information("Vivamus a posuere nisl")),
 					ConnectionInformation: &sdp.ConnectionInformation{
 						NetworkType: "IN",
 						AddressType: "IP4",
@@ -891,7 +887,7 @@ var cases = []struct {
 				UnicastAddress: "5c2b68da",
 			},
 			SessionName:        sdp.SessionName("Unnamed"),
-			SessionInformation: ptrOf(sdp.Information("N/A")),
+			SessionInformation: new(sdp.Information("N/A")),
 			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
@@ -1074,7 +1070,7 @@ var cases = []struct {
 				UnicastAddress: "",
 			},
 			SessionName:      sdp.SessionName("RTSP Server"),
-			EmailAddress:     ptrOf(sdp.EmailAddress("NONE")),
+			EmailAddress:     new(sdp.EmailAddress("NONE")),
 			TimeDescriptions: []sdp.TimeDescription{{}},
 			Attributes: []sdp.Attribute{
 				{Key: "recvonly"},
@@ -1398,8 +1394,8 @@ var cases = []struct {
 				UnicastAddress: "0.0.0.0",
 			},
 			SessionName:        sdp.SessionName("HIK Media Server V3.1.3"),
-			SessionInformation: ptrOf(sdp.Information("HIK Media Server Session Description : standard")),
-			EmailAddress:       ptrOf(sdp.EmailAddress("NONE")),
+			SessionInformation: new(sdp.Information("HIK Media Server Session Description : standard")),
+			EmailAddress:       new(sdp.EmailAddress("NONE")),
 			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
@@ -1427,7 +1423,7 @@ var cases = []struct {
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					MediaTitle: ptrOf(sdp.Information("Video Media")),
+					MediaTitle: new(sdp.Information("Video Media")),
 					Attributes: []sdp.Attribute{
 						{
 							Key:   "rtpmap",
@@ -1478,7 +1474,7 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: ptrOf(sdp.Information("A Seminar on the session description protocol")),
+			SessionInformation: new(sdp.Information("A Seminar on the session description protocol")),
 			TimeDescriptions: []sdp.TimeDescription{
 				{Timing: sdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -1544,7 +1540,7 @@ var cases = []struct {
 				UnicastAddress: "172.16.2.20",
 			},
 			SessionName:        "IR stream",
-			SessionInformation: ptrOf(sdp.Information("Live infrared")),
+			SessionInformation: new(sdp.Information("Live infrared")),
 			TimeDescriptions:   []sdp.TimeDescription{{}},
 			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
@@ -1671,7 +1667,7 @@ var cases = []struct {
 			},
 			SessionName:      "RTP session",
 			TimeDescriptions: []sdp.TimeDescription{{}},
-			EmailAddress:     ptrOf(sdp.EmailAddress("NONE")),
+			EmailAddress:     new(sdp.EmailAddress("NONE")),
 			MediaDescriptions: []*sdp.MediaDescription{
 				{
 					MediaName: sdp.MediaName{
@@ -1731,7 +1727,7 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: ptrOf(sdp.Information("A Seminar on the session description protocol")),
+			SessionInformation: new(sdp.Information("A Seminar on the session description protocol")),
 			TimeDescriptions: []sdp.TimeDescription{
 				{Timing: sdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -1759,7 +1755,7 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: ptrOf(sdp.Information("A Seminar on the session description protocol")),
+			SessionInformation: new(sdp.Information("A Seminar on the session description protocol")),
 			TimeDescriptions: []sdp.TimeDescription{
 				{Timing: sdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -2927,7 +2923,7 @@ var cases = []struct {
 				UnicastAddress: "192.168.221.104",
 			},
 			SessionName:  "Media Presentation",
-			EmailAddress: ptrOf(sdp.EmailAddress("NONE")),
+			EmailAddress: new(sdp.EmailAddress("NONE")),
 			ConnectionInformation: &sdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",

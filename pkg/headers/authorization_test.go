@@ -39,7 +39,7 @@ var casesAuthorization = []struct {
 			Nonce:    "dcd98b7102dd2f0e8b11d0f600bfb0c093",
 			URI:      "/dir/index.html",
 			Response: "e966c932a9242554e42c8ee200cec7f6",
-			Opaque:   ptrOf("5ccc069c403ebaf9f0171e9517f40e41"),
+			Opaque:   new("5ccc069c403ebaf9f0171e9517f40e41"),
 		},
 	},
 	{
@@ -75,8 +75,8 @@ var casesAuthorization = []struct {
 			Nonce:     "dcd98b7102dd2f0e8b11d0f600bfb0c093",
 			URI:       "/dir/index.html",
 			Response:  "e966c932a9242554e42c8ee200cec7f6",
-			Opaque:    ptrOf("5ccc069c403ebaf9f0171e9517f40e41"),
-			Algorithm: ptrOf(AuthAlgorithmMD5),
+			Opaque:    new("5ccc069c403ebaf9f0171e9517f40e41"),
+			Algorithm: new(AuthAlgorithmMD5),
 		},
 	},
 	{
@@ -94,7 +94,7 @@ var casesAuthorization = []struct {
 			Nonce:     "1ad195c2b2ca5a03784e53f88e16f579",
 			URI:       "rtsp://192.168.80.76/",
 			Response:  "9e2324f104f3ce507d17e44a78fc1293001fe84805bde65d2aaa9be97a5a8913",
-			Algorithm: ptrOf(AuthAlgorithmSHA256),
+			Algorithm: new(AuthAlgorithmSHA256),
 		},
 	},
 }

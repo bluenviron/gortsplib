@@ -32,7 +32,7 @@ var casesAuthenticate = []struct {
 			Method: AuthMethodDigest,
 			Realm:  "4419b63f5e51",
 			Nonce:  "8b84a3b789283a8bea8da7fa7d41f08b",
-			Stale:  ptrOf("FALSE"),
+			Stale:  new("FALSE"),
 		},
 	},
 	{
@@ -44,7 +44,7 @@ var casesAuthenticate = []struct {
 			Method: AuthMethodDigest,
 			Realm:  "4419b63f5e51",
 			Nonce:  "8b84a3b789283a8bea8da7fa7d41f08b",
-			Stale:  ptrOf("FALSE"),
+			Stale:  new("FALSE"),
 		},
 	},
 	{
@@ -56,7 +56,7 @@ var casesAuthenticate = []struct {
 			Method: AuthMethodDigest,
 			Realm:  "4419b63f5e51",
 			Nonce:  "133767111917411116111311118211673010032",
-			Stale:  ptrOf("FALSE"),
+			Stale:  new("FALSE"),
 		},
 	},
 	{
@@ -69,8 +69,8 @@ var casesAuthenticate = []struct {
 			Method: AuthMethodDigest,
 			Realm:  "Please log in with a valid username",
 			Nonce:  "752a62306daf32b401a41004555c7663",
-			Opaque: ptrOf(""),
-			Stale:  ptrOf("FALSE"),
+			Opaque: new(""),
+			Stale:  new("FALSE"),
 		},
 	},
 	{
@@ -83,8 +83,8 @@ var casesAuthenticate = []struct {
 			Method:    AuthMethodDigest,
 			Realm:     "4419b63f5e51",
 			Nonce:     "8b84a3b789283a8bea8da7fa7d41f08b",
-			Stale:     ptrOf("FALSE"),
-			Algorithm: ptrOf(AuthAlgorithmMD5),
+			Stale:     new("FALSE"),
+			Algorithm: new(AuthAlgorithmMD5),
 		},
 	},
 	{
@@ -97,8 +97,8 @@ var casesAuthenticate = []struct {
 			Method:    AuthMethodDigest,
 			Realm:     "IP Camera(AB705)",
 			Nonce:     "fcc86deace979a488b2bfb89f4d0812c",
-			Stale:     ptrOf("FALSE"),
-			Algorithm: ptrOf(AuthAlgorithmSHA256),
+			Stale:     new("FALSE"),
+			Algorithm: new(AuthAlgorithmSHA256),
 		},
 	},
 }

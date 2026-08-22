@@ -121,8 +121,8 @@ func FuzzDecoder(f *testing.F) {
 			require.NotEmpty(t, unit)
 
 			e := &Encoder{
-				SSRC:                  ptrOf(uint32(12321)),
-				InitialSequenceNumber: ptrOf(uint16(45432)),
+				SSRC:                  new(uint32(12321)),
+				InitialSequenceNumber: new(uint16(45432)),
 			}
 			err = e.Init()
 			require.NoError(t, err)
