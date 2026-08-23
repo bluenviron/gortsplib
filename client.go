@@ -781,6 +781,15 @@ func (c *Client) Wait() error {
 	return c.closeError
 }
 
+// NetConn returns the underlying net.Conn of the control connection.
+// It returns nil if the connection is not open (before the first request or after Close).
+func (c *Client) NetConn() net.Conn {
+	c.propsMutex.RLock()
+	defer c.propsMutex.RUnlock()
+
+	return c.nconn
+}
+
 func (c *Client) run() {
 	defer close(c.done)
 
@@ -972,11 +981,19 @@ func (c *Client) doClose() {
 		c.nconn.Close()
 		c.reader.close()
 		c.reader = nil
+
+		c.propsMutex.Lock()
 		c.nconn = nil
+		c.propsMutex.Unlock()
+
 		c.conn = nil
 	} else if c.nconn != nil {
 		c.nconn.Close()
+
+		c.propsMutex.Lock()
 		c.nconn = nil
+		c.propsMutex.Unlock()
+
 		c.conn = nil
 	}
 
@@ -1221,7 +1238,10 @@ func (c *Client) connOpen(u *base.URL) error {
 		}
 	}
 
+	c.propsMutex.Lock()
 	c.nconn = nconn
+	c.propsMutex.Unlock()
+
 	bc := bytecounter.New(c.nconn, &c.bytesReceived, &c.bytesSent)
 	c.conn = conn.NewConn(bufio.NewReader(bc), bc)
 	c.reader = &clientReader{
