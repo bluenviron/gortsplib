@@ -122,6 +122,33 @@ func isAnyPort(p int) bool {
 	return p == 0 || p == 1
 }
 
+func sourceToIP(
+	resolveIPAddr func(network, address string) (*net.IPAddr, error),
+	source *string,
+) (net.IP, error) {
+	if source != nil {
+		ip := net.ParseIP(*source)
+
+		if ip == nil {
+			addr, err := resolveIPAddr("ip", *source)
+			if err != nil {
+				return nil, fmt.Errorf("unable to solve source host: %w", err)
+			}
+
+			ip = addr.IP
+		}
+
+		if ip != nil &&
+			!ip.IsUnspecified() &&
+			!ip.IsMulticast() &&
+			!ip.Equal(net.IPv4bcast) {
+			return ip, nil
+		}
+	}
+
+	return nil, nil
+}
+
 func findBaseURL(sd *sdp.SessionDescription, res *base.Response, u *base.URL) (*base.URL, error) {
 	// use global control attribute
 	if control, ok := sd.Attribute("control"); ok && control != "*" {
@@ -1951,18 +1978,12 @@ func (c *Client) doSetup(
 		}
 
 		var remoteIP net.IP
-		if thRes.Source2 != nil {
-			if ip := net.ParseIP(*thRes.Source2); ip != nil {
-				remoteIP = ip
-			} else {
-				var addr *net.IPAddr
-				addr, err = c.ResolveIPAddr("ip", *thRes.Source2)
-				if err != nil {
-					return nil, fmt.Errorf("unable to solve source host: %w", err)
-				}
-				remoteIP = addr.IP
-			}
-		} else {
+		remoteIP, err = sourceToIP(c.ResolveIPAddr, thRes.Source2)
+		if err != nil {
+			return nil, err
+		}
+
+		if remoteIP == nil {
 			remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		}
 
@@ -1996,18 +2017,12 @@ func (c *Client) doSetup(
 		}
 
 		var remoteIP net.IP
-		if thRes.Source2 != nil {
-			if ip := net.ParseIP(*thRes.Source2); ip != nil {
-				remoteIP = ip
-			} else {
-				var addr *net.IPAddr
-				addr, err = c.ResolveIPAddr("ip", *thRes.Source2)
-				if err != nil {
-					return nil, fmt.Errorf("unable to solve source host: %w", err)
-				}
-				remoteIP = addr.IP
-			}
-		} else {
+		remoteIP, err = sourceToIP(c.ResolveIPAddr, thRes.Source2)
+		if err != nil {
+			return nil, err
+		}
+
+		if remoteIP == nil {
 			remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		}
 

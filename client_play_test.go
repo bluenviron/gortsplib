@@ -3313,8 +3313,9 @@ func TestClientPlayKeepAlive(t *testing.T) {
 	}
 }
 
-func TestClientPlayDifferentSource(t *testing.T) {
-	packetRecv := make(chan struct{})
+func TestClientPlayDifferentSource(t *testing.T) { //nolint:dupl
+	packetRecv := make(chan struct{}, 1)
+	rtcpRecv := make(chan struct{}, 1)
 
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
@@ -3343,6 +3344,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 					string(base.Describe),
 					string(base.Setup),
 					string(base.Play),
+					string(base.Teardown),
 				}, ", ")},
 			},
 		})
@@ -3374,12 +3376,13 @@ func TestClientPlayDifferentSource(t *testing.T) {
 		err2 = inTH.Unmarshal(req.Header["Transport"])
 		require.NoError(t, err2)
 
+		source := "127.0.1.1"
 		th := headers.Transport{
 			Delivery:    new(headers.TransportDeliveryUnicast),
 			Protocol:    headers.TransportProtocolUDP,
 			ClientPorts: inTH.ClientPorts,
 			ServerPorts: &[2]int{34556, 34557},
-			Source2:     new("127.0.1.1"),
+			Source2:     &source,
 		}
 
 		l1, err2 := net.ListenPacket("udp", "127.0.1.1:34556")
@@ -3403,9 +3406,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"), req.URL)
 
-		err2 = conn.WriteResponse(&base.Response{
-			StatusCode: base.StatusOK,
-		})
+		err2 = conn.WriteResponse(&base.Response{StatusCode: base.StatusOK})
 		require.NoError(t, err2)
 
 		_, err2 = l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
@@ -3414,25 +3415,196 @@ func TestClientPlayDifferentSource(t *testing.T) {
 		})
 		require.NoError(t, err2)
 
+		<-rtcpRecv
+
+		buf := make([]byte, 2048)
+		err2 = l2.SetReadDeadline(time.Now().Add(2 * time.Second))
+		require.NoError(t, err2)
+		n, rtcpAddr, err2 := l2.ReadFrom(buf)
+		require.NoError(t, err2)
+		require.Equal(t, "127.0.0.1", rtcpAddr.(*net.UDPAddr).IP.String())
+
+		packets, err3 := rtcp.Unmarshal(buf[:n])
+		require.NoError(t, err3)
+		_, ok := packets[0].(*rtcp.ReceiverReport)
+		require.True(t, ok)
+
 		req, err2 = conn.ReadRequest()
 		require.NoError(t, err2)
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"), req.URL)
 
-		err2 = conn.WriteResponse(&base.Response{
-			StatusCode: base.StatusOK,
-		})
+		err2 = conn.WriteResponse(&base.Response{StatusCode: base.StatusOK})
 		require.NoError(t, err2)
 	}()
 
-	c := Client{
-		Protocol: new(ProtocolUDP),
-	}
+	c := Client{Protocol: new(ProtocolUDP)}
 
 	err = readAll(&c, "rtsp://localhost:8554/test/stream?param=value",
-		func(_ *description.Media, _ format.Format, pkt *rtp.Packet) {
+		func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
 			require.Equal(t, &testRTPPacket, pkt)
-			close(packetRecv)
+			err2 := c.WritePacketRTCP(medi, &testRTCPPacket)
+			require.NoError(t, err2)
+
+			select {
+			case packetRecv <- struct{}{}:
+			default:
+			}
+
+			select {
+			case rtcpRecv <- struct{}{}:
+			default:
+			}
+		})
+	require.NoError(t, err)
+	defer c.Close()
+
+	<-packetRecv
+}
+
+// https://github.com/bluenviron/gortsplib/issues/1070
+func TestClientPlayInvalidSource(t *testing.T) { //nolint:dupl
+	packetRecv := make(chan struct{}, 1)
+	rtcpRecv := make(chan struct{}, 1)
+
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+
+	go func() {
+		defer close(serverDone)
+
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
+		defer nconn.Close()
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
+
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Options, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value"), req.URL)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+					string(base.Teardown),
+				}, ", ")},
+			},
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Describe, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value"), req.URL)
+
+		medias := []*description.Media{testH264Media}
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/test/stream?param=value/"},
+			},
+			Body: mediasToSDP(medias),
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Setup, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"+medias[0].Control), req.URL)
+
+		var inTH headers.Transport
+		err2 = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err2)
+
+		source := "0.0.0.0"
+		th := headers.Transport{
+			Delivery:    new(headers.TransportDeliveryUnicast),
+			Protocol:    headers.TransportProtocolUDP,
+			ClientPorts: inTH.ClientPorts,
+			ServerPorts: &[2]int{34556, 34557},
+			Source2:     &source,
+		}
+
+		l1, err2 := net.ListenPacket("udp", "127.0.0.1:34556")
+		require.NoError(t, err2)
+		defer l1.Close()
+
+		l2, err2 := net.ListenPacket("udp", "127.0.0.1:34557")
+		require.NoError(t, err2)
+		defer l2.Close()
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": th.Marshal(),
+			},
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Play, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"), req.URL)
+
+		err2 = conn.WriteResponse(&base.Response{StatusCode: base.StatusOK})
+		require.NoError(t, err2)
+
+		_, err2 = l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
+			IP:   net.ParseIP("127.0.0.1"),
+			Port: th.ClientPorts[0],
+		})
+		require.NoError(t, err2)
+
+		<-rtcpRecv
+
+		buf := make([]byte, 2048)
+		err2 = l2.SetReadDeadline(time.Now().Add(2 * time.Second))
+		require.NoError(t, err2)
+		n, rtcpAddr, err2 := l2.ReadFrom(buf)
+		require.NoError(t, err2)
+		require.Equal(t, "127.0.0.1", rtcpAddr.(*net.UDPAddr).IP.String())
+
+		packets, err3 := rtcp.Unmarshal(buf[:n])
+		require.NoError(t, err3)
+		_, ok := packets[0].(*rtcp.ReceiverReport)
+		require.True(t, ok)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Teardown, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"), req.URL)
+
+		err2 = conn.WriteResponse(&base.Response{StatusCode: base.StatusOK})
+		require.NoError(t, err2)
+	}()
+
+	c := Client{Protocol: new(ProtocolUDP)}
+
+	err = readAll(&c, "rtsp://localhost:8554/test/stream?param=value",
+		func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
+			require.Equal(t, &testRTPPacket, pkt)
+			err2 := c.WritePacketRTCP(medi, &testRTCPPacket)
+			require.NoError(t, err2)
+
+			select {
+			case packetRecv <- struct{}{}:
+			default:
+			}
+
+			select {
+			case rtcpRecv <- struct{}{}:
+			default:
+			}
 		})
 	require.NoError(t, err)
 	defer c.Close()
