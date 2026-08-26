@@ -1,4 +1,4 @@
-package description
+package description_test
 
 import (
 	"testing"
@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/description"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/gortsplib/v5/pkg/sdpunmarshaler"
 )
@@ -153,7 +154,7 @@ func TestMediaURL(t *testing.T) {
 			sd, err := sdpunmarshaler.Unmarshal(ca.sdp)
 			require.NoError(t, err)
 
-			var media Media
+			var media description.Media
 			err = media.Unmarshal(sd.MediaDescriptions[0])
 			require.NoError(t, err)
 
@@ -165,7 +166,7 @@ func TestMediaURL(t *testing.T) {
 }
 
 func TestMediaURLError(t *testing.T) {
-	media := &Media{
+	media := &description.Media{
 		Type:    "video",
 		Formats: []format.Format{&format.H264{}},
 	}

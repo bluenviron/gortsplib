@@ -1,10 +1,12 @@
-package rtcpunmarshaler
+package rtcpunmarshaler_test
 
 import (
 	"testing"
 
 	"github.com/pion/rtcp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/rtcpunmarshaler"
 )
 
 var cases = []struct {
@@ -77,7 +79,7 @@ var cases = []struct {
 func TestUnmarshal(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			pkts, err := Unmarshal(ca.enc)
+			pkts, err := rtcpunmarshaler.Unmarshal(ca.enc)
 
 			if ca.error != "" {
 				require.EqualError(t, err, ca.error)
@@ -96,7 +98,7 @@ func FuzzUnmarshal(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, b string) {
-		pkts, err := Unmarshal([]byte(b))
+		pkts, err := rtcpunmarshaler.Unmarshal([]byte(b))
 		if err != nil {
 			return
 		}
