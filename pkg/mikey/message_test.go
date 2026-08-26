@@ -1,15 +1,17 @@
-package mikey
+package mikey_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
 )
 
 var cases = []struct {
 	name string
 	enc  []byte
-	dec  Message
+	dec  mikey.Message
 }{
 	{
 		"a",
@@ -29,11 +31,11 @@ var cases = []struct {
 			0x9f, 0x35, 0xbd, 0x8a, 0x86, 0xbc, 0x4d, 0x8b,
 			0x76, 0x37, 0xa5, 0x02, 0x49, 0x3d, 0xaf, 0x00,
 		},
-		Message{
-			Header: Header{
+		mikey.Message{
+			Header: mikey.Header{
 				Version: 1,
 				CSBID:   3869069816,
-				CSIDMapInfo: []SRTPIDEntry{
+				CSIDMapInfo: []mikey.SRTPIDEntry{
 					{
 						PolicyNo: 0,
 						SSRC:     812144480,
@@ -41,51 +43,51 @@ var cases = []struct {
 					},
 				},
 			},
-			Payloads: []Payload{
-				&PayloadT{
+			Payloads: []mikey.Payload{
+				&mikey.PayloadT{
 					TSType:  0,
 					TSValue: 17005151485044015056,
 				},
-				&PayloadRAND{
+				&mikey.PayloadRAND{
 					Data: []byte{
 						0xc2, 0xdd, 0xe4, 0x43, 0xa8, 0x49, 0x30, 0xa5,
 						0x75, 0x7a, 0x7e, 0xd9, 0xc3, 0xa4, 0x17, 0xfb,
 					},
 				},
-				&PayloadSP{
-					PolicyParams: []PayloadSPPolicyParam{
+				&mikey.PayloadSP{
+					PolicyParams: []mikey.PayloadSPPolicyParam{
 						{
-							Type:  PayloadSPPolicyParamTypeEncrAlg,
+							Type:  mikey.PayloadSPPolicyParamTypeEncrAlg,
 							Value: []byte{1},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSessionEncrKeyLen,
+							Type:  mikey.PayloadSPPolicyParamTypeSessionEncrKeyLen,
 							Value: []byte{0x10},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeAuthAlg,
+							Type:  mikey.PayloadSPPolicyParamTypeAuthAlg,
 							Value: []byte{1},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSessionAuthKeyLen,
+							Type:  mikey.PayloadSPPolicyParamTypeSessionAuthKeyLen,
 							Value: []byte{0x0a},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSRTPEncrOffOn,
+							Type:  mikey.PayloadSPPolicyParamTypeSRTPEncrOffOn,
 							Value: []byte{1},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSRTCPEncrOffOn,
+							Type:  mikey.PayloadSPPolicyParamTypeSRTCPEncrOffOn,
 							Value: []byte{1},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSRTPAuthOffOn,
+							Type:  mikey.PayloadSPPolicyParamTypeSRTPAuthOffOn,
 							Value: []byte{1},
 						},
 					},
 				},
-				&PayloadKEMAC{
-					SubPayloads: []*SubPayloadKeyData{
+				&mikey.PayloadKEMAC{
+					SubPayloads: []*mikey.SubPayloadKeyData{
 						{
 							Type: 2,
 							KeyData: []byte{
@@ -118,11 +120,11 @@ var cases = []struct {
 			0x87, 0x7f, 0xcc, 0xed, 0x18, 0x66, 0xf1, 0x41,
 			0x77, 0x2a, 0xdd, 0xdd, 0xe7, 0x06, 0x4b, 0x00,
 		},
-		Message{
-			Header: Header{
+		mikey.Message{
+			Header: mikey.Header{
 				Version: 1,
 				CSBID:   4272920402,
-				CSIDMapInfo: []SRTPIDEntry{
+				CSIDMapInfo: []mikey.SRTPIDEntry{
 					{
 						PolicyNo: 0,
 						SSRC:     3431162423,
@@ -130,50 +132,50 @@ var cases = []struct {
 					},
 				},
 			},
-			Payloads: []Payload{ //nolint:dupl
-				&PayloadT{
+			Payloads: []mikey.Payload{ //nolint:dupl
+				&mikey.PayloadT{
 					TSValue: 17005300185146628996,
 				},
-				&PayloadRAND{
+				&mikey.PayloadRAND{
 					Data: []byte{
 						0x27, 0x6e, 0x94, 0x18, 0x0e, 0x88, 0x75, 0xc2,
 						0xea, 0xad, 0x31, 0xd8, 0x2f, 0x86, 0x46, 0x20,
 					},
 				},
-				&PayloadSP{
-					PolicyParams: []PayloadSPPolicyParam{
+				&mikey.PayloadSP{
+					PolicyParams: []mikey.PayloadSPPolicyParam{
 						{
-							Type:  PayloadSPPolicyParamTypeEncrAlg,
+							Type:  mikey.PayloadSPPolicyParamTypeEncrAlg,
 							Value: []byte{1},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSessionEncrKeyLen,
+							Type:  mikey.PayloadSPPolicyParamTypeSessionEncrKeyLen,
 							Value: []byte{0x10},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeAuthAlg,
+							Type:  mikey.PayloadSPPolicyParamTypeAuthAlg,
 							Value: []byte{1},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSessionAuthKeyLen,
+							Type:  mikey.PayloadSPPolicyParamTypeSessionAuthKeyLen,
 							Value: []byte{0x0a},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSRTPEncrOffOn,
+							Type:  mikey.PayloadSPPolicyParamTypeSRTPEncrOffOn,
 							Value: []byte{1},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSRTCPEncrOffOn,
+							Type:  mikey.PayloadSPPolicyParamTypeSRTCPEncrOffOn,
 							Value: []byte{1},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSRTPAuthOffOn,
+							Type:  mikey.PayloadSPPolicyParamTypeSRTPAuthOffOn,
 							Value: []byte{1},
 						},
 					},
 				},
-				&PayloadKEMAC{
-					SubPayloads: []*SubPayloadKeyData{
+				&mikey.PayloadKEMAC{
+					SubPayloads: []*mikey.SubPayloadKeyData{
 						{
 							Type: 2,
 							KeyData: []byte{
@@ -208,11 +210,11 @@ var cases = []struct {
 			0x41, 0x77, 0x2a, 0xdd, 0xdd, 0xe7, 0x06, 0x4b,
 			0x00,
 		},
-		Message{
-			Header: Header{
+		mikey.Message{
+			Header: mikey.Header{
 				Version: 1,
 				CSBID:   2111907750,
-				CSIDMapInfo: []SRTPIDEntry{
+				CSIDMapInfo: []mikey.SRTPIDEntry{
 					{
 						PolicyNo: 0,
 						SSRC:     3431162423,
@@ -225,50 +227,50 @@ var cases = []struct {
 					},
 				},
 			},
-			Payloads: []Payload{ //nolint:dupl
-				&PayloadT{
+			Payloads: []mikey.Payload{ //nolint:dupl
+				&mikey.PayloadT{
 					TSValue: 17005300185149077127,
 				},
-				&PayloadRAND{
+				&mikey.PayloadRAND{
 					Data: []byte{
 						0x61, 0xbb, 0x19, 0x94, 0x32, 0x53, 0x03, 0x56,
 						0xa2, 0xd1, 0x88, 0x07, 0x15, 0x23, 0x75, 0x95,
 					},
 				},
-				&PayloadSP{
-					PolicyParams: []PayloadSPPolicyParam{
+				&mikey.PayloadSP{
+					PolicyParams: []mikey.PayloadSPPolicyParam{
 						{
-							Type:  PayloadSPPolicyParamTypeEncrAlg,
+							Type:  mikey.PayloadSPPolicyParamTypeEncrAlg,
 							Value: []byte{1},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSessionEncrKeyLen,
+							Type:  mikey.PayloadSPPolicyParamTypeSessionEncrKeyLen,
 							Value: []byte{0x10},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeAuthAlg,
+							Type:  mikey.PayloadSPPolicyParamTypeAuthAlg,
 							Value: []byte{1},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSessionAuthKeyLen,
+							Type:  mikey.PayloadSPPolicyParamTypeSessionAuthKeyLen,
 							Value: []byte{0x0a},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSRTPEncrOffOn,
+							Type:  mikey.PayloadSPPolicyParamTypeSRTPEncrOffOn,
 							Value: []byte{1},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSRTCPEncrOffOn,
+							Type:  mikey.PayloadSPPolicyParamTypeSRTCPEncrOffOn,
 							Value: []byte{1},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSRTPAuthOffOn,
+							Type:  mikey.PayloadSPPolicyParamTypeSRTPAuthOffOn,
 							Value: []byte{1},
 						},
 					},
 				},
-				&PayloadKEMAC{
-					SubPayloads: []*SubPayloadKeyData{
+				&mikey.PayloadKEMAC{
+					SubPayloads: []*mikey.SubPayloadKeyData{
 						{
 							Type: 2,
 							KeyData: []byte{
@@ -299,11 +301,11 @@ var cases = []struct {
 			0x08, 0xc4, 0x22, 0x0e, 0x52, 0x1d, 0xca, 0xa3, 0xb8, 0x00,
 			0xf5, 0x84, 0xfc, 0x25, 0x00, 0x00,
 		},
-		Message{
-			Header: Header{
+		mikey.Message{
+			Header: mikey.Header{
 				Version: 1,
 				CSBID:   2973783639,
-				CSIDMapInfo: []SRTPIDEntry{
+				CSIDMapInfo: []mikey.SRTPIDEntry{
 					{
 						PolicyNo: 0,
 						SSRC:     1919874267,
@@ -311,56 +313,56 @@ var cases = []struct {
 					},
 				},
 			},
-			Payloads: []Payload{
-				&PayloadT{
+			Payloads: []mikey.Payload{
+				&mikey.PayloadT{
 					TSValue: 17064508981266670487,
 				},
-				&PayloadRAND{
+				&mikey.PayloadRAND{
 					Data: []byte{
 						0xdd, 0x72, 0x24, 0x83, 0x95, 0xc2, 0xcc, 0x1a, 0x6d, 0xe6,
 						0x0e, 0x42, 0x2a, 0x7f, 0x57, 0x09,
 					},
 				},
-				&PayloadSP{
-					PolicyParams: []PayloadSPPolicyParam{
+				&mikey.PayloadSP{
+					PolicyParams: []mikey.PayloadSPPolicyParam{
 						{
-							Type:  PayloadSPPolicyParamTypeEncrAlg,
+							Type:  mikey.PayloadSPPolicyParamTypeEncrAlg,
 							Value: []byte{1},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSessionEncrKeyLen,
+							Type:  mikey.PayloadSPPolicyParamTypeSessionEncrKeyLen,
 							Value: []byte{0x10},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeAuthAlg,
+							Type:  mikey.PayloadSPPolicyParamTypeAuthAlg,
 							Value: []byte{1},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSessionAuthKeyLen,
+							Type:  mikey.PayloadSPPolicyParamTypeSessionAuthKeyLen,
 							Value: []byte{0x14},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSRTPEncrOffOn,
+							Type:  mikey.PayloadSPPolicyParamTypeSRTPEncrOffOn,
 							Value: []byte{1},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSRTCPEncrOffOn,
+							Type:  mikey.PayloadSPPolicyParamTypeSRTCPEncrOffOn,
 							Value: []byte{1},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeSRTPAuthOffOn,
+							Type:  mikey.PayloadSPPolicyParamTypeSRTPAuthOffOn,
 							Value: []byte{1},
 						},
 						{
-							Type:  PayloadSPPolicyParamTypeAuthTagLen,
+							Type:  mikey.PayloadSPPolicyParamTypeAuthTagLen,
 							Value: []byte{0x0a},
 						},
 					},
 				},
-				&PayloadKEMAC{
-					SubPayloads: []*SubPayloadKeyData{
+				&mikey.PayloadKEMAC{
+					SubPayloads: []*mikey.SubPayloadKeyData{
 						{
-							Type: 2,
+							Type: mikey.SubPayloadKeyDataTypeTEK,
 							KeyData: []byte{
 								0x5d, 0xb1, 0x8d, 0x95, 0x6f, 0x69, 0x67, 0xcc, 0x0d, 0x73, 0xf8, 0xb4, 0xe7, 0x76, 0xa4, 0x8a,
 								0x08, 0xc4, 0x22, 0x0e, 0x52, 0x1d, 0xca, 0xa3, 0xb8, 0x00, 0xf5, 0x84, 0xfc, 0x25,
@@ -381,11 +383,11 @@ var cases = []struct {
 			0x00, 0x21, 0x00, 0x03, 0xaa, 0xbb, 0xcc, 0x02, 0x11, 0x22,
 			0x00,
 		},
-		Message{
-			Header: Header{
+		mikey.Message{
+			Header: mikey.Header{
 				Version: 1,
 				CSBID:   0x12345678,
-				CSIDMapInfo: []SRTPIDEntry{
+				CSIDMapInfo: []mikey.SRTPIDEntry{
 					{
 						PolicyNo: 0x03,
 						SSRC:     0x11223344,
@@ -393,12 +395,12 @@ var cases = []struct {
 					},
 				},
 			},
-			Payloads: []Payload{
-				&PayloadKEMAC{
-					SubPayloads: []*SubPayloadKeyData{
+			Payloads: []mikey.Payload{
+				&mikey.PayloadKEMAC{
+					SubPayloads: []*mikey.SubPayloadKeyData{
 						{
-							Type:    SubPayloadKeyDataTypeTEK,
-							KV:      SubPayloadKeyDataKVSPI,
+							Type:    mikey.SubPayloadKeyDataTypeTEK,
+							KV:      mikey.SubPayloadKeyDataKVSPI,
 							KeyData: []byte{0xaa, 0xbb, 0xcc},
 							SPI:     []byte{0x11, 0x22},
 						},
@@ -412,7 +414,7 @@ var cases = []struct {
 func TestUnmarshal(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			var dec Message
+			var dec mikey.Message
 			err := dec.Unmarshal(ca.enc)
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, dec)
@@ -445,7 +447,7 @@ func FuzzUnmarshal(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, b []byte) {
-		var msg Message
+		var msg mikey.Message
 		err := msg.Unmarshal(b)
 		if err != nil {
 			return

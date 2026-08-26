@@ -1,4 +1,4 @@
-package sdpunmarshaler
+package sdpunmarshaler_test
 
 import (
 	"net/url"
@@ -6,6 +6,8 @@ import (
 
 	"github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/sdpunmarshaler"
 )
 
 var cases = []struct {
@@ -3451,7 +3453,7 @@ var cases = []struct {
 func TestUnmarshal(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			desc, err := Unmarshal(c.dec)
+			desc, err := sdpunmarshaler.Unmarshal(c.dec)
 			require.NoError(t, err)
 			require.Equal(t, c.desc, *desc)
 		})
@@ -3464,7 +3466,7 @@ func FuzzUnmarshal(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, b string) {
-		desc, err := Unmarshal([]byte(b))
+		desc, err := sdpunmarshaler.Unmarshal([]byte(b))
 		if err != nil {
 			return
 		}

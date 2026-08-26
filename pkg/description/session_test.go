@@ -1,10 +1,11 @@
-package description
+package description_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/bluenviron/gortsplib/v5/pkg/description"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
@@ -15,7 +16,7 @@ var casesSession = []struct {
 	name string
 	in   string
 	out  string
-	desc Session
+	desc description.Session
 }{
 	{
 		"one format for each media, absolute",
@@ -57,11 +58,11 @@ var casesSession = []struct {
 			"a=rtpmap:0 PCMU/8000\r\n" +
 			"m=application 0 RTP/AVP 107\r\n" +
 			"a=control\r\n",
-		Session{
+		description.Session{
 			Title: `Media Presentation`,
-			Medias: []*Media{
+			Medias: []*description.Media{
 				{
-					Type:    MediaTypeVideo,
+					Type:    description.MediaTypeVideo,
 					Control: "rtsp://10.0.100.50/profile5/media.smp/trackID=v",
 					Formats: []format.Format{&format.H264{
 						PayloadTyp:        97,
@@ -71,7 +72,7 @@ var casesSession = []struct {
 					}},
 				},
 				{
-					Type:    MediaTypeAudio,
+					Type:    description.MediaTypeAudio,
 					Control: "rtsp://10.0.100.50/profile5/media.smp/trackID=a",
 					Formats: []format.Format{&format.G711{
 						PayloadTyp:   0,
@@ -81,7 +82,7 @@ var casesSession = []struct {
 					}},
 				},
 				{
-					Type: MediaTypeApplication,
+					Type: description.MediaTypeApplication,
 					Formats: []format.Format{&format.Generic{
 						PayloadTyp: 107,
 					}},
@@ -128,11 +129,11 @@ var casesSession = []struct {
 			"a=rtpmap:0 PCMU/8000\r\n" +
 			"m=application 0 RTP/AVP 107\r\n" +
 			"a=control\r\n",
-		Session{
+		description.Session{
 			Title: `Media Presentation`,
-			Medias: []*Media{
+			Medias: []*description.Media{
 				{
-					Type:    MediaTypeVideo,
+					Type:    description.MediaTypeVideo,
 					Control: "trackID=1",
 					Formats: []format.Format{&format.H264{
 						PayloadTyp:        97,
@@ -142,7 +143,7 @@ var casesSession = []struct {
 					}},
 				},
 				{
-					Type:    MediaTypeAudio,
+					Type:    description.MediaTypeAudio,
 					Control: "trackID=2",
 					Formats: []format.Format{&format.G711{
 						PayloadTyp:   0,
@@ -152,7 +153,7 @@ var casesSession = []struct {
 					}},
 				},
 				{
-					Type: MediaTypeApplication,
+					Type: description.MediaTypeApplication,
 					Formats: []format.Format{&format.Generic{
 						PayloadTyp: 107,
 					}},
@@ -301,12 +302,12 @@ var casesSession = []struct {
 			"a=rtpmap:127 red/90000\r\n" +
 			"a=rtpmap:124 rtx/90000\r\n" +
 			"a=fmtp:124 apt=127\r\na=rtpmap:125 ulpfec/90000\r\n",
-		Session{
+		description.Session{
 			Title: ``,
-			Medias: []*Media{
+			Medias: []*description.Media{
 				{
 					ID:   "audio",
-					Type: MediaTypeAudio,
+					Type: description.MediaTypeAudio,
 					Formats: []format.Format{
 						&format.Opus{
 							PayloadTyp:   111,
@@ -379,7 +380,7 @@ var casesSession = []struct {
 				},
 				{
 					ID:   "video",
-					Type: MediaTypeVideo,
+					Type: description.MediaTypeVideo,
 					Formats: []format.Format{
 						&format.VP8{
 							PayloadTyp: 96,
@@ -461,11 +462,11 @@ var casesSession = []struct {
 			"a=fmtp:96 packetization-mode=1; profile-level-id=4D002A; " +
 			"sprop-parameter-sets=Z00AKp2oHgCJ+WbgICAgQA==,aO48gA==\r\n" +
 			"a=rtpmap:98 MetaData\r\n",
-		Session{
+		description.Session{
 			Title: `-`,
-			Medias: []*Media{
+			Medias: []*description.Media{
 				{
-					Type: MediaTypeVideo,
+					Type: description.MediaTypeVideo,
 					Formats: []format.Format{
 						&format.H264{
 							PayloadTyp: 96,
@@ -517,16 +518,16 @@ var casesSession = []struct {
 			"a=sendonly\r\n" +
 			"a=control:rtsp://192.168.0.1/audioback\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n",
-		Session{
+		description.Session{
 			Title: `RTSP Session with audiobackchannel`,
-			Medias: []*Media{
+			Medias: []*description.Media{
 				{
-					Type:    MediaTypeVideo,
+					Type:    description.MediaTypeVideo,
 					Control: "rtsp://192.168.0.1/video",
 					Formats: []format.Format{&format.MJPEG{}},
 				},
 				{
-					Type:    MediaTypeAudio,
+					Type:    description.MediaTypeAudio,
 					Control: "rtsp://192.168.0.1/audio",
 					Formats: []format.Format{&format.G711{
 						PayloadTyp:   0,
@@ -536,7 +537,7 @@ var casesSession = []struct {
 					}},
 				},
 				{
-					Type:          MediaTypeAudio,
+					Type:          description.MediaTypeAudio,
 					IsBackChannel: true,
 					Control:       "rtsp://192.168.0.1/audioback",
 					Formats: []format.Format{&format.G711{
@@ -591,16 +592,16 @@ var casesSession = []struct {
 			"a=mid:4\r\n" +
 			"a=control\r\n" +
 			"a=rtpmap:101 ulpfec/8000\r\n",
-		Session{
+		description.Session{
 			Title: "ULP FEC Seminar",
-			FECGroups: []SessionFECGroup{
+			FECGroups: []description.SessionFECGroup{
 				{"1", "2"},
 				{"3", "4"},
 			},
-			Medias: []*Media{
+			Medias: []*description.Media{
 				{
 					ID:   "1",
-					Type: MediaTypeAudio,
+					Type: description.MediaTypeAudio,
 					Formats: []format.Format{&format.G711{
 						PayloadTyp:   0,
 						MULaw:        true,
@@ -610,7 +611,7 @@ var casesSession = []struct {
 				},
 				{
 					ID:   "2",
-					Type: MediaTypeApplication,
+					Type: description.MediaTypeApplication,
 					Formats: []format.Format{&format.Generic{
 						PayloadTyp: 100,
 						RTPMa:      "ulpfec/8000",
@@ -619,7 +620,7 @@ var casesSession = []struct {
 				},
 				{
 					ID:   "3",
-					Type: MediaTypeVideo,
+					Type: description.MediaTypeVideo,
 					Formats: []format.Format{&format.Generic{
 						PayloadTyp: 31,
 						ClockRat:   90000,
@@ -627,7 +628,7 @@ var casesSession = []struct {
 				},
 				{
 					ID:   "4",
-					Type: MediaTypeApplication,
+					Type: description.MediaTypeApplication,
 					Formats: []format.Format{&format.Generic{
 						PayloadTyp: 101,
 						RTPMa:      "ulpfec/8000",
@@ -659,7 +660,7 @@ var casesSession = []struct {
 			"m=video 0 RTP/SAVP 96\r\n" +
 			"a=control:trackID=0\r\n" +
 			"a=rtpmap:96 H264/90000\r\n",
-		Session{
+		description.Session{
 			Title: "Action Movie",
 			KeyMgmtMikey: &mikey.Message{ //nolint:dupl
 				Header: mikey.Header{
@@ -719,7 +720,7 @@ var casesSession = []struct {
 					},
 				},
 			},
-			Medias: []*Media{
+			Medias: []*description.Media{
 				{
 					Type:    "video",
 					Control: "trackID=0",
@@ -753,9 +754,9 @@ var casesSession = []struct {
 			"A2+rNcBAAAAFQABAQEBEAIBAQMBCgcBAQgBAQoBAQAAACIAIAAeX8XvOCzIMh0JTOWivWLxEflTUSp1fjj2i8xG7D9DAA==\r\n" +
 			"a=control:trackID=0\r\n" +
 			"a=rtpmap:96 H264/90000\r\n",
-		Session{
+		description.Session{
 			Title: "Action Movie",
-			Medias: []*Media{
+			Medias: []*description.Media{
 				{
 					Type:    "video",
 					Control: "trackID=0",
@@ -854,9 +855,9 @@ var casesSession = []struct {
 			"a=rtpmap:96 H264/90000\r\n" +
 			"a=fmtp:96 packetization-mode=1; profile-level-id=4D4028; " +
 			"sprop-parameter-sets=Z01AKI2NQDwBE/LgLcBAQFAAAD6AAARlDoYAUVAABfXgu8uNDACioAAL68F3lwo=,aO44gA==\r\n",
-		Session{
+		description.Session{
 			Title: `Streamed by "IDS uEye Live RTSP Server"`,
-			Medias: []*Media{
+			Medias: []*description.Media{
 				{
 					Type:    "video",
 					Control: "rtsp://*****/video=video1",
@@ -927,9 +928,9 @@ var casesSession = []struct {
 			"a=control:meta\r\n" +
 			"a=rtpmap:98 vnd.onvif.metadata/90000\r\n" +
 			"a=recvonly\r\n",
-		Session{
+		description.Session{
 			Title: `L10013/video1 - ACES Server(SSDRTSPServer)`,
-			Medias: []*Media{
+			Medias: []*description.Media{
 				{
 					Type:    "video",
 					Control: "video",
@@ -983,7 +984,7 @@ func TestSessionUnmarshal(t *testing.T) {
 			sdp, err := sdpunmarshaler.Unmarshal([]byte(ca.in))
 			require.NoError(t, err)
 
-			var desc Session
+			var desc description.Session
 			err = desc.Unmarshal2(sdp)
 			require.NoError(t, err)
 			require.Equal(t, ca.desc, desc)
@@ -1011,8 +1012,8 @@ func TestSessionFindFormat(t *testing.T) {
 		ClockRat: 90000,
 	}
 
-	md := &Media{
-		Type: MediaTypeVideo,
+	md := &description.Media{
+		Type: description.MediaTypeVideo,
 		Formats: []format.Format{
 			&format.VP8{
 				PayloadTyp: 96,
@@ -1024,10 +1025,10 @@ func TestSessionFindFormat(t *testing.T) {
 		},
 	}
 
-	desc := &Session{
-		Medias: []*Media{
+	desc := &description.Session{
+		Medias: []*description.Media{
 			{
-				Type: MediaTypeAudio,
+				Type: description.MediaTypeAudio,
 				Formats: []format.Format{
 					&format.Opus{
 						PayloadTyp:   111,
@@ -1109,7 +1110,7 @@ func FuzzSessionUnmarshal(f *testing.F) {
 			return
 		}
 
-		var desc Session
+		var desc description.Session
 		err = desc.Unmarshal2(sd)
 		if err != nil {
 			return
