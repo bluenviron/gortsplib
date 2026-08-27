@@ -2117,12 +2117,12 @@ func (c *Client) doSetup(
 				return nil, err
 			}
 		} else {
-			var mikeyMsg *mikey.Message
-
 			// extract key-mgmt from (in order of priority):
-			// - response
-			// - media SDP attributes
-			// - session SDP attributes
+			// - response (MIKEY)
+			// - media SDP attributes (MIKEY)
+			// - media SDP attributes (SDES, RFC 4568 "a=crypto" — e.g. UniFi
+			//   Protect cameras)
+			// - session SDP attributes (MIKEY)
 			switch {
 			case res.Header["KeyMgmt"] != nil:
 				var keyMgmt headers.KeyMgmt
@@ -2130,21 +2130,32 @@ func (c *Client) doSetup(
 				if err != nil {
 					return nil, err
 				}
-				mikeyMsg = keyMgmt.MikeyMessage
+
+				srtpInCtx, err = mikeyToContext(keyMgmt.MikeyMessage)
+				if err != nil {
+					return nil, err
+				}
 
 			case medi.KeyMgmtMikey != nil:
-				mikeyMsg = medi.KeyMgmtMikey
+				srtpInCtx, err = mikeyToContext(medi.KeyMgmtMikey)
+				if err != nil {
+					return nil, err
+				}
+
+			case medi.KeyMgmtSDES != nil:
+				srtpInCtx, err = sdesToContext(medi.KeyMgmtSDES)
+				if err != nil {
+					return nil, err
+				}
 
 			case c.lastDescribeDesc.KeyMgmtMikey != nil:
-				mikeyMsg = c.lastDescribeDesc.KeyMgmtMikey
+				srtpInCtx, err = mikeyToContext(c.lastDescribeDesc.KeyMgmtMikey)
+				if err != nil {
+					return nil, err
+				}
 
 			default:
 				return nil, fmt.Errorf("server did not provide key-mgmt data in any supported way")
-			}
-
-			srtpInCtx, err = mikeyToContext(mikeyMsg)
-			if err != nil {
-				return nil, err
 			}
 		}
 	}

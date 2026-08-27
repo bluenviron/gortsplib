@@ -11,6 +11,7 @@ import (
 	"github.com/pion/rtp"
 	"github.com/pion/srtp/v3"
 
+	"github.com/bluenviron/gortsplib/v5/pkg/description"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
 	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
 )
@@ -107,6 +108,31 @@ func mikeyToContext(mikeyMsg *mikey.Message) (*wrappedSRTPContext, error) {
 		mki:       kemacPayload.SubPayloads[0].SPI,
 		ssrcs:     ssrcs,
 		startROCs: startROCs,
+	}
+	err := srtpCtx.initialize()
+	if err != nil {
+		return nil, err
+	}
+
+	return srtpCtx, nil
+}
+
+// sdesToContext converts an SDES (RFC 4568) "a=crypto" attribute, as parsed
+// by pkg/description, into a wrappedSRTPContext. Unlike mikeyToContext, SDES
+// carries no per-SSRC starting ROC or MKI in-band, so those are left at
+// their zero values — correct here, since we're attaching to a stream fresh
+// at SETUP time.
+func sdesToContext(sdes *description.KeyMgmtSDES) (*wrappedSRTPContext, error) {
+	if sdes.Suite != "AES_CM_128_HMAC_SHA1_80" {
+		return nil, fmt.Errorf("unsupported SDES crypto suite: %v", sdes.Suite)
+	}
+
+	if len(sdes.Key) != srtpKeyLength {
+		return nil, fmt.Errorf("unexpected SDES key size: %d", len(sdes.Key))
+	}
+
+	srtpCtx := &wrappedSRTPContext{
+		key: sdes.Key,
 	}
 	err := srtpCtx.initialize()
 	if err != nil {

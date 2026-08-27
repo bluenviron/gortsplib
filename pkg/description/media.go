@@ -85,6 +85,9 @@ type Media struct {
 	// key-mgmt attribute.
 	KeyMgmtMikey *mikey.Message
 
+	// crypto attribute (SDES, RFC 4568).
+	KeyMgmtSDES *KeyMgmtSDES
+
 	// Control attribute.
 	Control string
 
@@ -121,6 +124,14 @@ func (m *Media) Unmarshal(md *sdp.MediaDescription) error {
 
 		m.KeyMgmtMikey = &mikey.Message{}
 		err = m.KeyMgmtMikey.Unmarshal(enc2)
+		if err != nil {
+			return err
+		}
+	}
+
+	if enc := getAttribute(md.Attributes, "crypto"); enc != "" {
+		var err error
+		m.KeyMgmtSDES, err = unmarshalSDESCrypto(enc)
 		if err != nil {
 			return err
 		}

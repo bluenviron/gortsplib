@@ -1,6 +1,7 @@
 package description_test
 
 import (
+	"encoding/base64"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -161,6 +162,79 @@ func TestMediaURL(t *testing.T) {
 			ur, err := media.URL(ca.baseURL)
 			require.NoError(t, err)
 			require.Equal(t, ca.ur, ur)
+		})
+	}
+}
+
+func TestMediaKeyMgmtSDES(t *testing.T) {
+	// this exact inline key was captured from a real UniFi Protect camera's
+	// RTSPS ("?enableSrtp") DESCRIBE response.
+	const inlineKey = "5yQlV6XBpXYqEhsRoCs2OH+GujtAjltr3K6GPpyY"
+
+	expectedKey, err := base64.StdEncoding.DecodeString(inlineKey)
+	require.NoError(t, err)
+	require.Len(t, expectedKey, 30) // 16-byte master key + 14-byte master salt
+
+	sd, err := sdpunmarshaler.Unmarshal([]byte("v=0\r\n" +
+		"s= \r\n" +
+		"m=video 0 RTP/SAVP 96\r\n" +
+		"a=crypto:1 AES_CM_128_HMAC_SHA1_80 inline:" + inlineKey + "\r\n" +
+		"a=rtpmap:96 H264/90000\r\n"))
+	require.NoError(t, err)
+
+	var media description.Media
+	err = media.Unmarshal(sd.MediaDescriptions[0])
+	require.NoError(t, err)
+
+	require.Equal(t, &description.KeyMgmtSDES{
+		Tag:   1,
+		Suite: "AES_CM_128_HMAC_SHA1_80",
+		Key:   expectedKey,
+	}, media.KeyMgmtSDES)
+	require.Nil(t, media.KeyMgmtMikey)
+}
+
+func TestMediaKeyMgmtSDESErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		sdp  []byte
+		err  string
+	}{
+		{
+			"missing fields",
+			[]byte("v=0\r\n" +
+				"s= \r\n" +
+				"m=video 0 RTP/SAVP 96\r\n" +
+				"a=crypto:1 AES_CM_128_HMAC_SHA1_80\r\n" +
+				"a=rtpmap:96 H264/90000\r\n"),
+			"invalid crypto attribute: 1 AES_CM_128_HMAC_SHA1_80",
+		},
+		{
+			"non-inline key method",
+			[]byte("v=0\r\n" +
+				"s= \r\n" +
+				"m=video 0 RTP/SAVP 96\r\n" +
+				"a=crypto:1 AES_CM_128_HMAC_SHA1_80 mikey:AQAFgM0=\r\n" +
+				"a=rtpmap:96 H264/90000\r\n"),
+			"unsupported crypto key method: mikey:AQAFgM0=",
+		},
+		{
+			"invalid base64",
+			[]byte("v=0\r\n" +
+				"s= \r\n" +
+				"m=video 0 RTP/SAVP 96\r\n" +
+				"a=crypto:1 AES_CM_128_HMAC_SHA1_80 inline:not-valid-base64!!\r\n" +
+				"a=rtpmap:96 H264/90000\r\n"),
+			"invalid crypto inline key: illegal base64 data at input byte 3",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			sd, err := sdpunmarshaler.Unmarshal(ca.sdp)
+			require.NoError(t, err)
+
+			var media description.Media
+			err = media.Unmarshal(sd.MediaDescriptions[0])
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }
