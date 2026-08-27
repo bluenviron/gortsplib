@@ -1,4 +1,4 @@
-package headers
+package headers_test
 
 import (
 	"testing"
@@ -6,19 +6,20 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 )
 
 var casesSession = []struct {
 	name string
 	vin  base.HeaderValue
 	vout base.HeaderValue
-	h    Session
+	h    headers.Session
 }{
 	{
 		"base",
 		base.HeaderValue{`A3eqwsafq3rFASqew`},
 		base.HeaderValue{`A3eqwsafq3rFASqew`},
-		Session{
+		headers.Session{
 			Session: "A3eqwsafq3rFASqew",
 		},
 	},
@@ -26,7 +27,7 @@ var casesSession = []struct {
 		"with timeout",
 		base.HeaderValue{`A3eqwsafq3rFASqew;timeout=47`},
 		base.HeaderValue{`A3eqwsafq3rFASqew;timeout=47`},
-		Session{
+		headers.Session{
 			Session: "A3eqwsafq3rFASqew",
 			Timeout: new(uint(47)),
 		},
@@ -35,7 +36,7 @@ var casesSession = []struct {
 		"with timeout and space",
 		base.HeaderValue{`A3eqwsafq3rFASqew; timeout=47`},
 		base.HeaderValue{`A3eqwsafq3rFASqew;timeout=47`},
-		Session{
+		headers.Session{
 			Session: "A3eqwsafq3rFASqew",
 			Timeout: new(uint(47)),
 		},
@@ -45,7 +46,7 @@ var casesSession = []struct {
 func TestSessionUnmarshal(t *testing.T) {
 	for _, ca := range casesSession {
 		t.Run(ca.name, func(t *testing.T) {
-			var h Session
+			var h headers.Session
 			err := h.Unmarshal(ca.vin)
 			require.NoError(t, err)
 			require.Equal(t, ca.h, h)
@@ -70,7 +71,7 @@ func FuzzSessionUnmarshal(f *testing.F) {
 	f.Add("timeout=")
 
 	f.Fuzz(func(_ *testing.T, b string) {
-		var h Session
+		var h headers.Session
 		err := h.Unmarshal(base.HeaderValue{b})
 		if err != nil {
 			return
@@ -82,13 +83,13 @@ func FuzzSessionUnmarshal(f *testing.F) {
 
 func TestSessionAdditionalErrors(t *testing.T) {
 	func() {
-		var h Session
+		var h headers.Session
 		err := h.Unmarshal(base.HeaderValue{})
 		require.Error(t, err)
 	}()
 
 	func() {
-		var h Session
+		var h headers.Session
 		err := h.Unmarshal(base.HeaderValue{"a", "b"})
 		require.Error(t, err)
 	}()

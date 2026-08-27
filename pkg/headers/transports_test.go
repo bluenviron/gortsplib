@@ -1,4 +1,4 @@
-package headers
+package headers_test
 
 import (
 	"testing"
@@ -6,28 +6,29 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 )
 
 var casesTransports = []struct {
 	name string
 	vin  base.HeaderValue
 	vout base.HeaderValue
-	h    Transports
+	h    headers.Transports
 }{
 	{
 		"a",
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode="PLAY", RTP/AVP/TCP;unicast;interleaved=0-1`},
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode=play,RTP/AVP/TCP;unicast;interleaved=0-1`},
-		Transports{
+		headers.Transports{
 			{
-				Protocol:    TransportProtocolUDP,
-				Delivery:    new(TransportDeliveryUnicast),
+				Protocol:    headers.TransportProtocolUDP,
+				Delivery:    new(headers.TransportDeliveryUnicast),
 				ClientPorts: &[2]int{3456, 3457},
-				Mode:        new(TransportModePlay),
+				Mode:        new(headers.TransportModePlay),
 			},
-			Transport{
-				Protocol:       TransportProtocolTCP,
-				Delivery:       new(TransportDeliveryUnicast),
+			headers.Transport{
+				Protocol:       headers.TransportProtocolTCP,
+				Delivery:       new(headers.TransportDeliveryUnicast),
 				InterleavedIDs: &[2]int{0, 1},
 			},
 		},
@@ -37,7 +38,7 @@ var casesTransports = []struct {
 func TestTransportsUnmarshal(t *testing.T) {
 	for _, ca := range casesTransports {
 		t.Run(ca.name, func(t *testing.T) {
-			var h Transports
+			var h headers.Transports
 			err := h.Unmarshal(ca.vin)
 			require.NoError(t, err)
 			require.Equal(t, ca.h, h)
@@ -73,7 +74,7 @@ func FuzzTransportsUnmarshal(f *testing.F) {
 	f.Add("mode=")
 
 	f.Fuzz(func(_ *testing.T, b string) {
-		var h Transports
+		var h headers.Transports
 		err := h.Unmarshal(base.HeaderValue{b})
 		if err != nil {
 			return
@@ -85,13 +86,13 @@ func FuzzTransportsUnmarshal(f *testing.F) {
 
 func TestTransportsAdditionalErrors(t *testing.T) {
 	func() {
-		var h Transports
+		var h headers.Transports
 		err := h.Unmarshal(base.HeaderValue{})
 		require.Error(t, err)
 	}()
 
 	func() {
-		var h Transports
+		var h headers.Transports
 		err := h.Unmarshal(base.HeaderValue{"a", "b"})
 		require.Error(t, err)
 	}()
