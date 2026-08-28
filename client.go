@@ -2106,8 +2106,38 @@ func (c *Client) doSetup(
 		return nil, fmt.Errorf("returned profile does not match requested profile")
 	}
 
-	if isSecure(th.Profile) {
-		if c.axisClientManagedKeys {
+	// Some servers (observed on UniFi Protect cameras) advertise SDES key
+	// material ("a=crypto") for a media while still labeling its "m=" line
+	// as plain (non-secure) AVP rather than SAVP, and consequently never
+	// negotiate a secure transport profile at all. Since inbound decryption
+	// is a purely client-side decision — the server sends SRTP-encrypted
+	// bytes over the wire regardless of which profile label was
+	// negotiated — key material being present at the SDP level is treated
+	// as sufficient reason to decrypt, independent of th.Profile.
+	//
+	// This only applies when playing (reading from a server): medi's
+	// KeyMgmtMikey/KeyMgmtSDES fields are always freshly parsed from that
+	// server's own DESCRIBE response in that case. When recording
+	// (c.state == clientStatePreRecord), medi is instead a caller-supplied,
+	// potentially reused Media — and prepareForAnnounce() sets
+	// KeyMgmtMikey on it as a side effect of describing our own outbound
+	// key, which says nothing about whether the *inbound* direction (e.g.
+	// backchannel) is actually secured. Fall back to th.Profile alone there.
+	inboundSecure := isSecure(th.Profile) ||
+		(c.state != clientStatePreRecord && (medi.KeyMgmtMikey != nil || medi.KeyMgmtSDES != nil))
+
+	if inboundSecure {
+		// extract key-mgmt from (in order of priority):
+		// - the Axis client-managed-keys fallback (only ever reachable together
+		//   with a genuinely negotiated secure profile, since it reuses the
+		//   outbound context built for that case)
+		// - response (MIKEY)
+		// - media SDP attributes (MIKEY)
+		// - media SDP attributes (SDES, RFC 4568 "a=crypto" — e.g. UniFi
+		//   Protect cameras)
+		// - session SDP attributes (MIKEY)
+		switch {
+		case c.axisClientManagedKeys && isSecure(th.Profile):
 			srtpInCtx = &wrappedSRTPContext{
 				key: srtpOutCtx.key,
 				mki: srtpOutCtx.mki,
@@ -2116,54 +2146,46 @@ func (c *Client) doSetup(
 			if err != nil {
 				return nil, err
 			}
-		} else {
-			// extract key-mgmt from (in order of priority):
-			// - response (MIKEY)
-			// - media SDP attributes (MIKEY)
-			// - media SDP attributes (SDES, RFC 4568 "a=crypto" — e.g. UniFi
-			//   Protect cameras)
-			// - session SDP attributes (MIKEY)
-			switch {
-			case res.Header["KeyMgmt"] != nil:
-				var keyMgmt headers.KeyMgmt
-				err = keyMgmt.Unmarshal(res.Header["KeyMgmt"])
-				if err != nil {
-					return nil, err
-				}
 
-				srtpInCtx, err = mikeyToContext(keyMgmt.MikeyMessage)
-				if err != nil {
-					return nil, err
-				}
-
-			case medi.KeyMgmtMikey != nil:
-				srtpInCtx, err = mikeyToContext(medi.KeyMgmtMikey)
-				if err != nil {
-					return nil, err
-				}
-
-			case medi.KeyMgmtSDES != nil:
-				srtpInCtx, err = sdesToContext(medi.KeyMgmtSDES)
-				if err != nil {
-					return nil, err
-				}
-
-			case c.lastDescribeDesc.KeyMgmtMikey != nil:
-				srtpInCtx, err = mikeyToContext(c.lastDescribeDesc.KeyMgmtMikey)
-				if err != nil {
-					return nil, err
-				}
-
-			default:
-				return nil, fmt.Errorf("server did not provide key-mgmt data in any supported way")
+		case res.Header["KeyMgmt"] != nil:
+			var keyMgmt headers.KeyMgmt
+			err = keyMgmt.Unmarshal(res.Header["KeyMgmt"])
+			if err != nil {
+				return nil, err
 			}
+
+			srtpInCtx, err = mikeyToContext(keyMgmt.MikeyMessage)
+			if err != nil {
+				return nil, err
+			}
+
+		case medi.KeyMgmtMikey != nil:
+			srtpInCtx, err = mikeyToContext(medi.KeyMgmtMikey)
+			if err != nil {
+				return nil, err
+			}
+
+		case medi.KeyMgmtSDES != nil:
+			srtpInCtx, err = sdesToContext(medi.KeyMgmtSDES)
+			if err != nil {
+				return nil, err
+			}
+
+		case c.lastDescribeDesc.KeyMgmtMikey != nil:
+			srtpInCtx, err = mikeyToContext(c.lastDescribeDesc.KeyMgmtMikey)
+			if err != nil {
+				return nil, err
+			}
+
+		default:
+			return nil, fmt.Errorf("server did not provide key-mgmt data in any supported way")
 		}
 	}
 
 	cm := &clientMedia{
 		c:               c,
 		media:           medi,
-		secure:          isSecure(th.Profile),
+		secure:          inboundSecure,
 		udpRTPListener:  udpRTPListener,
 		udpRTCPListener: udpRTCPListener,
 		tcpChannel:      tcpChannel,
