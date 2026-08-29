@@ -139,7 +139,8 @@ func (e *Encoder) writeFragmented(au []byte, timestamp uint32) ([]*rtp.Packet, e
 	}
 
 	avail := e.PayloadMaxSize - 2 - auHeadersLenBytes
-	le := len(au)
+	auSize := len(au)
+	le := auSize
 	packetCount := packetCount(avail, le)
 
 	ret := make([]*rtp.Packet, packetCount)
@@ -158,7 +159,7 @@ func (e *Encoder) writeFragmented(au []byte, timestamp uint32) ([]*rtp.Packet, e
 
 		// AU-headers
 		pos := 0
-		bits.WriteBitsUnsafe(payload[2:], &pos, uint64(le), e.SizeLength)
+		bits.WriteBitsUnsafe(payload[2:], &pos, uint64(auSize), e.SizeLength)
 		bits.WriteBitsUnsafe(payload[2:], &pos, 0, e.IndexLength)
 
 		// AU

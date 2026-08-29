@@ -21,6 +21,74 @@ func joinFragments(fragments [][]byte, size int) []byte {
 	return ret
 }
 
+func readAUHeaders(
+	buf []byte,
+	headersLen int,
+	sizeLength int,
+	indexLength int,
+	indexDeltaLength int,
+) ([]uint64, error) {
+	firstHeaderLen := sizeLength + indexLength
+	otherHeaderLen := sizeLength + indexDeltaLength
+
+	if headersLen < firstHeaderLen {
+		return nil, fmt.Errorf("invalid AU-headers-length")
+	}
+
+	count := 1
+	remaining := headersLen - firstHeaderLen
+	for remaining > 0 {
+		if remaining < otherHeaderLen {
+			return nil, fmt.Errorf("invalid AU-headers-length")
+		}
+
+		remaining -= otherHeaderLen
+		count++
+	}
+
+	dataLens := make([]uint64, count)
+	pos := 0
+
+	for i := range dataLens {
+		dataLen, err := bits.ReadBits(buf, &pos, sizeLength)
+		if err != nil {
+			return nil, err
+		}
+
+		if dataLen == 0 {
+			return nil, fmt.Errorf("invalid data length")
+		}
+
+		if i == 0 {
+			if indexLength > 0 {
+				var auIndex uint64
+				auIndex, err = bits.ReadBits(buf, &pos, indexLength)
+				if err != nil {
+					return nil, err
+				}
+
+				if auIndex != 0 {
+					return nil, fmt.Errorf("AU-index different than zero is not supported")
+				}
+			}
+		} else if indexDeltaLength > 0 {
+			var auIndexDelta uint64
+			auIndexDelta, err = bits.ReadBits(buf, &pos, indexDeltaLength)
+			if err != nil {
+				return nil, err
+			}
+
+			if auIndexDelta != 0 {
+				return nil, fmt.Errorf("AU-index-delta different than zero is not supported")
+			}
+		}
+
+		dataLens[i] = dataLen
+	}
+
+	return dataLens, nil
+}
+
 // Decoder is a RTP/MPEG-4 Audio decoder.
 // Specification: RFC3640
 type Decoder struct {
@@ -37,17 +105,26 @@ type Decoder struct {
 	adtsMode           bool
 	fragments          [][]byte
 	fragmentsSize      int
+	fragmentAUSize     int
 	fragmentNextSeqNum uint16
+	fragmentTimestamp  uint32
 }
 
 // Init initializes the decoder.
 func (d *Decoder) Init() error {
+	if d.SizeLength == 0 {
+		return fmt.Errorf("invalid AU-size length")
+	}
+
 	return nil
 }
 
 func (d *Decoder) resetFragments() {
 	d.fragments = d.fragments[:0]
 	d.fragmentsSize = 0
+	d.fragmentAUSize = 0
+	d.fragmentNextSeqNum = 0
+	d.fragmentTimestamp = 0
 }
 
 // Decode decodes access units from a RTP packet.
@@ -66,25 +143,28 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	payload := pkt.Payload[2:]
 
 	// AU-headers
-	dataLens, err := d.readAUHeaders(payload, headersLen)
+	dataLens, err := readAUHeaders(payload, headersLen, d.SizeLength, d.IndexLength, d.IndexDeltaLength)
 	if err != nil {
 		d.resetFragments()
 		return nil, err
 	}
 
-	pos := (headersLen / 8)
+	pos := headersLen / 8
 	if (headersLen % 8) != 0 {
 		pos++
+	}
+	if len(payload) < pos {
+		d.resetFragments()
+		return nil, fmt.Errorf("payload is too short")
 	}
 	payload = payload[pos:]
 
 	var aus [][]byte
 
-	if d.fragmentsSize == 0 {
+	if d.fragmentAUSize == 0 {
 		d.resetFragments()
 
 		if pkt.Marker {
-			// AUs
 			aus = make([][]byte, len(dataLens))
 			for i, dataLen := range dataLens {
 				if len(payload) < int(dataLen) {
@@ -94,18 +174,30 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 				aus[i] = payload[:dataLen]
 				payload = payload[dataLen:]
 			}
+
+			if len(payload) != 0 {
+				return nil, fmt.Errorf("payload has invalid size")
+			}
 		} else {
 			if len(dataLens) != 1 {
 				return nil, fmt.Errorf("a fragmented packet can only contain one AU")
 			}
 
-			if len(payload) < int(dataLens[0]) {
-				return nil, fmt.Errorf("payload is too short")
+			auSize := int(dataLens[0])
+			if auSize > mpeg4audio.MaxAccessUnitSize {
+				return nil, fmt.Errorf("access unit size (%d) is too big, maximum is %d",
+					auSize, mpeg4audio.MaxAccessUnitSize)
 			}
 
-			d.fragmentsSize = int(dataLens[0])
-			d.fragments = append(d.fragments, payload[:dataLens[0]])
+			if len(payload) == 0 || len(payload) >= auSize {
+				return nil, fmt.Errorf("invalid fragmented access unit")
+			}
+
+			d.fragmentsSize = len(payload)
+			d.fragmentAUSize = auSize
+			d.fragments = append(d.fragments, payload)
 			d.fragmentNextSeqNum = pkt.SequenceNumber + 1
+			d.fragmentTimestamp = pkt.Timestamp
 			return nil, ErrMorePacketsNeeded
 		}
 	} else {
@@ -115,9 +207,9 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 			return nil, fmt.Errorf("a fragmented packet can only contain one AU")
 		}
 
-		if len(payload) < int(dataLens[0]) {
+		if int(dataLens[0]) != d.fragmentAUSize {
 			d.resetFragments()
-			return nil, fmt.Errorf("payload is too short")
+			return nil, fmt.Errorf("AU size differs from previous fragment")
 		}
 
 		if pkt.SequenceNumber != d.fragmentNextSeqNum {
@@ -125,20 +217,32 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 			return nil, fmt.Errorf("discarding frame since a RTP packet is missing")
 		}
 
-		d.fragmentsSize += int(dataLens[0])
-
-		if d.fragmentsSize > mpeg4audio.MaxAccessUnitSize {
-			errSize := d.fragmentsSize
+		if pkt.Timestamp != d.fragmentTimestamp {
 			d.resetFragments()
-			return nil, fmt.Errorf("access unit size (%d) is too big, maximum is %d",
-				errSize, mpeg4audio.MaxAccessUnitSize)
+			return nil, fmt.Errorf("RTP timestamp differs from previous fragment")
 		}
 
-		d.fragments = append(d.fragments, payload[:dataLens[0]])
+		d.fragmentsSize += len(payload)
+		if d.fragmentsSize > d.fragmentAUSize {
+			d.resetFragments()
+			return nil, fmt.Errorf("access unit size exceeds declared size")
+		}
+
+		d.fragments = append(d.fragments, payload)
 		d.fragmentNextSeqNum++
 
 		if !pkt.Marker {
+			if d.fragmentsSize == d.fragmentAUSize {
+				d.resetFragments()
+				return nil, fmt.Errorf("invalid fragmented access unit")
+			}
+
 			return nil, ErrMorePacketsNeeded
+		}
+
+		if d.fragmentsSize != d.fragmentAUSize {
+			d.resetFragments()
+			return nil, fmt.Errorf("access unit size does not match declared size")
 		}
 
 		aus = [][]byte{joinFragments(d.fragments, d.fragmentsSize)}
@@ -146,71 +250,6 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	}
 
 	return d.removeADTS(aus)
-}
-
-func (d *Decoder) readAUHeaders(buf []byte, headersLen int) ([]uint64, error) {
-	firstRead := false
-
-	count := 0
-	for i := 0; i < headersLen; {
-		if i == 0 {
-			i += d.SizeLength
-			i += d.IndexLength
-		} else {
-			i += d.SizeLength
-			i += d.IndexDeltaLength
-		}
-		count++
-	}
-
-	dataLens := make([]uint64, count)
-
-	pos := 0
-	i := 0
-
-	for headersLen > 0 {
-		dataLen, err := bits.ReadBits(buf, &pos, d.SizeLength)
-		if err != nil {
-			return nil, err
-		}
-		headersLen -= d.SizeLength
-
-		if dataLen == 0 {
-			return nil, fmt.Errorf("invalid data length")
-		}
-
-		if !firstRead {
-			firstRead = true
-			if d.IndexLength > 0 {
-				var auIndex uint64
-				auIndex, err = bits.ReadBits(buf, &pos, d.IndexLength)
-				if err != nil {
-					return nil, err
-				}
-				headersLen -= d.IndexLength
-
-				if auIndex != 0 {
-					return nil, fmt.Errorf("AU-index different than zero is not supported")
-				}
-			}
-		} else if d.IndexDeltaLength > 0 {
-			var auIndexDelta uint64
-			auIndexDelta, err = bits.ReadBits(buf, &pos, d.IndexDeltaLength)
-			if err != nil {
-				return nil, err
-			}
-			headersLen -= d.IndexDeltaLength
-
-			if auIndexDelta != 0 {
-				return nil, fmt.Errorf("AU-index-delta different than zero is not supported")
-			}
-		}
-
-		dataLens[i] = dataLen
-		i++
-	}
-
-	return dataLens, nil
 }
 
 // some cameras wrap AUs into ADTS

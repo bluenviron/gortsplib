@@ -45,6 +45,42 @@ func TestDecode(t *testing.T) {
 	}
 }
 
+func TestDecodeFragmented(t *testing.T) {
+	d := &Decoder{
+		SizeLength:       13,
+		IndexLength:      3,
+		IndexDeltaLength: 3,
+	}
+	err := d.Init()
+	require.NoError(t, err)
+
+	_, err = d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			PayloadType:    96,
+			SequenceNumber: 100,
+			Timestamp:      90000,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: []byte{0x00, 0x10, 0x00, 0x50, 0, 1, 2, 3},
+	})
+	require.Equal(t, ErrMorePacketsNeeded, err)
+
+	aus, err := d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 101,
+			Timestamp:      90000,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: []byte{0x00, 0x10, 0x00, 0x50, 4, 5, 6, 7, 8, 9},
+	})
+	require.NoError(t, err)
+	require.Equal(t, [][]byte{{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}}, aus)
+}
+
 func TestDecodeADTS(t *testing.T) {
 	d := &Decoder{
 		SizeLength:       13,
@@ -92,7 +128,7 @@ func TestDecodeErrorMissingPacket(t *testing.T) {
 			SSRC:           0x9dbb7812,
 		},
 		Payload: mergeBytes(
-			[]byte{0x0, 0x10, 0x2d, 0x80},
+			[]byte{0x0, 0x10, 0x3b, 0x00},
 			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
 		),
 	})
@@ -107,11 +143,40 @@ func TestDecodeErrorMissingPacket(t *testing.T) {
 			SSRC:           0x9dbb7812,
 		},
 		Payload: mergeBytes(
-			[]byte{0x00, 0x10, 0x2d, 0x80},
+			[]byte{0x00, 0x10, 0x3b, 0x00},
 			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
 		),
 	})
 	require.EqualError(t, err, "discarding frame since a RTP packet is missing")
+}
+
+func TestDecodeErrorCompletePacketTrailingData(t *testing.T) {
+	d := &Decoder{
+		SizeLength:       13,
+		IndexLength:      3,
+		IndexDeltaLength: 3,
+	}
+	err := d.Init()
+	require.NoError(t, err)
+
+	_, err = d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 100,
+			Timestamp:      90000,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: []byte{0x00, 0x10, 0x00, 0x20, 0, 1, 2, 3, 4},
+	})
+	require.EqualError(t, err, "payload has invalid size")
+}
+
+func TestDecodeInit(t *testing.T) {
+	d := &Decoder{}
+	err := d.Init()
+	require.EqualError(t, err, "invalid AU-size length")
 }
 
 func serializePackets(packets []*rtp.Packet) ([]byte, error) {
