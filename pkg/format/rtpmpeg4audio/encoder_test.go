@@ -42,6 +42,7 @@ var cases = []struct {
 	sizeLength       int
 	indexLength      int
 	indexDeltaLength int
+	payloadMaxSize   int
 	aus              [][]byte
 	pkts             []*rtp.Packet
 }{
@@ -50,6 +51,7 @@ var cases = []struct {
 		13,
 		3,
 		3,
+		1000,
 		[][]byte{
 			{
 				0x21, 0x1a, 0xd4, 0xf5, 0x9e, 0x20, 0xc5, 0x42,
@@ -162,6 +164,7 @@ var cases = []struct {
 		13,
 		3,
 		3,
+		1000,
 		[][]byte{
 			{0x00, 0x01, 0x02, 0x03},
 			{0x04, 0x05, 0x06, 0x07},
@@ -189,6 +192,7 @@ var cases = []struct {
 		13,
 		3,
 		3,
+		1000,
 		[][]byte{
 			bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 187),
 		},
@@ -202,7 +206,7 @@ var cases = []struct {
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x0, 0x10, 0x1f, 0x20},
+					[]byte{0x0, 0x10, 0x2e, 0xc0},
 					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 124),
 					[]byte{0, 1, 2, 3},
 				),
@@ -216,7 +220,7 @@ var cases = []struct {
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x00, 0x10, 0x0f, 0xa0},
+					[]byte{0x00, 0x10, 0x2e, 0xc0},
 					[]byte{4, 5, 6, 7},
 					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 62),
 				),
@@ -224,11 +228,12 @@ var cases = []struct {
 		},
 	},
 	{
-		"fragmented to the limit",
+		"fragmented, payload max size",
 		13,
 		3,
 		3,
-		[][]byte{bytes.Repeat([]byte{1}, 1992)},
+		688,
+		[][]byte{bytes.Repeat([]byte{0x01}, 685)},
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -239,8 +244,8 @@ var cases = []struct {
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x0, 0x10, 0x1f, 0x20},
-					bytes.Repeat([]byte{1}, 996),
+					[]byte{0x00, 0x10, 0x15, 0x68},
+					bytes.Repeat([]byte{0x01}, 684),
 				),
 			},
 			{
@@ -251,10 +256,7 @@ var cases = []struct {
 					SequenceNumber: 17646,
 					SSRC:           0x9dbb7812,
 				},
-				Payload: mergeBytes(
-					[]byte{0x0, 0x10, 0x1f, 0x20},
-					bytes.Repeat([]byte{1}, 996),
-				),
+				Payload: []byte{0x00, 0x10, 0x15, 0x68, 0x01},
 			},
 		},
 	},
@@ -263,6 +265,7 @@ var cases = []struct {
 		13,
 		3,
 		3,
+		1000,
 		[][]byte{
 			{0x00, 0x01, 0x02, 0x03},
 			{0x04, 0x05, 0x06, 0x07},
@@ -294,7 +297,7 @@ var cases = []struct {
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x0, 0x10, 0x1f, 0x20},
+					[]byte{0x0, 0x10, 0x2e, 0xc0},
 					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 124),
 					[]byte{0, 1, 2, 3},
 				),
@@ -309,7 +312,7 @@ var cases = []struct {
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x00, 0x10, 0x0f, 0xa0},
+					[]byte{0x00, 0x10, 0x2e, 0xc0},
 					[]byte{4, 5, 6, 7},
 					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 62),
 				),
@@ -321,6 +324,7 @@ var cases = []struct {
 		6,
 		2,
 		2,
+		1000,
 		[][]byte{
 			{0x01, 0x02, 0x03, 0x04},
 		},
@@ -345,6 +349,7 @@ var cases = []struct {
 		13,
 		0,
 		0,
+		1000,
 		[][]byte{
 			{0x01, 0x02, 0x03, 0x04},
 		},
@@ -369,6 +374,7 @@ var cases = []struct {
 		13,
 		0,
 		0,
+		1000,
 		[][]byte{
 			{0x01, 0x02, 0x03, 0x04},
 			{0x05, 0x06, 0x07, 0x08},
@@ -395,6 +401,7 @@ var cases = []struct {
 		21,
 		3,
 		3,
+		1000,
 		[][]byte{
 			bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 187),
 		},
@@ -408,7 +415,7 @@ var cases = []struct {
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x0, 0x18, 0x00, 0x1f, 0x18},
+					[]byte{0x0, 0x18, 0x00, 0x2e, 0xc0},
 					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 124),
 					[]byte{0, 1, 2},
 				),
@@ -422,7 +429,7 @@ var cases = []struct {
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x00, 0x18, 0x00, 0x0f, 0xa8},
+					[]byte{0x00, 0x18, 0x00, 0x2e, 0xc0},
 					[]byte{3, 4, 5, 6, 7},
 					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 62),
 				),
@@ -434,6 +441,7 @@ var cases = []struct {
 		13,
 		0,
 		0,
+		1000,
 		[][]byte{
 			bytes.Repeat([]byte{0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}, 187),
 		},
@@ -447,7 +455,7 @@ var cases = []struct {
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x0, 0x0d, 0x1f, 0x20},
+					[]byte{0x0, 0x0d, 0x2e, 0xc0},
 					bytes.Repeat([]byte{0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}, 124),
 					[]byte{0x08, 0x09, 0x0A, 0x0B},
 				),
@@ -461,7 +469,7 @@ var cases = []struct {
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x0, 0x0d, 0x0f, 0xa0},
+					[]byte{0x0, 0x0d, 0x2e, 0xc0},
 					[]byte{0x0C, 0x0D, 0x0E, 0x0F},
 					bytes.Repeat([]byte{0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}, 62),
 				),
@@ -480,7 +488,7 @@ func TestEncode(t *testing.T) {
 				SizeLength:            ca.sizeLength,
 				IndexLength:           ca.indexLength,
 				IndexDeltaLength:      ca.indexDeltaLength,
-				PayloadMaxSize:        1000,
+				PayloadMaxSize:        ca.payloadMaxSize,
 			}
 			err := e.Init()
 			require.NoError(t, err)
