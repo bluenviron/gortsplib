@@ -1,4 +1,5 @@
-package description
+// Package sdes contains a SDES (RFC 4568) key-exchange decoder.
+package sdes
 
 import (
 	"encoding/base64"
@@ -7,14 +8,14 @@ import (
 	"strings"
 )
 
-// KeyMgmtSDES holds a parsed SDES (RFC 4568) "a=crypto" media attribute.
+// SDES holds a parsed SDES (RFC 4568) "a=crypto" media attribute.
 //
 // This is a separate, independent key-exchange mechanism from MIKEY
-// (RFC 3830, see KeyMgmtMikey): SDES embeds the key material directly,
+// (RFC 3830, see the mikey package): SDES embeds the key material directly,
 // inline, in the SDP itself, rather than negotiating it via a MIKEY
 // message. It's what UniFi Protect cameras use for their "?enableSrtp"
 // RTSPS streams.
-type KeyMgmtSDES struct {
+type SDES struct {
 	// Tag is the crypto suite tag from the SDP line (used to correlate a
 	// crypto line with a SETUP response in more elaborate negotiations;
 	// not security-relevant on its own).
@@ -25,11 +26,11 @@ type KeyMgmtSDES struct {
 
 	// Key is the raw, still-encoded-for-policy master key + master salt,
 	// decoded from the "inline" key parameter. Its expected length and
-	// interpretation depend on Suite (see sdesToContext).
+	// interpretation depend on Suite.
 	Key []byte
 }
 
-// unmarshalSDESCrypto parses the value of an SDP "a=crypto" attribute, e.g.:
+// Unmarshal decodes the value of an SDP "a=crypto" attribute, e.g.:
 //
 //	1 AES_CM_128_HMAC_SHA1_80 inline:5yQlV6XBpXYqEhsRoCs2OH+GujtAjltr3K6GPpyY
 //
@@ -43,25 +44,25 @@ type KeyMgmtSDES struct {
 //
 // This only extracts the tag, suite name, and decoded key material — it
 // deliberately does not validate the suite or key length here, matching how
-// the "key-mgmt" (MIKEY) attribute is handled just above: structural
-// decoding happens during SDP unmarshal, and policy/suite validation
-// happens later, when the key is turned into a wrappedSRTPContext.
-func unmarshalSDESCrypto(v string) (*KeyMgmtSDES, error) {
+// the "key-mgmt" (MIKEY) attribute is handled: structural decoding happens
+// during SDP unmarshal, and policy/suite validation happens later, when the
+// key is turned into a SRTP context.
+func (s *SDES) Unmarshal(v string) error {
 	fields := strings.Fields(v)
 	if len(fields) < 3 {
-		return nil, fmt.Errorf("invalid crypto attribute: %v", v)
+		return fmt.Errorf("invalid crypto attribute: %v", v)
 	}
 
 	tag, err := strconv.Atoi(fields[0])
 	if err != nil {
-		return nil, fmt.Errorf("invalid crypto tag: %v", fields[0])
+		return fmt.Errorf("invalid crypto tag: %v", fields[0])
 	}
 
 	suite := fields[1]
 
 	const inlinePrefix = "inline:"
 	if !strings.HasPrefix(fields[2], inlinePrefix) {
-		return nil, fmt.Errorf("unsupported crypto key method: %v", fields[2])
+		return fmt.Errorf("unsupported crypto key method: %v", fields[2])
 	}
 
 	// the key parameter is <base64>[|<lifetime>][|<mki>:<length>];
@@ -71,12 +72,12 @@ func unmarshalSDESCrypto(v string) (*KeyMgmtSDES, error) {
 
 	key, err := base64.StdEncoding.DecodeString(rawKey)
 	if err != nil {
-		return nil, fmt.Errorf("invalid crypto inline key: %w", err)
+		return fmt.Errorf("invalid crypto inline key: %w", err)
 	}
 
-	return &KeyMgmtSDES{
-		Tag:   tag,
-		Suite: suite,
-		Key:   key,
-	}, nil
+	s.Tag = tag
+	s.Suite = suite
+	s.Key = key
+
+	return nil
 }

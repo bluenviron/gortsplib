@@ -156,6 +156,7 @@ In RTSP, media streams are transmitted by using RTP packets, which are encoded i
 |[RFC8866, SDP: Session Description Protocol](https://datatracker.ietf.org/doc/html/rfc8866)|SDP|
 |[RFC4567, Key Management Extensions for Session Description Protocol (SDP) and Real Time Streaming Protocol (RTSP)](https://datatracker.ietf.org/doc/html/rfc4567)|secure variants|
 |[RFC3830, MIKEY: Multimedia Internet KEYing](https://datatracker.ietf.org/doc/html/rfc3830)|secure variants|
+|[RFC4568, SDP Security Descriptions for Media Streams](https://datatracker.ietf.org/doc/html/rfc4568)|secure variants|
 |[RTP Payload Format For AV1 (v1.0)](https://aomediacodec.github.io/av1-rtp-spec/)|payload formats / AV1|
 |[RFC9628, RTP Payload Format for VP9 Video](https://datatracker.ietf.org/doc/html/rfc9628)|payload formats / VP9|
 |[RFC7741, RTP Payload Format for VP8 Video](https://datatracker.ietf.org/doc/html/rfc7741)|payload formats / VP8|

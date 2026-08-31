@@ -11,9 +11,9 @@ import (
 	"github.com/pion/rtp"
 	"github.com/pion/srtp/v3"
 
-	"github.com/bluenviron/gortsplib/v5/pkg/description"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
 	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
+	"github.com/bluenviron/gortsplib/v5/pkg/sdes"
 )
 
 func mikeyGetPayload[T mikey.Payload](mikeyMsg *mikey.Message) (T, bool) {
@@ -118,21 +118,21 @@ func mikeyToContext(mikeyMsg *mikey.Message) (*wrappedSRTPContext, error) {
 }
 
 // sdesToContext converts an SDES (RFC 4568) "a=crypto" attribute, as parsed
-// by pkg/description, into a wrappedSRTPContext. Unlike mikeyToContext, SDES
+// by pkg/sdes, into a wrappedSRTPContext. Unlike mikeyToContext, SDES
 // carries no per-SSRC starting ROC or MKI in-band, so those are left at
 // their zero values — correct here, since we're attaching to a stream fresh
 // at SETUP time.
-func sdesToContext(sdes *description.KeyMgmtSDES) (*wrappedSRTPContext, error) {
-	if sdes.Suite != "AES_CM_128_HMAC_SHA1_80" {
-		return nil, fmt.Errorf("unsupported SDES crypto suite: %v", sdes.Suite)
+func sdesToContext(sd *sdes.SDES) (*wrappedSRTPContext, error) {
+	if sd.Suite != "AES_CM_128_HMAC_SHA1_80" {
+		return nil, fmt.Errorf("unsupported SDES crypto suite: %v", sd.Suite)
 	}
 
-	if len(sdes.Key) != srtpKeyLength {
-		return nil, fmt.Errorf("unexpected SDES key size: %d", len(sdes.Key))
+	if len(sd.Key) != srtpKeyLength {
+		return nil, fmt.Errorf("unexpected SDES key size: %d", len(sd.Key))
 	}
 
 	srtpCtx := &wrappedSRTPContext{
-		key: sdes.Key,
+		key: sd.Key,
 	}
 	err := srtpCtx.initialize()
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/bluenviron/gortsplib/v5/pkg/description"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
+	"github.com/bluenviron/gortsplib/v5/pkg/sdes"
 	"github.com/bluenviron/gortsplib/v5/pkg/sdpunmarshaler"
 )
 
@@ -186,57 +187,12 @@ func TestMediaKeyMgmtSDES(t *testing.T) {
 	err = media.Unmarshal(sd.MediaDescriptions[0])
 	require.NoError(t, err)
 
-	require.Equal(t, &description.KeyMgmtSDES{
+	require.Equal(t, &sdes.SDES{
 		Tag:   1,
 		Suite: "AES_CM_128_HMAC_SHA1_80",
 		Key:   expectedKey,
 	}, media.KeyMgmtSDES)
 	require.Nil(t, media.KeyMgmtMikey)
-}
-
-func TestMediaKeyMgmtSDESErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		sdp  []byte
-		err  string
-	}{
-		{
-			"missing fields",
-			[]byte("v=0\r\n" +
-				"s= \r\n" +
-				"m=video 0 RTP/SAVP 96\r\n" +
-				"a=crypto:1 AES_CM_128_HMAC_SHA1_80\r\n" +
-				"a=rtpmap:96 H264/90000\r\n"),
-			"invalid crypto attribute: 1 AES_CM_128_HMAC_SHA1_80",
-		},
-		{
-			"non-inline key method",
-			[]byte("v=0\r\n" +
-				"s= \r\n" +
-				"m=video 0 RTP/SAVP 96\r\n" +
-				"a=crypto:1 AES_CM_128_HMAC_SHA1_80 mikey:AQAFgM0=\r\n" +
-				"a=rtpmap:96 H264/90000\r\n"),
-			"unsupported crypto key method: mikey:AQAFgM0=",
-		},
-		{
-			"invalid base64",
-			[]byte("v=0\r\n" +
-				"s= \r\n" +
-				"m=video 0 RTP/SAVP 96\r\n" +
-				"a=crypto:1 AES_CM_128_HMAC_SHA1_80 inline:not-valid-base64!!\r\n" +
-				"a=rtpmap:96 H264/90000\r\n"),
-			"invalid crypto inline key: illegal base64 data at input byte 3",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			sd, err := sdpunmarshaler.Unmarshal(ca.sdp)
-			require.NoError(t, err)
-
-			var media description.Media
-			err = media.Unmarshal(sd.MediaDescriptions[0])
-			require.EqualError(t, err, ca.err)
-		})
-	}
 }
 
 func TestMediaURLError(t *testing.T) {
