@@ -50,12 +50,6 @@ func (f *H265) unmarshal(ctx *unmarshalContext) error {
 			// some cameras ship parameters with Annex-B prefix
 			f.SPS = bytes.TrimPrefix(f.SPS, []byte{0, 0, 0, 1})
 
-			var spsp h265.SPS
-			err = spsp.Unmarshal(f.SPS)
-			if err != nil {
-				return fmt.Errorf("invalid SPS: %w", err)
-			}
-
 		case "sprop-pps":
 			var err error
 			f.PPS, err = base64.StdEncoding.DecodeString(val)

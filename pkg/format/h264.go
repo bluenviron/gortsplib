@@ -50,12 +50,6 @@ func (f *H264) unmarshal(ctx *unmarshalContext) error {
 				// some cameras ship parameters with Annex-B prefix
 				pps = bytes.TrimPrefix(pps, []byte{0, 0, 0, 1})
 
-				var spsp h264.SPS
-				err = spsp.Unmarshal(sps)
-				if err != nil {
-					continue
-				}
-
 				f.SPS = sps
 				f.PPS = pps
 			}
