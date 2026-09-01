@@ -913,6 +913,180 @@ func TestClientPlaySRTPVariants(t *testing.T) {
 	}
 }
 
+// TestClientPlaySDESVariants mirrors TestClientPlaySRTPVariants above, but
+// for SDES (RFC 4568) key exchange instead of MIKEY — the "a=crypto" SDP
+// attribute used by e.g. UniFi Protect cameras' "?enableSrtp" RTSPS streams.
+// Unlike MIKEY, SDES has no equivalent of a session-level attribute or a
+// SETUP-response-header variant, so there's only the one scenario to cover.
+func TestClientPlaySDESVariants(t *testing.T) {
+	cert, err := tls.X509KeyPair(serverCert, serverKey)
+	require.NoError(t, err)
+
+	l, err := tls.Listen("tcp", "127.0.0.1:8554", &tls.Config{Certificates: []tls.Certificate{cert}})
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+
+	go func() {
+		defer close(serverDone)
+
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
+		defer nconn.Close()
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
+
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Options, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Describe, req.Method)
+
+		outKey := make([]byte, srtpKeyLength)
+		_, err2 = rand.Read(outKey)
+		require.NoError(t, err2)
+
+		srtpOutCtx := &wrappedSRTPContext{
+			key:   outKey,
+			ssrcs: []uint32{845234432},
+		}
+		err2 = srtpOutCtx.initialize()
+		require.NoError(t, err2)
+
+		sdp := "v=0\n" +
+			"o=actionmovie 2891092738 2891092738 IN IP4 movie.example.com\n" +
+			"s=Action Movie\n" +
+			"t=0 0\n" +
+			"c=IN IP4 movie.example.com\n" +
+			"m=video 0 RTP/SAVP 96\n" +
+			"a=crypto:1 AES_CM_128_HMAC_SHA1_80 inline:" + base64.StdEncoding.EncodeToString(outKey) + "\n" +
+			"a=rtpmap:96 H264/90000\n" +
+			"a=fmtp:96 packetization-mode=1\n" +
+			"a=control:trackID=0\n"
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+				"Content-Base": base.HeaderValue{"rtsps://127.0.0.1:8554/stream/"},
+			},
+			Body: []byte(sdp),
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Setup, req.Method)
+
+		var inTH headers.Transport
+		err2 = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err2)
+
+		require.Equal(t, (*headers.TransportMode)(nil), inTH.Mode)
+
+		th := headers.Transport{
+			Profile: headers.TransportProfileSAVP,
+		}
+
+		th.Delivery = new(headers.TransportDeliveryUnicast)
+		th.Protocol = headers.TransportProtocolUDP
+		th.ClientPorts = inTH.ClientPorts
+		th.ServerPorts = &[2]int{34556, 34557}
+
+		l1, err2 := net.ListenPacket(
+			"udp", net.JoinHostPort("127.0.0.1", strconv.FormatInt(int64(th.ServerPorts[0]), 10)))
+		require.NoError(t, err2)
+		defer l1.Close()
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": th.Marshal(),
+			},
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Play, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+		})
+		require.NoError(t, err2)
+
+		buf := testRTPPacketMarshaled
+
+		encr := make([]byte, 2000)
+		encr, err2 = srtpOutCtx.encryptRTP(encr, buf, nil)
+		require.NoError(t, err2)
+		buf = encr
+
+		_, err2 = l1.WriteTo(buf, &net.UDPAddr{
+			IP:   net.ParseIP("127.0.0.1"),
+			Port: th.ClientPorts[0],
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Teardown, req.Method)
+	}()
+
+	u, err := base.ParseURL("rtsps://127.0.0.1:8554/stream")
+	require.NoError(t, err)
+
+	c := Client{
+		Scheme:    u.Scheme,
+		Host:      u.Host,
+		TLSConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
+	err = c.Start()
+	require.NoError(t, err)
+	defer c.Close()
+
+	sd, _, err := c.Describe(u)
+	require.NoError(t, err)
+
+	err = c.SetupAll(sd.BaseURL, sd.Medias)
+	require.NoError(t, err)
+
+	packetRecv := make(chan struct{})
+
+	c.OnPacketRTPAny(func(_ *description.Media, _ format.Format, pkt *rtp.Packet) {
+		require.Equal(t, &rtp.Packet{
+			Header: rtp.Header{
+				Version:     2,
+				PayloadType: 96,
+				SSRC:        pkt.SSRC,
+			},
+			Payload: testRTPPacket.Payload,
+		}, pkt)
+		close(packetRecv)
+	})
+
+	_, err = c.Play(nil)
+	require.NoError(t, err)
+
+	<-packetRecv
+}
+
 func TestClientPlayAxisClientManagedKeys(t *testing.T) {
 	cert, err := tls.X509KeyPair(serverCert, serverKey)
 	require.NoError(t, err)

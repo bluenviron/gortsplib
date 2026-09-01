@@ -17,6 +17,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
+	"github.com/bluenviron/gortsplib/v5/pkg/sdes"
 )
 
 func getAttribute(attributes []sdp.Attribute, key string) string {
@@ -85,6 +86,9 @@ type Media struct {
 	// key-mgmt attribute.
 	KeyMgmtMikey *mikey.Message
 
+	// crypto attribute (SDES, RFC 4568).
+	KeyMgmtSDES *sdes.SDES
+
 	// Control attribute.
 	Control string
 
@@ -121,6 +125,14 @@ func (m *Media) Unmarshal(md *sdp.MediaDescription) error {
 
 		m.KeyMgmtMikey = &mikey.Message{}
 		err = m.KeyMgmtMikey.Unmarshal(enc2)
+		if err != nil {
+			return err
+		}
+	}
+
+	if enc := getAttribute(md.Attributes, "crypto"); enc != "" {
+		m.KeyMgmtSDES = &sdes.SDES{}
+		err := m.KeyMgmtSDES.Unmarshal(enc)
 		if err != nil {
 			return err
 		}
