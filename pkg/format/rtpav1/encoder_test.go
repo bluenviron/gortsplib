@@ -1,6 +1,8 @@
 package rtpav1
 
 import (
+	"bytes"
+	"errors"
 	"testing"
 
 	"github.com/pion/rtp"
@@ -1003,4 +1005,62 @@ func TestEncodeRandomInitialState(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEqual(t, nil, e.SSRC)
 	require.NotEqual(t, nil, e.InitialSequenceNumber)
+}
+
+func TestEncodeNoZeroSizedFragment(t *testing.T) {
+	// when an OBU exactly fills a packet, the next OBU is moved to a new
+	// packet without writing any of its bytes: the Y and Z bits must stay
+	// unset, otherwise receivers join the two OBUs into one.
+	for _, ca := range []struct {
+		name string
+		obus [][]byte
+	}{
+		{
+			"omit size",
+			[][]byte{bytes.Repeat([]byte{0x01}, 997), bytes.Repeat([]byte{0x02}, 100)},
+		},
+		{
+			"with size",
+			[][]byte{
+				bytes.Repeat([]byte{0x01}, 997),
+				bytes.Repeat([]byte{0x02}, 10),
+				bytes.Repeat([]byte{0x03}, 10),
+				bytes.Repeat([]byte{0x04}, 10),
+			},
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			e := &Encoder{
+				PayloadType:           96,
+				SSRC:                  new(uint32(0x9dbb7812)),
+				InitialSequenceNumber: new(uint16(0x44ed)),
+				PayloadMaxSize:        1000,
+			}
+			err := e.Init()
+			require.NoError(t, err)
+
+			pkts, err := e.Encode(ca.obus)
+			require.NoError(t, err)
+			require.Equal(t, byte(0), pkts[0].Payload[0]&(1<<6))
+			require.Equal(t, byte(0), pkts[1].Payload[0]&(1<<7))
+
+			var d Decoder
+			err = d.Init()
+			require.NoError(t, err)
+
+			var decoded [][]byte
+
+			for _, pkt := range pkts {
+				var addOBUs [][]byte
+				addOBUs, err = d.Decode(pkt)
+				if errors.Is(err, ErrMorePacketsNeeded) {
+					continue
+				}
+				require.NoError(t, err)
+				decoded = append(decoded, addOBUs...)
+			}
+
+			require.Equal(t, ca.obus, decoded)
+		})
+	}
 }

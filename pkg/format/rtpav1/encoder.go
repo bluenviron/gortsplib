@@ -135,11 +135,16 @@ func (e *Encoder) Encode(obus [][]byte) ([]*rtp.Packet, error) {
 				break
 			}
 
+			// the remaining space can be too small to hold any byte of the OBU.
+			// in that case the OBU is not fragmented and Y / Z must not be set.
+			fragmented := false
+
 			if omitSize {
 				if avail > 0 {
 					curPacket.Payload[0] |= byte((obusInPacket + 1) << 4) // W
 					curPacket.Payload = append(curPacket.Payload, obu[:avail]...)
 					obu = obu[avail:]
+					fragmented = true
 				}
 			} else {
 				if avail > maxFragmentedLEBSize {
@@ -152,11 +157,12 @@ func (e *Encoder) Encode(obus [][]byte) ([]*rtp.Packet, error) {
 					curPacket.Payload = append(curPacket.Payload, buf...)
 					curPacket.Payload = append(curPacket.Payload, obu[:fragmentLen]...)
 					obu = obu[fragmentLen:]
+					fragmented = true
 				}
 			}
 
-			finalizeCurPacket(true)
-			createNewPacket(true)
+			finalizeCurPacket(fragmented)
+			createNewPacket(fragmented)
 		}
 	}
 
