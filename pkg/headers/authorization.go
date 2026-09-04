@@ -44,6 +44,15 @@ type Authorization struct {
 
 	// algorithm
 	Algorithm *AuthAlgorithm
+
+	// quality of protection
+	Qop *string
+
+	// client nonce
+	Cnonce *string
+
+	// nonce count
+	Nc *string
 }
 
 // Unmarshal decodes an Authorization header.
@@ -125,6 +134,15 @@ func (h *Authorization) Unmarshal(v base.HeaderValue) error {
 			case "opaque":
 				h.Opaque = &v
 
+			case "qop":
+				h.Qop = &v
+
+			case "cnonce":
+				h.Cnonce = &v
+
+			case "nc":
+				h.Nc = &v
+
 			case "algorithm":
 				var a AuthAlgorithm
 				a, err = parseAuthAlgorithm(v)
@@ -156,6 +174,19 @@ func (h Authorization) Marshal() base.HeaderValue {
 
 	if h.Opaque != nil {
 		ret += ", opaque=\"" + *h.Opaque + "\""
+	}
+
+	// qop and nc are tokens and must not be enclosed in apexes (RFC 7616, section 3.4).
+	if h.Qop != nil {
+		ret += ", qop=" + *h.Qop
+	}
+
+	if h.Nc != nil {
+		ret += ", nc=" + *h.Nc
+	}
+
+	if h.Cnonce != nil {
+		ret += ", cnonce=\"" + *h.Cnonce + "\""
 	}
 
 	if h.Algorithm != nil {

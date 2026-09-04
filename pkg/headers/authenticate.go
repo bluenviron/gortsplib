@@ -60,6 +60,9 @@ type Authenticate struct {
 	// stale
 	Stale *string
 
+	// qop
+	Qop *string
+
 	// algorithm
 	Algorithm *AuthAlgorithm
 }
@@ -136,6 +139,9 @@ func (h *Authenticate) Unmarshal(v base.HeaderValue) error {
 			case "opaque":
 				h.Opaque = &v
 
+			case "qop":
+				h.Qop = &v
+
 			case "stale":
 				h.Stale = &v
 
@@ -172,6 +178,10 @@ func (h Authenticate) Marshal() base.HeaderValue {
 
 	if h.Stale != nil {
 		ret += ", stale=\"" + *h.Stale + "\""
+	}
+
+	if h.Qop != nil {
+		ret += ", qop=\"" + *h.Qop + "\""
 	}
 
 	if h.Algorithm != nil {

@@ -24,6 +24,18 @@ var casesAuthenticate = []struct {
 		},
 	},
 	{
+		"digest with qop",
+		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", qop="auth"`},
+		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", ` +
+			`qop="auth"`},
+		Authenticate{
+			Method: AuthMethodDigest,
+			Realm:  "4419b63f5e51",
+			Nonce:  "8b84a3b789283a8bea8da7fa7d41f08b",
+			Qop:    new("auth"),
+		},
+	},
+	{
 		"digest 1",
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`},
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", ` +

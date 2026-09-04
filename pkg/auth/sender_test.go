@@ -1,12 +1,16 @@
 package auth_test
 
 import (
+	"crypto/md5"
+	"crypto/sha256"
+	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/auth"
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 )
 
 var casesSender = []struct {
@@ -126,4 +130,128 @@ func FuzzSender(f *testing.F) {
 			URL:    mustParseURL("rtsp://myhost/mypath?key=val/trackID=3"),
 		})
 	})
+}
+
+func testMD5(in string) string {
+	h := md5.Sum([]byte(in))
+	return hex.EncodeToString(h[:])
+}
+
+func testSHA256(in string) string {
+	h := sha256.Sum256([]byte(in))
+	return hex.EncodeToString(h[:])
+}
+
+func TestSenderQop(t *testing.T) {
+	const nonce = "f49ac6dd0ba708d4becddc9692d1f2ce"
+	const uri = "rtsp://myhost/mypath?key=val/trackID=3"
+
+	for _, ca := range []struct {
+		name string
+		www  string
+		hash func(string) string
+	}{
+		{
+			"md5",
+			`Digest realm="myrealm", nonce="` + nonce + `", qop="auth", algorithm="MD5"`,
+			testMD5,
+		},
+		{
+			"sha256",
+			`Digest realm="myrealm", nonce="` + nonce + `", qop="auth", algorithm="SHA-256"`,
+			testSHA256,
+		},
+		{
+			"multiple qop values",
+			`Digest realm="myrealm", nonce="` + nonce + `", qop="auth-int,auth"`,
+			testMD5,
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			se := &auth.Sender{
+				WWWAuth: base.HeaderValue{ca.www},
+				User:    "myuser",
+				Pass:    "mypass",
+			}
+			err := se.Initialize()
+			require.NoError(t, err)
+
+			req := &base.Request{
+				Method: base.Setup,
+				URL:    mustParseURL(uri),
+			}
+			se.AddAuthorization(req)
+
+			var h headers.Authorization
+			err = h.Unmarshal(req.Header["Authorization"])
+			require.NoError(t, err)
+
+			require.Equal(t, "auth", *h.Qop)
+			require.Equal(t, "00000001", *h.Nc)
+			require.NotEmpty(t, *h.Cnonce)
+
+			// RFC 7616, section 3.4.1
+			ha1 := ca.hash("myuser:myrealm:mypass")
+			ha2 := ca.hash("SETUP:" + uri)
+			require.Equal(t, ca.hash(ha1+":"+nonce+":00000001:"+*h.Cnonce+":auth:"+ha2), h.Response)
+		})
+	}
+}
+
+func TestSenderQopNonceCount(t *testing.T) {
+	se := &auth.Sender{
+		WWWAuth: base.HeaderValue{
+			`Digest realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce", qop="auth"`,
+		},
+		User: "myuser",
+		Pass: "mypass",
+	}
+	err := se.Initialize()
+	require.NoError(t, err)
+
+	var cnonce string
+
+	for i, expected := range []string{"00000001", "00000002", "00000003"} {
+		req := &base.Request{
+			Method: base.Setup,
+			URL:    mustParseURL("rtsp://myhost/mypath"),
+		}
+		se.AddAuthorization(req)
+
+		var h headers.Authorization
+		err = h.Unmarshal(req.Header["Authorization"])
+		require.NoError(t, err)
+		require.Equal(t, expected, *h.Nc)
+
+		// the client nonce stays the same for the whole session.
+		if i == 0 {
+			cnonce = *h.Cnonce
+		} else {
+			require.Equal(t, cnonce, *h.Cnonce)
+		}
+	}
+}
+
+func TestSenderOpaque(t *testing.T) {
+	se := &auth.Sender{
+		WWWAuth: base.HeaderValue{
+			`Digest realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce", ` +
+				`opaque="5ccc069c403ebaf9f0171e9517f40e41"`,
+		},
+		User: "myuser",
+		Pass: "mypass",
+	}
+	err := se.Initialize()
+	require.NoError(t, err)
+
+	req := &base.Request{
+		Method: base.Setup,
+		URL:    mustParseURL("rtsp://myhost/mypath"),
+	}
+	se.AddAuthorization(req)
+
+	var h headers.Authorization
+	err = h.Unmarshal(req.Header["Authorization"])
+	require.NoError(t, err)
+	require.Equal(t, "5ccc069c403ebaf9f0171e9517f40e41", *h.Opaque)
 }

@@ -2,6 +2,8 @@ package auth
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
@@ -16,6 +18,9 @@ type Sender struct {
 	Pass    string
 
 	authHeader *headers.Authenticate
+	qop        string
+	cnonce     string
+	nonceCount uint32
 }
 
 // Initialize initializes a Sender.
@@ -38,6 +43,24 @@ func (se *Sender) Initialize() error {
 		return fmt.Errorf("no authentication methods available")
 	}
 
+	// among the offered qop values, only "auth" is supported.
+	// when it is absent, fall back to the legacy computation (RFC 2069).
+	if se.authHeader.Qop != nil {
+		for qop := range strings.SplitSeq(*se.authHeader.Qop, ",") {
+			if strings.TrimSpace(qop) == "auth" {
+				se.qop = "auth"
+
+				var err error
+				se.cnonce, err = GenerateNonce()
+				if err != nil {
+					return err
+				}
+
+				break
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -58,13 +81,29 @@ func (se *Sender) AddAuthorization(req *base.Request) {
 		h.Nonce = se.authHeader.Nonce
 		h.URI = urStr
 		h.Algorithm = se.authHeader.Algorithm
+		h.Opaque = se.authHeader.Opaque
+
+		// the nonce count must increase at every request that uses the same nonce.
+		middle := se.authHeader.Nonce
+
+		if se.qop != "" {
+			se.nonceCount++
+			nc := strconv.FormatUint(uint64(se.nonceCount), 16)
+			nc = strings.Repeat("0", 8-len(nc)) + nc
+
+			h.Qop = &se.qop
+			h.Cnonce = &se.cnonce
+			h.Nc = &nc
+
+			middle += ":" + nc + ":" + se.cnonce + ":" + se.qop
+		}
 
 		if se.authHeader.Algorithm == nil || *se.authHeader.Algorithm == headers.AuthAlgorithmMD5 {
 			h.Response = md5Hex(md5Hex(se.User+":"+se.authHeader.Realm+":"+se.Pass) + ":" +
-				se.authHeader.Nonce + ":" + md5Hex(string(req.Method)+":"+urStr))
+				middle + ":" + md5Hex(string(req.Method)+":"+urStr))
 		} else { // sha256
 			h.Response = sha256Hex(sha256Hex(se.User+":"+se.authHeader.Realm+":"+se.Pass) + ":" +
-				se.authHeader.Nonce + ":" + sha256Hex(string(req.Method)+":"+urStr))
+				middle + ":" + sha256Hex(string(req.Method)+":"+urStr))
 		}
 	}
 
