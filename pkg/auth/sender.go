@@ -2,10 +2,23 @@ package auth
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 )
+
+func hasQOPAuth(qop *string) bool {
+	if qop != nil {
+		for v := range strings.SplitSeq(*qop, ",") {
+			if strings.TrimSpace(v) == "auth" {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 // Sender allows to send credentials.
 // It requires a WWW-Authenticate header (provided by the server)
@@ -16,6 +29,9 @@ type Sender struct {
 	Pass    string
 
 	authHeader *headers.Authenticate
+	hasQOPAuth bool
+	cnonce     string
+	nonceCount uint32
 }
 
 // Initialize initializes a Sender.
@@ -38,6 +54,16 @@ func (se *Sender) Initialize() error {
 		return fmt.Errorf("no authentication methods available")
 	}
 
+	if hasQOPAuth(se.authHeader.Qop) {
+		se.hasQOPAuth = true
+
+		var err error
+		se.cnonce, err = GenerateNonce()
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -58,13 +84,30 @@ func (se *Sender) AddAuthorization(req *base.Request) {
 		h.Nonce = se.authHeader.Nonce
 		h.URI = urStr
 		h.Algorithm = se.authHeader.Algorithm
+		h.Opaque = se.authHeader.Opaque
+
+		middle := se.authHeader.Nonce
+
+		if se.hasQOPAuth {
+			// the nonce count must increase at every request that uses the same nonce.
+			se.nonceCount++
+			nc := strconv.FormatUint(uint64(se.nonceCount), 16)
+			nc = strings.Repeat("0", 8-len(nc)) + nc
+
+			qop := "auth"
+			h.Qop = &qop
+			h.Cnonce = &se.cnonce
+			h.Nc = &nc
+
+			middle += ":" + nc + ":" + se.cnonce + ":" + qop
+		}
 
 		if se.authHeader.Algorithm == nil || *se.authHeader.Algorithm == headers.AuthAlgorithmMD5 {
 			h.Response = md5Hex(md5Hex(se.User+":"+se.authHeader.Realm+":"+se.Pass) + ":" +
-				se.authHeader.Nonce + ":" + md5Hex(string(req.Method)+":"+urStr))
+				middle + ":" + md5Hex(string(req.Method)+":"+urStr))
 		} else { // sha256
 			h.Response = sha256Hex(sha256Hex(se.User+":"+se.authHeader.Realm+":"+se.Pass) + ":" +
-				se.authHeader.Nonce + ":" + sha256Hex(string(req.Method)+":"+urStr))
+				middle + ":" + sha256Hex(string(req.Method)+":"+urStr))
 		}
 	}
 

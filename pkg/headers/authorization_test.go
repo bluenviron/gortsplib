@@ -25,6 +25,28 @@ var casesAuthorization = []struct {
 		},
 	},
 	{
+		"digest with qop",
+		base.HeaderValue{`Digest username="Mufasa", realm="http-auth@example.org", ` +
+			`nonce="7ypf/xlj9XXwfDPEoM4URrv/xwf94BcCAzFZH4GiTo0v", uri="/dir/index.html", ` +
+			`response="8ca523f5e9506fed4657c9700eebdbec", qop=auth, nc=00000001, ` +
+			`cnonce="f2/wE4q74E6zIJEtWaHKaf5wv/H5QzzpXusqGemxURZJ"`},
+		base.HeaderValue{`Digest username="Mufasa", realm="http-auth@example.org", ` +
+			`nonce="7ypf/xlj9XXwfDPEoM4URrv/xwf94BcCAzFZH4GiTo0v", uri="/dir/index.html", ` +
+			`response="8ca523f5e9506fed4657c9700eebdbec", qop=auth, nc=00000001, ` +
+			`cnonce="f2/wE4q74E6zIJEtWaHKaf5wv/H5QzzpXusqGemxURZJ"`},
+		Authorization{
+			Method:   AuthMethodDigest,
+			Username: "Mufasa",
+			Realm:    "http-auth@example.org",
+			Nonce:    "7ypf/xlj9XXwfDPEoM4URrv/xwf94BcCAzFZH4GiTo0v",
+			URI:      "/dir/index.html",
+			Response: "8ca523f5e9506fed4657c9700eebdbec",
+			Qop:      new("auth"),
+			Cnonce:   new("f2/wE4q74E6zIJEtWaHKaf5wv/H5QzzpXusqGemxURZJ"),
+			Nc:       new("00000001"),
+		},
+	},
+	{
 		"digest",
 		base.HeaderValue{`Digest username="Mufasa", realm="testrealm@host.com", ` +
 			`nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", ` +
