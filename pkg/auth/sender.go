@@ -86,10 +86,10 @@ func (se *Sender) AddAuthorization(req *base.Request) {
 		h.Algorithm = se.authHeader.Algorithm
 		h.Opaque = se.authHeader.Opaque
 
-		// the nonce count must increase at every request that uses the same nonce.
 		middle := se.authHeader.Nonce
 
 		if se.hasQOPAuth {
+			// the nonce count must increase at every request that uses the same nonce.
 			se.nonceCount++
 			nc := strconv.FormatUint(uint64(se.nonceCount), 16)
 			nc = strings.Repeat("0", 8-len(nc)) + nc
