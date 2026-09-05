@@ -2,8 +2,8 @@ github.com/asticode/go-astikit v0.30.0 h1:DkBkRQRIxYcknlaU7W7ksNfn4gMFsB0tqMJflx
 github.com/asticode/go-astikit v0.30.0/go.mod h1:h4ly7idim1tNhaVkdVBeXQZEE3L0xblP7fCWbgwipF0=
 github.com/asticode/go-astits v1.16.0 h1:MgyLnG30oRiQsHWQNXA29ZS6i7UNN/OGcPdgH86JJqg=
 github.com/asticode/go-astits v1.16.0/go.mod h1:psImoC1BhcAWIsyM/RnbO1OgUW+XSf8fZpFvF5McDyo=
-github.com/bluenviron/mediacommon/v2 v2.9.3 h1:cT52JxFnOG2EvI8Imp0sy0NZI773Id+QmY3eOEryR9Y=
-github.com/bluenviron/mediacommon/v2 v2.9.3/go.mod h1:QHNpEjVsUnmP2tfYZ+hgQRfvupR1GRBUd2FJqSvC/qo=
+github.com/bluenviron/mediacommon/v2 v2.9.4 h1:KmV83wTPYGUp32WJd450NnnRr5Db8cpSvO3Y1KiGIKE=
+github.com/bluenviron/mediacommon/v2 v2.9.4/go.mod h1:6KbotxrKqZ6IUyq8g2/9ApcfGGuArFUQOJsH5lYosFk=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aNNg=
