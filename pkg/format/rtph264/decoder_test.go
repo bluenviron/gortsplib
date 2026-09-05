@@ -358,6 +358,168 @@ var casesDecodeOnly = []struct {
 			},
 		},
 	},
+	{
+		"SEI with inner start code, fragmented (ONVIF Media Signing without emulation prevention)",
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289531307,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{0x1c, 0x86}, // FU-A, start, type 6
+					[]byte{0x05, 0x18},
+					[]byte{0x00, 0x5b, 0xc9, 0x3f, 0x2d, 0x71, 0x5e, 0x95, 0xad, 0xa4, 0x79, 0x6f, 0x90, 0x87, 0x7a, 0x6f},
+					[]byte{0xaa, 0xbb, 0x00, 0x00},
+				),
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17646,
+					Timestamp:      2289531307,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{0x1c, 0x46}, // FU-A, end, type 6
+					[]byte{0x00, 0x01, 0xcc, 0xdd, 0x80},
+				),
+			},
+		},
+		[][]byte{
+			mergeBytes(
+				[]byte{0x06, 0x05, 0x18},
+				[]byte{0x00, 0x5b, 0xc9, 0x3f, 0x2d, 0x71, 0x5e, 0x95, 0xad, 0xa4, 0x79, 0x6f, 0x90, 0x87, 0x7a, 0x6f},
+				[]byte{0xaa, 0xbb, 0x00, 0x00, 0x00, 0x01, 0xcc, 0xdd, 0x80},
+			),
+		},
+	},
+	{
+		"SEI with inner 3-byte start code, fragmented",
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289531307,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: []byte{0x1c, 0x86, 0x05, 0x04, 0xaa, 0x00},
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17646,
+					Timestamp:      2289531307,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: []byte{0x1c, 0x46, 0x00, 0x01, 0xbb, 0x80},
+			},
+		},
+		[][]byte{
+			{0x06, 0x05, 0x04, 0xaa, 0x00, 0x00, 0x01, 0xbb, 0x80},
+		},
+	},
+	{
+		"SEI with inner start code, single packet, does not enable Annex-B mode",
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289531307,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: []byte{0x06, 0x05, 0x04, 0x00, 0x00, 0x00, 0x01, 0x80},
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17646,
+					Timestamp:      2289531307,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: []byte{0x06, 0x05, 0x04, 0x00, 0x00, 0x00, 0x01, 0x81},
+			},
+		},
+		[][]byte{
+			{0x06, 0x05, 0x04, 0x00, 0x00, 0x00, 0x01, 0x80},
+			{0x06, 0x05, 0x04, 0x00, 0x00, 0x00, 0x01, 0x81},
+		},
+	},
+	{
+		"Annex-B packet with a leading start code and an SEI still enables Annex-B mode",
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17647,
+					Timestamp:      2289531307,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: []byte{
+					0x00, 0x00, 0x00, 0x01, 0x06, 0x05, 0x04, 0xaa,
+					0x00, 0x00, 0x00, 0x01, 0x65, 0xbb,
+				},
+			},
+		},
+		[][]byte{
+			{0x06, 0x05, 0x04, 0xaa},
+			{0x65, 0xbb},
+		},
+	},
+	{
+		"SEI is still split once a non-SEI NALU has enabled Annex-B mode",
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289531307,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: []byte{
+					0x00, 0x00, 0x00, 0x01, 0x65, 0xaa,
+					0x00, 0x00, 0x00, 0x01, 0x65, 0xbb,
+				},
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17646,
+					Timestamp:      2289531307,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: []byte{0x06, 0x05, 0x04, 0x00, 0x00, 0x00, 0x01, 0x80},
+			},
+		},
+		[][]byte{
+			{0x65, 0xaa},
+			{0x65, 0xbb},
+			{0x06, 0x05, 0x04},
+			{0x80},
+		},
+	},
 }
 
 func TestDecodeOnly(t *testing.T) {

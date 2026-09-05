@@ -250,6 +250,78 @@ var casesDecodeOnly = []struct {
 			},
 		},
 	},
+	{
+		"prefix SEI with inner start code, fragmented (ONVIF Media Signing without emulation prevention)",
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289531307,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{0x62, 0x01, 0xa7}, // FU, start, type 39
+					[]byte{0x05, 0x18},
+					[]byte{0x00, 0x5b, 0xc9, 0x3f, 0x2d, 0x71, 0x5e, 0x95, 0xad, 0xa4, 0x79, 0x6f, 0x90, 0x87, 0x7a, 0x6f},
+					[]byte{0xaa, 0xbb, 0x00, 0x00},
+				),
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17646,
+					Timestamp:      2289531307,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{0x62, 0x01, 0x67}, // FU, end, type 39
+					[]byte{0x00, 0x01, 0xcc, 0xdd, 0x80},
+				),
+			},
+		},
+		[][]byte{
+			mergeBytes(
+				[]byte{0x4e, 0x01, 0x05, 0x18},
+				[]byte{0x00, 0x5b, 0xc9, 0x3f, 0x2d, 0x71, 0x5e, 0x95, 0xad, 0xa4, 0x79, 0x6f, 0x90, 0x87, 0x7a, 0x6f},
+				[]byte{0xaa, 0xbb, 0x00, 0x00, 0x00, 0x01, 0xcc, 0xdd, 0x80},
+			),
+		},
+	},
+	{
+		"suffix SEI with inner start code, fragmented",
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289531307,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: []byte{0x62, 0x01, 0xa8, 0x05, 0x04, 0xaa, 0x00, 0x00}, // FU, start, type 40
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17646,
+					Timestamp:      2289531307,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: []byte{0x62, 0x01, 0x68, 0x00, 0x01, 0xbb, 0x80}, // FU, end, type 40
+			},
+		},
+		[][]byte{
+			{0x50, 0x01, 0x05, 0x04, 0xaa, 0x00, 0x00, 0x00, 0x01, 0xbb, 0x80},
+		},
+	},
 }
 
 func TestDecodeOnly(t *testing.T) {
