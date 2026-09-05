@@ -1193,11 +1193,9 @@ func TestClientTunnelHTTP(t *testing.T) {
 					RequestURI: "/teststream",
 					Header: http.Header{
 						"Accept":          []string{"application/x-rtsp-tunnelled"},
-						"Content-Length":  []string{"30000"},
 						"X-Sessioncookie": req1.Header["X-Sessioncookie"],
 					},
-					ContentLength: 30000,
-					Body:          req1.Body,
+					Body: req1.Body,
 				}, req1)
 
 				require.NotEmpty(t, req1.Header.Get("X-Sessioncookie"))
@@ -1381,11 +1379,9 @@ func TestClientTunnelHTTPPostResponseAfterRTSPRequest(t *testing.T) {
 					RequestURI: "/teststream",
 					Header: http.Header{
 						"Accept":          []string{"application/x-rtsp-tunnelled"},
-						"Content-Length":  []string{"30000"},
 						"X-Sessioncookie": req1.Header["X-Sessioncookie"],
 					},
-					ContentLength: 30000,
-					Body:          req1.Body,
+					Body: req1.Body,
 				}, req1)
 
 				require.NotEmpty(t, req1.Header.Get("X-Sessioncookie"))
@@ -1565,11 +1561,9 @@ func TestClientTunnelHTTPPathQuery(t *testing.T) {
 					RequestURI: "/teststream?param=value",
 					Header: http.Header{
 						"Accept":          []string{"application/x-rtsp-tunnelled"},
-						"Content-Length":  []string{"30000"},
 						"X-Sessioncookie": req1.Header["X-Sessioncookie"],
 					},
-					ContentLength: 30000,
-					Body:          req1.Body,
+					Body: req1.Body,
 				}, req1)
 
 				require.NotEmpty(t, req1.Header.Get("X-Sessioncookie"))

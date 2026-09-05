@@ -135,7 +135,6 @@ func newClientTunnelHTTP(
 			"Host: " + addr + "\r\n" +
 			"X-Sessioncookie: " + tunnelID + "\r\n" +
 			"Accept: application/x-rtsp-tunnelled\r\n" +
-			"Content-Length: 30000\r\n" +
 			"\r\n",
 	))
 	if err != nil {
