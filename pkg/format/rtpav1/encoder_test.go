@@ -1,6 +1,7 @@
 package rtpav1
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/pion/rtp"
@@ -971,6 +972,46 @@ var cases = []struct {
 					0xbf, 0xc3, 0x77, 0x6b, 0xe4, 0x40, 0x40, 0x40,
 					0x41,
 				},
+			},
+		},
+	},
+	{
+		"packet filled to the limit",
+		[][]byte{
+			bytes.Repeat([]byte{0x01}, 997),
+			bytes.Repeat([]byte{0x02}, 10),
+			bytes.Repeat([]byte{0x03}, 10),
+			bytes.Repeat([]byte{0x04}, 10),
+		},
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: bytes.Join([][]byte{
+					{0x00, 0xe5, 0x07},
+					bytes.Repeat([]byte{0x01}, 997),
+				}, nil),
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17646,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: bytes.Join([][]byte{
+					{0x30, 0x0a},
+					bytes.Repeat([]byte{0x02}, 10),
+					{0x0a},
+					bytes.Repeat([]byte{0x03}, 10),
+					bytes.Repeat([]byte{0x04}, 10),
+				}, nil),
 			},
 		},
 	},
