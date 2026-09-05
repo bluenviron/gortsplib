@@ -2,9 +2,9 @@ name: lint
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 permissions:
   contents: read
@@ -14,28 +14,36 @@ jobs:
     runs-on: ubuntu-24.04
 
     env:
-      CGO_ENABLED: '0'
+      CGO_ENABLED: "0"
 
     steps:
-    - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
 
-    - uses: actions/setup-go@v7
-      with:
-        go-version: "1.27"
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.27"
 
-    - uses: golangci/golangci-lint-action@v9
-      with:
-        version: v2.13.2
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.13.2
 
   go_mod:
     runs-on: ubuntu-24.04
 
     steps:
-    - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
 
-    - uses: actions/setup-go@v7
-      with:
-        go-version: "1.27"
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.27"
 
-    - run: |
-        go mod tidy -diff
+      - run: |
+          go mod tidy -diff
+
+  other:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - run: make lint-other
