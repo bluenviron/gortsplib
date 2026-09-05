@@ -1,6 +1,7 @@
 package rtpklv
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"testing"
@@ -130,4 +131,59 @@ func FuzzDecoder(f *testing.F) {
 			e.Encode(unit) //nolint:errcheck
 		}
 	})
+}
+
+func TestDecodeUnitsAreNotReused(t *testing.T) {
+	klvUnit := func(fill byte, size int) []byte {
+		return append([]byte{
+			0x06, 0x0e, 0x2b, 0x34, 0x02, 0x0b, 0x01, 0x01,
+			0x0e, 0x01, 0x03, 0x01, 0x01, 0x00, 0x00, 0x00,
+			byte(size),
+		}, bytes.Repeat([]byte{fill}, size)...)
+	}
+
+	for _, ca := range []struct {
+		name   string
+		second []byte
+	}{
+		{"same size", klvUnit(0xbb, 20)},
+		{"shorter", klvUnit(0xbb, 8)},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			var d Decoder
+			err := d.Init()
+			require.NoError(t, err)
+
+			first := klvUnit(0xaa, 20)
+
+			decoded, err := d.Decode(&rtp.Packet{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					SequenceNumber: 17645,
+					Timestamp:      2289526357,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: first,
+			})
+			require.NoError(t, err)
+			require.Equal(t, first, decoded)
+
+			_, err = d.Decode(&rtp.Packet{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					SequenceNumber: 17646,
+					Timestamp:      2289529357,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: ca.second,
+			})
+			require.NoError(t, err)
+
+			// the unit returned by the first Decode() must not be touched
+			// by the second one.
+			require.Equal(t, first, decoded)
+		})
+	}
 }

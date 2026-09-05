@@ -42,7 +42,7 @@ func (d *Decoder) Init() error {
 
 // reset clears the decoder state.
 func (d *Decoder) reset() {
-	d.buffer = d.buffer[:0]
+	d.buffer = nil // do not reuse buffer to avoid race conditions
 	d.expectedSize = 0
 	d.currentTimestamp = 0
 	d.assembling = false
