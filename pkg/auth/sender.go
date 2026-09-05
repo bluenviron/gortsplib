@@ -9,6 +9,17 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 )
 
+func hasQOPAuth(qop *string) bool {
+	if qop != nil {
+		for v := range strings.SplitSeq(*qop, ",") {
+			if strings.TrimSpace(v) == "auth" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // Sender allows to send credentials.
 // It requires a WWW-Authenticate header (provided by the server)
 // and a set of credentials.
@@ -18,7 +29,7 @@ type Sender struct {
 	Pass    string
 
 	authHeader *headers.Authenticate
-	qop        string
+	hasQOPAuth bool
 	cnonce     string
 	nonceCount uint32
 }
@@ -43,21 +54,13 @@ func (se *Sender) Initialize() error {
 		return fmt.Errorf("no authentication methods available")
 	}
 
-	// among the offered qop values, only "auth" is supported.
-	// when it is absent, fall back to the legacy computation (RFC 2069).
-	if se.authHeader.Qop != nil {
-		for qop := range strings.SplitSeq(*se.authHeader.Qop, ",") {
-			if strings.TrimSpace(qop) == "auth" {
-				se.qop = "auth"
+	if hasQOPAuth(se.authHeader.Qop) {
+		se.hasQOPAuth = true
 
-				var err error
-				se.cnonce, err = GenerateNonce()
-				if err != nil {
-					return err
-				}
-
-				break
-			}
+		var err error
+		se.cnonce, err = GenerateNonce()
+		if err != nil {
+			return err
 		}
 	}
 
@@ -86,16 +89,17 @@ func (se *Sender) AddAuthorization(req *base.Request) {
 		// the nonce count must increase at every request that uses the same nonce.
 		middle := se.authHeader.Nonce
 
-		if se.qop != "" {
+		if se.hasQOPAuth {
 			se.nonceCount++
 			nc := strconv.FormatUint(uint64(se.nonceCount), 16)
 			nc = strings.Repeat("0", 8-len(nc)) + nc
 
-			h.Qop = &se.qop
+			qop := "auth"
+			h.Qop = &qop
 			h.Cnonce = &se.cnonce
 			h.Nc = &nc
 
-			middle += ":" + nc + ":" + se.cnonce + ":" + se.qop
+			middle += ":" + nc + ":" + se.cnonce + ":" + qop
 		}
 
 		if se.authHeader.Algorithm == nil || *se.authHeader.Algorithm == headers.AuthAlgorithmMD5 {
