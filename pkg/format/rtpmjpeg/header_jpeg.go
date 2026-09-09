@@ -28,7 +28,7 @@ func (h *headerJPEG) unmarshal(byts []byte) (int, error) {
 
 	h.Quantization = byts[5]
 	if h.Quantization == 0 ||
-		(h.Quantization > 99 && h.Quantization < 127) {
+		(h.Quantization > 99 && h.Quantization < 128) {
 		return 0, fmt.Errorf("quantization %d is invalid", h.Quantization)
 	}
 
