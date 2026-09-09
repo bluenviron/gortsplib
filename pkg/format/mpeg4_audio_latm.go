@@ -23,6 +23,12 @@ func allLayersHaveSameTypeRateChannelsExtType(c *mpeg4audio.StreamMuxConfig) boo
 				continue
 			}
 
+			// A layer with no AudioSpecificConfig reuses the config of a
+			// previous layer (useSameConfig), so it matches by definition.
+			if l.AudioSpecificConfig == nil {
+				continue
+			}
+
 			if l.AudioSpecificConfig.Type != typ ||
 				l.AudioSpecificConfig.SampleRate != rate ||
 				l.AudioSpecificConfig.ChannelConfig != channelConfig ||
