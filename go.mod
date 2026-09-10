@@ -9,7 +9,7 @@ require (
 	github.com/pion/rtcp v1.2.17
 	github.com/pion/rtp v1.10.5
 	github.com/pion/sdp/v3 v3.0.19
-	github.com/pion/srtp/v3 v3.0.13
+	github.com/pion/srtp/v3 v3.0.14
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/net v0.58.0
 )
