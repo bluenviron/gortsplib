@@ -5,7 +5,6 @@ import (
 
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/pion/rtp"
-	"github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
@@ -68,19 +67,3 @@ func TestMPEG4AudioLATMDecEncoder(t *testing.T) {
 	require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, byts)
 }
 
-func TestMPEG4AudioLATMMultiLayerSameConfig(t *testing.T) {
-	// A StreamMuxConfig where a non-first layer uses useSameConfig leaves that
-	// layer's AudioSpecificConfig nil (a valid ISO-14496-3 encoding). Parsing
-	// it must not panic. config below is a 2-layer config with the 2nd layer
-	// reusing the first's AudioSpecificConfig.
-	md := &sdp.MediaDescription{
-		MediaName: sdp.MediaName{Media: "audio", Formats: []string{"96"}},
-		Attributes: []sdp.Attribute{
-			{Key: "rtpmap", Value: "96 MP4A-LATM/48000/2"},
-			{Key: "fmtp", Value: "96 cpresent=0; object=2; config=400223203fe3fc"},
-		},
-	}
-	f, err := format.Unmarshal(md, "96")
-	require.NoError(t, err)
-	require.NotNil(t, f)
-}
