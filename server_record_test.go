@@ -189,10 +189,13 @@ func TestServerRecordErrorSetup(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
+			nconnClosed := make(chan struct{})
+
 			s := &Server{
 				Handler: &testServerHandler{
 					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 						require.EqualError(t, ctx.Error, ca.err)
+						close(nconnClosed)
 					},
 					onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 						return &base.Response{
@@ -254,6 +257,8 @@ func TestServerRecordErrorSetup(t *testing.T) {
 			})
 			require.NoError(t, err)
 			require.NotEqual(t, base.StatusOK, res.StatusCode)
+
+			<-nconnClosed
 		})
 	}
 }
