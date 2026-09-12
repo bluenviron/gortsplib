@@ -600,6 +600,45 @@ var casesFormat = []struct {
 		},
 	},
 	{
+		"audio aac latm multi-layer same config",
+		"v=0\n" +
+			"s=\n" +
+			"m=audio 0 RTP/AVP 96\n" +
+			"a=rtpmap:96 MP4A-LATM/48000/2\n" +
+			"a=fmtp:96 cpresent=0; object=2; config=400223203fe3fc\n",
+		&format.MPEG4AudioLATM{
+			PayloadTyp:     96,
+			ProfileLevelID: 30,
+			CPresent:       false,
+			StreamMuxConfig: &mpeg4audio.StreamMuxConfig{
+				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
+					Layers: []*mpeg4audio.StreamMuxConfigLayer{
+						{
+							AudioSpecificConfig: &mpeg4audio.AudioSpecificConfig{
+								Type:          2,
+								SampleRate:    48000,
+								ChannelConfig: 2,
+								ChannelCount:  2, //nolint:staticcheck
+							},
+							LatmBufferFullness: 255,
+						},
+						{
+							LatmBufferFullness: 255,
+						},
+					},
+				}},
+			},
+		},
+		96,
+		"MP4A-LATM/48000/2",
+		map[string]string{
+			"config":           "400223203fe3fc",
+			"cpresent":         "0",
+			"object":           "2",
+			"profile-level-id": "30",
+		},
+	},
+	{
 		"audio speex",
 		"v=0\n" +
 			"s=\n" +
