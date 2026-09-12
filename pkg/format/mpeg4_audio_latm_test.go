@@ -66,4 +66,3 @@ func TestMPEG4AudioLATMDecEncoder(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, byts)
 }
-
