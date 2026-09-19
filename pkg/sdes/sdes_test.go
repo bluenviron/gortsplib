@@ -29,6 +29,26 @@ func TestUnmarshal(t *testing.T) {
 	}, s)
 }
 
+func FuzzSDESUnmarshal(f *testing.F) {
+	f.Add("1 AES_CM_128_HMAC_SHA1_80 inline:5yQlV6XBpXYqEhsRoCs2OH+GujtAjltr3K6GPpyY")
+	f.Add("")
+	f.Add("invalid AES_CM_128_HMAC_SHA1_80 inline:AA==")
+	f.Add("1 AES_CM_128_HMAC_SHA1_80 mikey:AQAFgM0=")
+	f.Add("1 AES_CM_128_HMAC_SHA1_80 inline:not-valid-base64!!")
+	f.Add("1 AES_CM_128_HMAC_SHA1_80 inline:AA==|2^20|1:4")
+
+	f.Fuzz(func(t *testing.T, v string) {
+		var s sdes.SDES
+		err := s.Unmarshal(v)
+		if err != nil {
+			return
+		}
+
+		require.NotEmpty(t, s.Suite)
+		require.NotNil(t, s.Key)
+	})
+}
+
 func TestUnmarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -39,6 +59,11 @@ func TestUnmarshalErrors(t *testing.T) {
 			"missing fields",
 			"1 AES_CM_128_HMAC_SHA1_80",
 			"invalid crypto attribute: 1 AES_CM_128_HMAC_SHA1_80",
+		},
+		{
+			"invalid tag",
+			"invalid AES_CM_128_HMAC_SHA1_80 inline:AA==",
+			"invalid crypto tag: invalid",
 		},
 		{
 			"non-inline key method",
