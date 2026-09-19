@@ -3448,6 +3448,150 @@ var cases = []struct {
 			}},
 		},
 	},
+	{
+		"issue mediamtx/5949 (VIVOTEK NVR)",
+		[]byte("v=0\r\n" +
+			"o=RTSP 19599440071187478912 13656283801756621937 IN IP4 0.0.0.0\r\n" +
+			"s=RTSP server\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"a=control:*\r\n" +
+			"a=etag:1234567890\r\n" +
+			"a=range:npt=0-\r\n" +
+			"a=control:*\r\n" +
+			"m=video 0 RTP/AVP 98\r\n" +
+			"a=control:trackID=1\r\n" +
+			"b=AS:0\r\n" +
+			"a=rtpmap:98 H264/90000\r\n" +
+			"a=fmtp:98 packetization-mode=1;profile-level-id=4d401f;" +
+			"sprop-parameter-sets=Z01AH42NQCgC3/gLcBAQFAAAD6AAATiDoYA9AAANWfrvLjQwB6AAAas/XeXCgA==,aO44gA==\r\n" +
+			"m=application 0 RTP/AVP 107\r\n" +
+			"a=control:trackID=3\r\n" +
+			"a=rtpmap:107 vnd.onvif.metadata/90000\r\n" +
+			"m=application 0 RTP/AVP 108\r\n" +
+			"a=control:trackID=4\r\n" +
+			"a=rtpmap:108 vnd.vivotek.metj/90000\r\n"),
+		[]byte("v=0\r\n" +
+			"o=RTSP 1152695997477927296 13656283801756621937 IN IP4 0.0.0.0\r\n" +
+			"s=RTSP server\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"a=control:*\r\n" +
+			"a=etag:1234567890\r\n" +
+			"a=range:npt=0-\r\n" +
+			"a=control:*\r\n" +
+			"m=video 0 RTP/AVP 98\r\n" +
+			"b=AS:0\r\n" +
+			"a=control:trackID=1\r\n" +
+			"a=rtpmap:98 H264/90000\r\n" +
+			"a=fmtp:98 packetization-mode=1;profile-level-id=4d401f;" +
+			"sprop-parameter-sets=Z01AH42NQCgC3/gLcBAQFAAAD6AAATiDoYA9AAANWfrvLjQwB6AAAas/XeXCgA==,aO44gA==\r\n" +
+			"m=application 0 RTP/AVP 107\r\n" +
+			"a=control:trackID=3\r\n" +
+			"a=rtpmap:107 vnd.onvif.metadata/90000\r\n" +
+			"m=application 0 RTP/AVP 108\r\n" +
+			"a=control:trackID=4\r\n" +
+			"a=rtpmap:108 vnd.vivotek.metj/90000\r\n"),
+		sdp.SessionDescription{
+			Origin: sdp.Origin{
+				Username:       "RTSP",
+				SessionID:      1152695997477927296,
+				SessionVersion: 13656283801756621937,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "0.0.0.0",
+			},
+			SessionName: "RTSP server",
+			ConnectionInformation: &sdp.ConnectionInformation{
+				NetworkType: "IN",
+				AddressType: "IP4",
+				Address: &sdp.Address{
+					Address: "0.0.0.0",
+				},
+			},
+			TimeDescriptions: []sdp.TimeDescription{{Timing: sdp.Timing{StartTime: 0, StopTime: 0}}},
+			Attributes: []sdp.Attribute{
+				{
+					Key:   "control",
+					Value: "*",
+				},
+				{
+					Key:   "etag",
+					Value: "1234567890",
+				},
+				{
+					Key:   "range",
+					Value: "npt=0-",
+				},
+				{
+					Key:   "control",
+					Value: "*",
+				},
+			},
+			MediaDescriptions: []*sdp.MediaDescription{
+				{
+					MediaName: sdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"98"},
+					},
+					Bandwidth: []sdp.Bandwidth{{
+						Type:      "AS",
+						Bandwidth: 0,
+					}},
+					Attributes: []sdp.Attribute{
+						{
+							Key:   "control",
+							Value: "trackID=1",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "98 H264/90000",
+						},
+						{
+							Key: "fmtp",
+							Value: "98 packetization-mode=1;profile-level-id=4d401f;" +
+								"sprop-parameter-sets=Z01AH42NQCgC3/gLcBAQFAAAD6AAATiDoYA9AAANWfrvLjQwB6AAAas/XeXCgA==,aO44gA==",
+						},
+					},
+				},
+				{
+					MediaName: sdp.MediaName{
+						Media:   "application",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"107"},
+					},
+					Attributes: []sdp.Attribute{
+						{
+							Key:   "control",
+							Value: "trackID=3",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "107 vnd.onvif.metadata/90000",
+						},
+					},
+				},
+				{
+					MediaName: sdp.MediaName{
+						Media:   "application",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"108"},
+					},
+					Attributes: []sdp.Attribute{
+						{
+							Key:   "control",
+							Value: "trackID=4",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "108 vnd.vivotek.metj/90000",
+						},
+					},
+				},
+			},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {
