@@ -46,6 +46,20 @@ func parsePort(value string) (int, error) {
 	return port, nil
 }
 
+func parseOriginDecimal(value string) (uint64, error) {
+	v, err := strconv.ParseUint(value, 10, 64)
+	if errors.Is(err, strconv.ErrRange) && strings.Trim(value, "0123456789") == "" {
+		// RFC 8866 doesn't limit the size of sess-id and sess-version,
+		// while pion/sdp stores them in uint64. Keep the lowest 64 bits.
+		v = 0
+		for _, c := range []byte(value) {
+			v = v*10 + uint64(c-'0')
+		}
+		return v, nil
+	}
+	return v, err
+}
+
 func stringsReverseIndexByte(s string, b byte) int {
 	for i := len(s) - 2; i >= 0; i-- {
 		if s[i] == b {
@@ -110,7 +124,7 @@ func unmarshalOrigin(s *sdp.SessionDescription, value string) error {
 	tmp = strings.TrimPrefix(tmp, "-")
 
 	var err error
-	s.Origin.SessionVersion, err = strconv.ParseUint(tmp, 10, 64)
+	s.Origin.SessionVersion, err = parseOriginDecimal(tmp)
 	if err != nil {
 		return fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, tmp)
 	}
@@ -137,7 +151,7 @@ func unmarshalOrigin(s *sdp.SessionDescription, value string) error {
 		}
 		tmp = strings.TrimPrefix(tmp, "-")
 
-		s.Origin.SessionID, err = strconv.ParseUint(tmp, 10, 64)
+		s.Origin.SessionID, err = parseOriginDecimal(tmp)
 	}
 	if err != nil {
 		return fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, tmp)
