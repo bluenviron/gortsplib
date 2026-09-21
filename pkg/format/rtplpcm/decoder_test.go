@@ -1,4 +1,4 @@
-package rtplpcm
+package rtplpcm_test
 
 import (
 	"encoding/binary"
@@ -7,12 +7,14 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtplpcm"
 )
 
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			d := &Decoder{
+			d := &rtplpcm.Decoder{
 				BitDepth:     24,
 				ChannelCount: 2,
 			}
@@ -100,7 +102,7 @@ func FuzzDecoder(f *testing.F) {
 			return
 		}
 
-		d := &Decoder{
+		d := &rtplpcm.Decoder{
 			BitDepth:     24,
 			ChannelCount: 2,
 		}
@@ -116,7 +118,7 @@ func FuzzDecoder(f *testing.F) {
 
 			require.NotEmpty(t, samples)
 
-			e := &Encoder{
+			e := &rtplpcm.Encoder{
 				BitDepth:              24,
 				ChannelCount:          2,
 				SSRC:                  new(uint32(12321)),

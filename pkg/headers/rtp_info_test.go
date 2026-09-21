@@ -1,4 +1,4 @@
-package headers
+package headers_test
 
 import (
 	"testing"
@@ -6,19 +6,20 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 )
 
 var casesRTPInfo = []struct {
 	name string
 	vin  base.HeaderValue
 	vout base.HeaderValue
-	h    RTPInfo
+	h    headers.RTPInfo
 }{
 	{
 		"single value",
 		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=35243;rtptime=717574556`},
 		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=35243;rtptime=717574556`},
-		RTPInfo{
+		headers.RTPInfo{
 			{
 				URL:            "rtsp://127.0.0.1/test.mkv/track1",
 				SequenceNumber: new(uint16(35243)),
@@ -32,7 +33,7 @@ var casesRTPInfo = []struct {
 			`url=rtsp://127.0.0.1/test.mkv/track2;seq=13655;rtptime=2848846950`},
 		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=35243;rtptime=717574556,` +
 			`url=rtsp://127.0.0.1/test.mkv/track2;seq=13655;rtptime=2848846950`},
-		RTPInfo{
+		headers.RTPInfo{
 			{
 				URL:            "rtsp://127.0.0.1/test.mkv/track1",
 				SequenceNumber: new(uint16(35243)),
@@ -49,7 +50,7 @@ var casesRTPInfo = []struct {
 		"missing timestamp",
 		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=35243`},
 		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=35243`},
-		RTPInfo{
+		headers.RTPInfo{
 			{
 				URL:            "rtsp://127.0.0.1/test.mkv/track1",
 				SequenceNumber: new(uint16(35243)),
@@ -60,7 +61,7 @@ var casesRTPInfo = []struct {
 		"missing sequence number",
 		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;rtptime=717574556`},
 		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;rtptime=717574556`},
-		RTPInfo{
+		headers.RTPInfo{
 			{
 				URL:       "rtsp://127.0.0.1/test.mkv/track1",
 				Timestamp: new(uint32(717574556)),
@@ -71,7 +72,7 @@ var casesRTPInfo = []struct {
 		"path instead of url",
 		base.HeaderValue{`url=trackID=0;seq=12447;rtptime=12447`},
 		base.HeaderValue{`url=trackID=0;seq=12447;rtptime=12447`},
-		RTPInfo{
+		headers.RTPInfo{
 			{
 				URL:            "trackID=0",
 				SequenceNumber: new(uint16(12447)),
@@ -85,7 +86,7 @@ var casesRTPInfo = []struct {
 			`seq=58477;rtptime=1020884293, url=rtsp://10.13.146.53/axis-media/media.amp/trackID=2;seq=15727;rtptime=1171661503`},
 		base.HeaderValue{`url=rtsp://10.13.146.53/axis-media/media.amp/trackID=1;` +
 			`seq=58477;rtptime=1020884293,url=rtsp://10.13.146.53/axis-media/media.amp/trackID=2;seq=15727;rtptime=1171661503`},
-		RTPInfo{
+		headers.RTPInfo{
 			{
 				URL:            "rtsp://10.13.146.53/axis-media/media.amp/trackID=1",
 				SequenceNumber: new(uint16(58477)),
@@ -104,7 +105,7 @@ var casesRTPInfo = []struct {
 			`url=trackID=2;seq=43807;rtptime=1702259566;ssrc=ee839a80`},
 		base.HeaderValue{`url=trackID=1;seq=55664;rtptime=254718369,` +
 			`url=trackID=2;seq=43807;rtptime=1702259566`},
-		RTPInfo{
+		headers.RTPInfo{
 			{
 				URL:            "trackID=1",
 				SequenceNumber: new(uint16(55664)),
@@ -122,7 +123,7 @@ var casesRTPInfo = []struct {
 func TestRTPInfoUnmarshal(t *testing.T) {
 	for _, ca := range casesRTPInfo {
 		t.Run(ca.name, func(t *testing.T) {
-			var h RTPInfo
+			var h headers.RTPInfo
 			err := h.Unmarshal(ca.vin)
 			require.NoError(t, err)
 			require.Equal(t, ca.h, h)
@@ -145,7 +146,7 @@ func FuzzRTPInfoUnmarshal(f *testing.F) {
 	}
 
 	f.Fuzz(func(_ *testing.T, b string) {
-		var h RTPInfo
+		var h headers.RTPInfo
 		err := h.Unmarshal(base.HeaderValue{b})
 		if err != nil {
 			return
@@ -157,13 +158,13 @@ func FuzzRTPInfoUnmarshal(f *testing.F) {
 
 func TestRTPInfoAdditionalErrors(t *testing.T) {
 	func() {
-		var h RTPInfo
+		var h headers.RTPInfo
 		err := h.Unmarshal(base.HeaderValue{})
 		require.Error(t, err)
 	}()
 
 	func() {
-		var h RTPInfo
+		var h headers.RTPInfo
 		err := h.Unmarshal(base.HeaderValue{"a", "b"})
 		require.Error(t, err)
 	}()

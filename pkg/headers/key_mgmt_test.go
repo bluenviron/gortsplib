@@ -1,4 +1,4 @@
-package headers
+package headers_test
 
 import (
 	"testing"
@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
 )
 
@@ -13,7 +14,7 @@ var casesKeyMgmt = []struct {
 	name string
 	vin  base.HeaderValue
 	vout base.HeaderValue
-	h    KeyMgmt
+	h    headers.KeyMgmt
 }{
 	{
 		"standard",
@@ -25,7 +26,7 @@ var casesKeyMgmt = []struct {
 			`uri="rtsps://127.0.0.1:8322/stream/trackID=0";` +
 			`data="AQAFAHojKV4BAACVjCMnAAAAAAsA6/mdTLBeokwKEGwcAuPrxj6/enyb+` +
 			`A2+rNcBAAAAFQABAQEBEAIBAQMBCgcBAQgBAQoBAQAAACIAIAAeX8XvOCzIMh0JTOWivWLxEflTUSp1fjj2i8xG7D9DAA=="`},
-		KeyMgmt{
+		headers.KeyMgmt{
 			URL: "rtsps://127.0.0.1:8322/stream/trackID=0",
 			MikeyMessage: &mikey.Message{
 				Header: mikey.Header{
@@ -94,7 +95,7 @@ var casesKeyMgmt = []struct {
 func TestKeyMgmtUnmarshal(t *testing.T) {
 	for _, ca := range casesKeyMgmt {
 		t.Run(ca.name, func(t *testing.T) {
-			var h KeyMgmt
+			var h headers.KeyMgmt
 			err := h.Unmarshal(ca.vin)
 			require.NoError(t, err)
 			require.Equal(t, ca.h, h)
@@ -118,7 +119,7 @@ func FuzzKeyMgmtUnmarshal(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, b string) {
-		var h KeyMgmt
+		var h headers.KeyMgmt
 		err := h.Unmarshal(base.HeaderValue{b})
 		if err != nil {
 			return
@@ -131,13 +132,13 @@ func FuzzKeyMgmtUnmarshal(f *testing.F) {
 
 func TestKeyMgmtAdditionalErrors(t *testing.T) {
 	func() {
-		var h KeyMgmt
+		var h headers.KeyMgmt
 		err := h.Unmarshal(base.HeaderValue{})
 		require.Error(t, err)
 	}()
 
 	func() {
-		var h KeyMgmt
+		var h headers.KeyMgmt
 		err := h.Unmarshal(base.HeaderValue{"a", "b"})
 		require.Error(t, err)
 	}()

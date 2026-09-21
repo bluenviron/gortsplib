@@ -1,4 +1,4 @@
-package rtpfragmented
+package rtpfragmented_test
 
 import (
 	"bytes"
@@ -6,6 +6,8 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpfragmented"
 )
 
 var cases = []struct {
@@ -62,7 +64,7 @@ var cases = []struct {
 func TestEncode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			e := &Encoder{
+			e := &rtpfragmented.Encoder{
 				PayloadType:           96,
 				SSRC:                  new(uint32(0x9dbb7812)),
 				InitialSequenceNumber: new(uint16(0x44ed)),
@@ -79,7 +81,7 @@ func TestEncode(t *testing.T) {
 }
 
 func TestEncodeRandomInitialState(t *testing.T) {
-	e := &Encoder{
+	e := &rtpfragmented.Encoder{
 		PayloadType: 96,
 	}
 	err := e.Init()

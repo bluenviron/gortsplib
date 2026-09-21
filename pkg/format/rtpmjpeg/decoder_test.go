@@ -1,4 +1,4 @@
-package rtpmjpeg
+package rtpmjpeg_test
 
 import (
 	"encoding/binary"
@@ -7,19 +7,21 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpmjpeg"
 )
 
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			var d Decoder
+			var d rtpmjpeg.Decoder
 			err := d.Init()
 			require.NoError(t, err)
 
 			for _, pkt := range ca.pkts {
 				var image []byte
 				image, err = d.Decode(pkt)
-				if errors.Is(err, ErrMorePacketsNeeded) {
+				if errors.Is(err, rtpmjpeg.ErrMorePacketsNeeded) {
 					continue
 				}
 
@@ -31,7 +33,7 @@ func TestDecode(t *testing.T) {
 }
 
 func TestDecodeFixedQuantizationTable(t *testing.T) {
-	var d Decoder
+	var d rtpmjpeg.Decoder
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -199,7 +201,7 @@ func FuzzDecoder(f *testing.F) {
 			return
 		}
 
-		var d Decoder
+		var d rtpmjpeg.Decoder
 		err = d.Init()
 		require.NoError(t, err)
 
@@ -212,7 +214,7 @@ func FuzzDecoder(f *testing.F) {
 
 			require.NotEmpty(t, img)
 
-			e := &Encoder{
+			e := &rtpmjpeg.Encoder{
 				SSRC:                  new(uint32(12321)),
 				InitialSequenceNumber: new(uint16(45432)),
 			}

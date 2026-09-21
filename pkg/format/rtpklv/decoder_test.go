@@ -1,4 +1,4 @@
-package rtpklv
+package rtpklv_test
 
 import (
 	"bytes"
@@ -8,12 +8,14 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpklv"
 )
 
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			var d Decoder
+			var d rtpklv.Decoder
 			err := d.Init()
 			require.NoError(t, err)
 
@@ -28,7 +30,7 @@ func TestDecode(t *testing.T) {
 				// test input integrity
 				require.Equal(t, clone, pkt)
 
-				if errors.Is(err, ErrMorePacketsNeeded) {
+				if errors.Is(err, rtpklv.ErrMorePacketsNeeded) {
 					continue
 				}
 
@@ -108,7 +110,7 @@ func FuzzDecoder(f *testing.F) {
 			return
 		}
 
-		var d Decoder
+		var d rtpklv.Decoder
 		err = d.Init()
 		require.NoError(t, err)
 
@@ -121,7 +123,7 @@ func FuzzDecoder(f *testing.F) {
 
 			require.NotEmpty(t, unit)
 
-			e := &Encoder{
+			e := &rtpklv.Encoder{
 				SSRC:                  new(uint32(12321)),
 				InitialSequenceNumber: new(uint16(45432)),
 			}
@@ -150,7 +152,7 @@ func TestDecodeUnitsAreNotReused(t *testing.T) {
 		{"shorter", klvUnit(0xbb, 8)},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			var d Decoder
+			var d rtpklv.Decoder
 			err := d.Init()
 			require.NoError(t, err)
 

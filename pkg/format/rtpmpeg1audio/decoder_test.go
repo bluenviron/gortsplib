@@ -1,4 +1,4 @@
-package rtpmpeg1audio
+package rtpmpeg1audio_test
 
 import (
 	"encoding/binary"
@@ -7,12 +7,14 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpmpeg1audio"
 )
 
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			var d Decoder
+			var d rtpmpeg1audio.Decoder
 			err := d.Init()
 			require.NoError(t, err)
 
@@ -95,7 +97,7 @@ func FuzzDecoder(f *testing.F) {
 			return
 		}
 
-		var d Decoder
+		var d rtpmpeg1audio.Decoder
 		err = d.Init()
 		require.NoError(t, err)
 
@@ -112,7 +114,7 @@ func FuzzDecoder(f *testing.F) {
 				require.NotEmpty(t, frame)
 			}
 
-			e := &Encoder{
+			e := &rtpmpeg1audio.Encoder{
 				SSRC:                  new(uint32(12321)),
 				InitialSequenceNumber: new(uint16(45432)),
 			}

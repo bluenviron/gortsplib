@@ -1,4 +1,4 @@
-package rtpmpegts
+package rtpmpegts_test
 
 import (
 	"encoding/binary"
@@ -7,6 +7,8 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpmpegts"
 )
 
 func mergeBytes(vals ...[]byte) []byte {
@@ -24,6 +26,11 @@ func mergeBytes(vals ...[]byte) []byte {
 
 	return res
 }
+
+const (
+	mpegtsPacketSize = 188
+	syncByte         = 0x47
+)
 
 func makeTSPacket(pid byte) []byte {
 	pkt := make([]byte, mpegtsPacketSize)
@@ -109,7 +116,7 @@ var cases = []struct {
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			var d Decoder
+			var d rtpmpegts.Decoder
 			err := d.Init()
 			require.NoError(t, err)
 
@@ -194,7 +201,7 @@ func FuzzDecoder(f *testing.F) {
 			return
 		}
 
-		var d Decoder
+		var d rtpmpegts.Decoder
 		err = d.Init()
 		require.NoError(t, err)
 
@@ -211,7 +218,7 @@ func FuzzDecoder(f *testing.F) {
 				require.NotEmpty(t, tsPacket)
 			}
 
-			e := &Encoder{
+			e := &rtpmpegts.Encoder{
 				SSRC:                  new(uint32(12321)),
 				InitialSequenceNumber: new(uint16(45432)),
 			}

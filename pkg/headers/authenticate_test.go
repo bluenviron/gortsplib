@@ -1,4 +1,4 @@
-package headers
+package headers_test
 
 import (
 	"testing"
@@ -6,20 +6,21 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 )
 
 var casesAuthenticate = []struct {
 	name string
 	vin  base.HeaderValue
 	vout base.HeaderValue
-	h    Authenticate
+	h    headers.Authenticate
 }{
 	{
 		"basic",
 		base.HeaderValue{`Basic realm="4419b63f5e51"`},
 		base.HeaderValue{`Basic realm="4419b63f5e51"`},
-		Authenticate{
-			Method: AuthMethodBasic,
+		headers.Authenticate{
+			Method: headers.AuthMethodBasic,
 			Realm:  "4419b63f5e51",
 		},
 	},
@@ -28,8 +29,8 @@ var casesAuthenticate = []struct {
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", qop="auth"`},
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", ` +
 			`qop="auth"`},
-		Authenticate{
-			Method: AuthMethodDigest,
+		headers.Authenticate{
+			Method: headers.AuthMethodDigest,
 			Realm:  "4419b63f5e51",
 			Nonce:  "8b84a3b789283a8bea8da7fa7d41f08b",
 			Qop:    new("auth"),
@@ -40,8 +41,8 @@ var casesAuthenticate = []struct {
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`},
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", ` +
 			`stale="FALSE"`},
-		Authenticate{
-			Method: AuthMethodDigest,
+		headers.Authenticate{
+			Method: headers.AuthMethodDigest,
 			Realm:  "4419b63f5e51",
 			Nonce:  "8b84a3b789283a8bea8da7fa7d41f08b",
 			Stale:  new("FALSE"),
@@ -52,8 +53,8 @@ var casesAuthenticate = []struct {
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale=FALSE`},
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", ` +
 			`stale="FALSE"`},
-		Authenticate{
-			Method: AuthMethodDigest,
+		headers.Authenticate{
+			Method: headers.AuthMethodDigest,
 			Realm:  "4419b63f5e51",
 			Nonce:  "8b84a3b789283a8bea8da7fa7d41f08b",
 			Stale:  new("FALSE"),
@@ -64,8 +65,8 @@ var casesAuthenticate = []struct {
 		base.HeaderValue{`Digest realm="4419b63f5e51",nonce="133767111917411116111311118211673010032",  stale="FALSE"`},
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="133767111917411116111311118211673010032", ` +
 			`stale="FALSE"`},
-		Authenticate{
-			Method: AuthMethodDigest,
+		headers.Authenticate{
+			Method: headers.AuthMethodDigest,
 			Realm:  "4419b63f5e51",
 			Nonce:  "133767111917411116111311118211673010032",
 			Stale:  new("FALSE"),
@@ -77,8 +78,8 @@ var casesAuthenticate = []struct {
 			`nonce="752a62306daf32b401a41004555c7663",opaque="",stale=FALSE`},
 		base.HeaderValue{`Digest realm="Please log in with a valid username", ` +
 			`nonce="752a62306daf32b401a41004555c7663", opaque="", stale="FALSE"`},
-		Authenticate{
-			Method: AuthMethodDigest,
+		headers.Authenticate{
+			Method: headers.AuthMethodDigest,
 			Realm:  "Please log in with a valid username",
 			Nonce:  "752a62306daf32b401a41004555c7663",
 			Opaque: new(""),
@@ -91,12 +92,12 @@ var casesAuthenticate = []struct {
 			`stale="FALSE", algorithm="MD5"`},
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", ` +
 			`stale="FALSE", algorithm="MD5"`},
-		Authenticate{
-			Method:    AuthMethodDigest,
+		headers.Authenticate{
+			Method:    headers.AuthMethodDigest,
 			Realm:     "4419b63f5e51",
 			Nonce:     "8b84a3b789283a8bea8da7fa7d41f08b",
 			Stale:     new("FALSE"),
-			Algorithm: new(AuthAlgorithmMD5),
+			Algorithm: new(headers.AuthAlgorithmMD5),
 		},
 	},
 	{
@@ -105,12 +106,12 @@ var casesAuthenticate = []struct {
 			`nonce="fcc86deace979a488b2bfb89f4d0812c", algorithm="SHA-256", stale="FALSE"`},
 		base.HeaderValue{`Digest realm="IP Camera(AB705)", ` +
 			`nonce="fcc86deace979a488b2bfb89f4d0812c", stale="FALSE", algorithm="SHA-256"`},
-		Authenticate{
-			Method:    AuthMethodDigest,
+		headers.Authenticate{
+			Method:    headers.AuthMethodDigest,
 			Realm:     "IP Camera(AB705)",
 			Nonce:     "fcc86deace979a488b2bfb89f4d0812c",
 			Stale:     new("FALSE"),
-			Algorithm: new(AuthAlgorithmSHA256),
+			Algorithm: new(headers.AuthAlgorithmSHA256),
 		},
 	},
 }
@@ -118,7 +119,7 @@ var casesAuthenticate = []struct {
 func TestAuthenticateUnmarshal(t *testing.T) {
 	for _, ca := range casesAuthenticate {
 		t.Run(ca.name, func(t *testing.T) {
-			var h Authenticate
+			var h headers.Authenticate
 			err := h.Unmarshal(ca.vin)
 			require.NoError(t, err)
 			require.Equal(t, ca.h, h)
@@ -141,7 +142,7 @@ func FuzzAuthenticateUnmarshal(f *testing.F) {
 	}
 
 	f.Fuzz(func(_ *testing.T, b string) {
-		var h Authenticate
+		var h headers.Authenticate
 		err := h.Unmarshal(base.HeaderValue{b})
 		if err != nil {
 			return
@@ -153,13 +154,13 @@ func FuzzAuthenticateUnmarshal(f *testing.F) {
 
 func TestAuthenticateAdditionalErrors(t *testing.T) {
 	func() {
-		var h Authenticate
+		var h headers.Authenticate
 		err := h.Unmarshal(base.HeaderValue{})
 		require.Error(t, err)
 	}()
 
 	func() {
-		var h Authenticate
+		var h headers.Authenticate
 		err := h.Unmarshal(base.HeaderValue{"a", "b"})
 		require.Error(t, err)
 	}()

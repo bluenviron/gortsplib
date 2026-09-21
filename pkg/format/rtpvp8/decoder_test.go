@@ -1,4 +1,4 @@
-package rtpvp8
+package rtpvp8_test
 
 import (
 	"bytes"
@@ -8,12 +8,14 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpvp8"
 )
 
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			var d Decoder
+			var d rtpvp8.Decoder
 			err := d.Init()
 			require.NoError(t, err)
 
@@ -30,7 +32,7 @@ func TestDecode(t *testing.T) {
 }
 
 func TestDecodeErrorMissingPacket(t *testing.T) {
-	var d Decoder
+	var d rtpvp8.Decoder
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -44,7 +46,7 @@ func TestDecodeErrorMissingPacket(t *testing.T) {
 		},
 		Payload: mergeBytes([]byte{0x10}, bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 364), []byte{0x01, 0x02, 0x03}),
 	})
-	require.Equal(t, ErrMorePacketsNeeded, err)
+	require.Equal(t, rtpvp8.ErrMorePacketsNeeded, err)
 
 	_, err = d.Decode(&rtp.Packet{
 		Header: rtp.Header{
@@ -60,7 +62,7 @@ func TestDecodeErrorMissingPacket(t *testing.T) {
 }
 
 func TestDecodeMultiplePartitions(t *testing.T) {
-	var d Decoder
+	var d rtpvp8.Decoder
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -109,7 +111,7 @@ func TestDecodeMultiplePartitions(t *testing.T) {
 }
 
 func TestDecodeFragmentedMultiplePartitions(t *testing.T) {
-	var d Decoder
+	var d rtpvp8.Decoder
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -168,7 +170,7 @@ func TestDecodeFragmentedMultiplePartitions(t *testing.T) {
 }
 
 func TestDecodeFrameRestart(t *testing.T) {
-	var d Decoder
+	var d rtpvp8.Decoder
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -182,7 +184,7 @@ func TestDecodeFrameRestart(t *testing.T) {
 		},
 		Payload: []byte{0x10, 1, 2, 3},
 	})
-	require.Equal(t, ErrMorePacketsNeeded, err)
+	require.Equal(t, rtpvp8.ErrMorePacketsNeeded, err)
 
 	_, err = d.Decode(&rtp.Packet{
 		Header: rtp.Header{
@@ -194,7 +196,7 @@ func TestDecodeFrameRestart(t *testing.T) {
 		},
 		Payload: []byte{0x00, 4, 5},
 	})
-	require.Equal(t, ErrMorePacketsNeeded, err)
+	require.Equal(t, rtpvp8.ErrMorePacketsNeeded, err)
 
 	frame, err := d.Decode(&rtp.Packet{
 		Header: rtp.Header{
@@ -277,7 +279,7 @@ func FuzzDecoder(f *testing.F) {
 			return
 		}
 
-		var d Decoder
+		var d rtpvp8.Decoder
 		err = d.Init()
 		require.NoError(t, err)
 
@@ -290,7 +292,7 @@ func FuzzDecoder(f *testing.F) {
 
 			require.NotEmpty(t, frame)
 
-			e := &Encoder{
+			e := &rtpvp8.Encoder{
 				SSRC:                  new(uint32(12321)),
 				InitialSequenceNumber: new(uint16(45432)),
 			}

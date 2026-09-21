@@ -1,4 +1,4 @@
-package rtpvp9
+package rtpvp9_test
 
 import (
 	"bytes"
@@ -8,12 +8,14 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpvp9"
 )
 
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			var d Decoder
+			var d rtpvp9.Decoder
 			err := d.Init()
 			require.NoError(t, err)
 
@@ -30,7 +32,7 @@ func TestDecode(t *testing.T) {
 }
 
 func TestDecodeErrorMissingPacket(t *testing.T) {
-	var d Decoder
+	var d rtpvp9.Decoder
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -50,7 +52,7 @@ func TestDecodeErrorMissingPacket(t *testing.T) {
 			},
 			bytes.Repeat([]byte{1, 2, 3, 4}, 360)),
 	})
-	require.Equal(t, ErrMorePacketsNeeded, err)
+	require.Equal(t, rtpvp9.ErrMorePacketsNeeded, err)
 
 	_, err = d.Decode(&rtp.Packet{
 		Header: rtp.Header{
@@ -134,7 +136,7 @@ func FuzzDecoder(f *testing.F) {
 			return
 		}
 
-		var d Decoder
+		var d rtpvp9.Decoder
 		err = d.Init()
 		require.NoError(t, err)
 
@@ -147,7 +149,7 @@ func FuzzDecoder(f *testing.F) {
 
 			require.NotEmpty(t, frame)
 
-			e := &Encoder{
+			e := &rtpvp9.Encoder{
 				SSRC:                  new(uint32(12321)),
 				InitialSequenceNumber: new(uint16(45432)),
 			}

@@ -1,4 +1,4 @@
-package rtph264
+package rtph264_test
 
 import (
 	"bytes"
@@ -9,12 +9,14 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtph264"
 )
 
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			d := &Decoder{PacketizationMode: 1}
+			d := &rtph264.Decoder{PacketizationMode: 1}
 			err := d.Init()
 			require.NoError(t, err)
 
@@ -29,7 +31,7 @@ func TestDecode(t *testing.T) {
 				// test input integrity
 				require.Equal(t, clone, pkt)
 
-				if errors.Is(err, ErrMorePacketsNeeded) {
+				if errors.Is(err, rtph264.ErrMorePacketsNeeded) {
 					continue
 				}
 
@@ -363,7 +365,7 @@ var casesDecodeOnly = []struct {
 func TestDecodeOnly(t *testing.T) {
 	for _, ca := range casesDecodeOnly {
 		t.Run(ca.name, func(t *testing.T) {
-			d := &Decoder{PacketizationMode: 1}
+			d := &rtph264.Decoder{PacketizationMode: 1}
 			err := d.Init()
 			require.NoError(t, err)
 
@@ -373,7 +375,7 @@ func TestDecodeOnly(t *testing.T) {
 				au, err = d.Decode(pkt)
 
 				if i != len(ca.pkts)-1 {
-					require.ErrorIs(t, err, ErrMorePacketsNeeded)
+					require.ErrorIs(t, err, rtph264.ErrMorePacketsNeeded)
 				} else {
 					require.NoError(t, err)
 				}
@@ -385,7 +387,7 @@ func TestDecodeOnly(t *testing.T) {
 }
 
 func TestDecodePacketizationMode0(t *testing.T) {
-	d := &Decoder{PacketizationMode: 0}
+	d := &rtph264.Decoder{PacketizationMode: 0}
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -407,7 +409,7 @@ func TestDecodePacketizationMode0(t *testing.T) {
 
 func TestDecodePacketizationMode0AllowsFUAAndSTAPA(t *testing.T) {
 	t.Run("FU-A", func(t *testing.T) {
-		d := &Decoder{PacketizationMode: 0}
+		d := &rtph264.Decoder{PacketizationMode: 0}
 		err := d.Init()
 		require.NoError(t, err)
 
@@ -422,7 +424,7 @@ func TestDecodePacketizationMode0AllowsFUAAndSTAPA(t *testing.T) {
 			},
 			Payload: []byte{0x7c, 0x85, 0xaa, 0xbb},
 		})
-		require.ErrorIs(t, err, ErrMorePacketsNeeded)
+		require.ErrorIs(t, err, rtph264.ErrMorePacketsNeeded)
 
 		au, err := d.Decode(&rtp.Packet{
 			Header: rtp.Header{
@@ -440,7 +442,7 @@ func TestDecodePacketizationMode0AllowsFUAAndSTAPA(t *testing.T) {
 	})
 
 	t.Run("STAP-A", func(t *testing.T) {
-		d := &Decoder{PacketizationMode: 0}
+		d := &rtph264.Decoder{PacketizationMode: 0}
 		err := d.Init()
 		require.NoError(t, err)
 
@@ -461,7 +463,7 @@ func TestDecodePacketizationMode0AllowsFUAAndSTAPA(t *testing.T) {
 }
 
 func TestDecodeErrorNALUSize(t *testing.T) {
-	d := &Decoder{PacketizationMode: 1}
+	d := &rtph264.Decoder{PacketizationMode: 1}
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -497,7 +499,7 @@ func TestDecodeErrorNALUSize(t *testing.T) {
 }
 
 func TestDecodeErrorNALUCount(t *testing.T) {
-	d := &Decoder{PacketizationMode: 1}
+	d := &rtph264.Decoder{PacketizationMode: 1}
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -519,7 +521,7 @@ func TestDecodeErrorNALUCount(t *testing.T) {
 }
 
 func TestDecodeErrorMissingPacket(t *testing.T) {
-	d := &Decoder{PacketizationMode: 1}
+	d := &rtph264.Decoder{PacketizationMode: 1}
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -533,7 +535,7 @@ func TestDecodeErrorMissingPacket(t *testing.T) {
 		},
 		Payload: []byte{0x1c, 0x85, 0x01, 0x02},
 	})
-	require.Equal(t, ErrMorePacketsNeeded, err)
+	require.Equal(t, rtph264.ErrMorePacketsNeeded, err)
 
 	_, err = d.Decode(&rtp.Packet{
 		Header: rtp.Header{
@@ -623,7 +625,7 @@ func FuzzDecoder(f *testing.F) {
 			return
 		}
 
-		d := &Decoder{PacketizationMode: 1}
+		d := &rtph264.Decoder{PacketizationMode: 1}
 		err = d.Init()
 		require.NoError(t, err)
 
@@ -640,7 +642,7 @@ func FuzzDecoder(f *testing.F) {
 				require.NotEmpty(t, nalu)
 			}
 
-			e := &Encoder{
+			e := &rtph264.Encoder{
 				PacketizationMode:     1,
 				SSRC:                  new(uint32(12321)),
 				InitialSequenceNumber: new(uint16(45432)),
