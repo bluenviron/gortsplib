@@ -1294,6 +1294,38 @@ var casesFormat = []struct {
 			"streamtype":       "5",
 		},
 	},
+	{
+		"audio aac with mismatched fmtp payload type (issue gortsplib/658)",
+		"v=0\n" +
+			"s=\n" +
+			"m=audio 0 RTP/AVP 104\n" +
+			"a=rtpmap:104 MPEG4-GENERIC/16000\n" +
+			"a=fmtp:97 streamtype=5; profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1408\n",
+		&format.MPEG4Audio{
+			PayloadTyp:     104,
+			ProfileLevelID: 1,
+			Config: &mpeg4audio.AudioSpecificConfig{
+				Type:          2,
+				SampleRate:    16000,
+				ChannelConfig: 1,
+				ChannelCount:  1, //nolint:staticcheck
+			},
+			SizeLength:       13,
+			IndexLength:      3,
+			IndexDeltaLength: 3,
+		},
+		104,
+		"mpeg4-generic/16000/1",
+		map[string]string{
+			"config":           "1408",
+			"indexdeltalength": "3",
+			"indexlength":      "3",
+			"mode":             "AAC-hbr",
+			"profile-level-id": "1",
+			"sizelength":       "13",
+			"streamtype":       "5",
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {
@@ -1317,6 +1349,40 @@ func TestMarshal(t *testing.T) {
 			require.Equal(t, ca.encPayloadType, ca.dec.PayloadType())
 			require.Equal(t, ca.encRtpMap, ca.dec.RTPMap())
 			require.Equal(t, ca.encFmtp, ca.dec.FMTP())
+		})
+	}
+}
+
+func TestUnmarshalMismatchedFMTP(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		in   string
+	}{
+		{
+			"multiple formats",
+			"v=0\n" +
+				"s=\n" +
+				"m=audio 0 RTP/AVP 104 105\n" +
+				"a=rtpmap:104 MPEG4-GENERIC/16000\n" +
+				"a=rtpmap:105 PCMU/8000\n" +
+				"a=fmtp:97 streamtype=5; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1408\n",
+		},
+		{
+			"multiple fmtp attributes",
+			"v=0\n" +
+				"s=\n" +
+				"m=audio 0 RTP/AVP 104\n" +
+				"a=rtpmap:104 MPEG4-GENERIC/16000\n" +
+				"a=fmtp:97 streamtype=5; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1408\n" +
+				"a=fmtp:98 streamtype=5; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1408\n",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			desc, err := sdpunmarshaler.Unmarshal([]byte(ca.in))
+			require.NoError(t, err)
+
+			_, err = format.Unmarshal(desc.MediaDescriptions[0], "104")
+			require.EqualError(t, err, "config is missing")
 		})
 	}
 }
