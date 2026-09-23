@@ -1300,7 +1300,8 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=audio 0 RTP/AVP 104\n" +
 			"a=rtpmap:104 MPEG4-GENERIC/16000\n" +
-			"a=fmtp:97 streamtype=5; profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1408\n",
+			"a=fmtp:97 streamtype=5; profile-level-id=1; mode=AAC-hbr; " +
+			"sizelength=13; indexlength=3; indexdeltalength=3; config=1408\n",
 		&format.MPEG4Audio{
 			PayloadTyp:     104,
 			ProfileLevelID: 1,
