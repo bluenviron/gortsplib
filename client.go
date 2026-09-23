@@ -611,6 +611,8 @@ type Client struct {
 	keepAlivePeriod       time.Duration
 	keepAliveTimer        *time.Timer
 	closeError            error
+	aborted               bool
+	abortError            error
 	writerMutex           sync.RWMutex
 	writer                *asyncprocessor.Processor
 	reader                *clientReader
@@ -801,6 +803,28 @@ func (c *Client) Close() {
 	<-c.done
 }
 
+// Abort closes the connection and makes the client terminate asynchronously,
+// without waiting for its routines to exit. err is returned by Wait().
+// Differently from Close(), it can be called from any routine, including
+// packet callbacks (OnPacketRTP, OnPacketRTCP), that are called from the
+// reading routine. Subsequent calls have no effect.
+func (c *Client) Abort(err error) {
+	c.propsMutex.Lock()
+
+	if !c.aborted {
+		c.aborted = true
+		c.abortError = err
+
+		if c.nconn != nil {
+			c.nconn.Close()
+		}
+	}
+
+	c.propsMutex.Unlock()
+
+	c.ctxCancel()
+}
+
 // Wait waits until all client resources are closed.
 // This can happen when a fatal error occurs or when Close() is called.
 func (c *Client) Wait() error {
@@ -821,6 +845,12 @@ func (c *Client) run() {
 	defer close(c.done)
 
 	c.closeError = c.runInner()
+
+	c.propsMutex.RLock()
+	if c.aborted {
+		c.closeError = c.abortError
+	}
+	c.propsMutex.RUnlock()
 
 	c.ctxCancel()
 

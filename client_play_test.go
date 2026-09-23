@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/base64"
+	"errors"
 	"net"
 	"strconv"
 	"strings"
@@ -4975,4 +4976,106 @@ func TestClientPlayH264PacketizationMode0SwitchToTCP(t *testing.T) {
 	require.NoError(t, err)
 
 	<-packetRecv
+}
+
+func TestClientPlayAbort(t *testing.T) {
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+
+	go func() {
+		defer close(serverDone)
+
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
+		defer nconn.Close()
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
+
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Options, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Describe, req.Method)
+
+		medias := []*description.Media{testH264Media}
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
+			},
+			Body: mediasToSDP(medias),
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Setup, req.Method)
+
+		th := headers.Transport{
+			Delivery:       new(headers.TransportDeliveryUnicast),
+			Protocol:       headers.TransportProtocolTCP,
+			InterleavedIDs: &[2]int{0, 1},
+		}
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": th.Marshal(),
+			},
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Play, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+		})
+		require.NoError(t, err2)
+
+		err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+			Channel: 0,
+			Payload: testRTPPacketMarshaled,
+		}, make([]byte, 1024))
+		require.NoError(t, err2)
+
+		// the client drops the connection without sending TEARDOWN.
+		_, err2 = conn.ReadRequest()
+		require.Error(t, err2)
+	}()
+
+	errAbort := errors.New("abort")
+
+	c := Client{
+		Protocol: new(ProtocolTCP),
+	}
+
+	err = readAll(&c, "rtsp://localhost:8554/teststream",
+		func(_ *description.Media, _ format.Format, _ *rtp.Packet) {
+			c.Abort(errAbort)
+		})
+	require.NoError(t, err)
+	defer c.Close()
+
+	require.Equal(t, errAbort, c.Wait())
 }
