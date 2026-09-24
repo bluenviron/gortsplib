@@ -1,4 +1,4 @@
-package rtph265
+package rtph265_test
 
 import (
 	"bytes"
@@ -9,12 +9,14 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtph265"
 )
 
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			var d Decoder
+			var d rtph265.Decoder
 			err := d.Init()
 			require.NoError(t, err)
 
@@ -29,7 +31,7 @@ func TestDecode(t *testing.T) {
 				// test input integrity
 				require.Equal(t, clone, pkt)
 
-				if errors.Is(err, ErrMorePacketsNeeded) {
+				if errors.Is(err, rtph265.ErrMorePacketsNeeded) {
 					continue
 				}
 
@@ -255,7 +257,7 @@ var casesDecodeOnly = []struct {
 func TestDecodeOnly(t *testing.T) {
 	for _, ca := range casesDecodeOnly {
 		t.Run(ca.name, func(t *testing.T) {
-			var d Decoder
+			var d rtph265.Decoder
 			err := d.Init()
 			require.NoError(t, err)
 
@@ -265,7 +267,7 @@ func TestDecodeOnly(t *testing.T) {
 				au, err = d.Decode(pkt)
 
 				if i != len(ca.pkts)-1 {
-					require.ErrorIs(t, err, ErrMorePacketsNeeded)
+					require.ErrorIs(t, err, rtph265.ErrMorePacketsNeeded)
 				} else {
 					require.NoError(t, err)
 				}
@@ -277,7 +279,7 @@ func TestDecodeOnly(t *testing.T) {
 }
 
 func TestDecodeErrorNALUSize(t *testing.T) {
-	var d Decoder
+	var d rtph265.Decoder
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -313,7 +315,7 @@ func TestDecodeErrorNALUSize(t *testing.T) {
 }
 
 func TestDecodeErrorNALUCount(t *testing.T) {
-	var d Decoder
+	var d rtph265.Decoder
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -335,7 +337,7 @@ func TestDecodeErrorNALUCount(t *testing.T) {
 }
 
 func TestDecodeErrorMissingPacket(t *testing.T) {
-	var d Decoder
+	var d rtph265.Decoder
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -349,7 +351,7 @@ func TestDecodeErrorMissingPacket(t *testing.T) {
 		},
 		Payload: []byte{0x63, 0x02, 0x80, 0x03, 0x04},
 	})
-	require.Equal(t, ErrMorePacketsNeeded, err)
+	require.Equal(t, rtph265.ErrMorePacketsNeeded, err)
 
 	_, err = d.Decode(&rtp.Packet{
 		Header: rtp.Header{
@@ -450,7 +452,7 @@ func FuzzDecoder(f *testing.F) {
 			return
 		}
 
-		var d Decoder
+		var d rtph265.Decoder
 		err = d.Init()
 		require.NoError(t, err)
 
@@ -467,7 +469,7 @@ func FuzzDecoder(f *testing.F) {
 				require.NotEmpty(t, nalu)
 			}
 
-			e := &Encoder{
+			e := &rtph265.Encoder{
 				SSRC:                  new(uint32(12321)),
 				InitialSequenceNumber: new(uint16(45432)),
 			}

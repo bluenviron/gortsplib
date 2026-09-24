@@ -1,4 +1,4 @@
-package rtph264
+package rtph264_test
 
 import (
 	"bytes"
@@ -6,6 +6,8 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtph264"
 )
 
 func mergeBytes(vals ...[]byte) []byte {
@@ -280,7 +282,7 @@ var cases = []struct {
 func TestEncode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			e := &Encoder{
+			e := &rtph264.Encoder{
 				PacketizationMode:     1,
 				PayloadType:           96,
 				SSRC:                  new(uint32(0x9dbb7812)),
@@ -298,7 +300,7 @@ func TestEncode(t *testing.T) {
 }
 
 func TestEncodeRandomInitialState(t *testing.T) {
-	e := &Encoder{
+	e := &rtph264.Encoder{
 		PacketizationMode: 1,
 		PayloadType:       96,
 	}

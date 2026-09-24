@@ -1,4 +1,4 @@
-package rtpav1
+package rtpav1_test
 
 import (
 	"bytes"
@@ -9,12 +9,14 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/av1"
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpav1"
 )
 
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			var d Decoder
+			var d rtpav1.Decoder
 			err := d.Init()
 			require.NoError(t, err)
 
@@ -23,7 +25,7 @@ func TestDecode(t *testing.T) {
 			for _, pkt := range ca.pkts {
 				var addOBUs [][]byte
 				addOBUs, err = d.Decode(pkt)
-				if errors.Is(err, ErrMorePacketsNeeded) {
+				if errors.Is(err, rtpav1.ErrMorePacketsNeeded) {
 					continue
 				}
 
@@ -37,7 +39,7 @@ func TestDecode(t *testing.T) {
 }
 
 func TestDecodeErrorTUSize(t *testing.T) {
-	var d Decoder
+	var d rtpav1.Decoder
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -79,7 +81,7 @@ func TestDecodeErrorTUSize(t *testing.T) {
 }
 
 func TestDecodeErrorOBUCount(t *testing.T) {
-	var d Decoder
+	var d rtpav1.Decoder
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -101,7 +103,7 @@ func TestDecodeErrorOBUCount(t *testing.T) {
 }
 
 func TestDecodeErrorMissingPacket(t *testing.T) {
-	var d Decoder
+	var d rtpav1.Decoder
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -299,7 +301,7 @@ func TestDecodeErrorMissingPacket(t *testing.T) {
 			0x87, 0xc7, 0x3e, 0x21,
 		},
 	})
-	require.Equal(t, ErrMorePacketsNeeded, err)
+	require.Equal(t, rtpav1.ErrMorePacketsNeeded, err)
 
 	_, err = d.Decode(&rtp.Packet{
 		Header: rtp.Header{
@@ -406,7 +408,7 @@ func FuzzDecoder(f *testing.F) {
 			return
 		}
 
-		var d Decoder
+		var d rtpav1.Decoder
 		err = d.Init()
 		require.NoError(t, err)
 
@@ -423,7 +425,7 @@ func FuzzDecoder(f *testing.F) {
 				require.NotEmpty(t, obu)
 			}
 
-			e := &Encoder{
+			e := &rtpav1.Encoder{
 				SSRC:                  new(uint32(12321)),
 				InitialSequenceNumber: new(uint16(45432)),
 			}

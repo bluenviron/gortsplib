@@ -1,4 +1,4 @@
-package rtpav1
+package rtpav1_test
 
 import (
 	"bytes"
@@ -6,6 +6,8 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpav1"
 )
 
 var shortOBU = []byte{
@@ -1020,7 +1022,7 @@ var cases = []struct {
 func TestEncode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			e := &Encoder{
+			e := &rtpav1.Encoder{
 				PayloadType:           96,
 				SSRC:                  new(uint32(0x9dbb7812)),
 				InitialSequenceNumber: new(uint16(0x44ed)),
@@ -1037,7 +1039,7 @@ func TestEncode(t *testing.T) {
 }
 
 func TestEncodeRandomInitialState(t *testing.T) {
-	e := &Encoder{
+	e := &rtpav1.Encoder{
 		PayloadType: 96,
 	}
 	err := e.Init()

@@ -1,4 +1,4 @@
-package rtpmpeg4audio
+package rtpmpeg4audio_test
 
 import (
 	"bytes"
@@ -6,10 +6,12 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpmpeg4audio"
 )
 
 func TestEncodeRandomInitialState(t *testing.T) {
-	e := &Encoder{
+	e := &rtpmpeg4audio.Encoder{
 		PayloadType:      96,
 		SizeLength:       13,
 		IndexLength:      3,
@@ -481,7 +483,7 @@ var cases = []struct {
 func TestEncode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			e := &Encoder{
+			e := &rtpmpeg4audio.Encoder{
 				PayloadType:           96,
 				SSRC:                  new(uint32(0x9dbb7812)),
 				InitialSequenceNumber: new(uint16(0x44ed)),

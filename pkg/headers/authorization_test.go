@@ -1,4 +1,4 @@
-package headers
+package headers_test
 
 import (
 	"testing"
@@ -6,20 +6,21 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 )
 
 var casesAuthorization = []struct {
 	name string
 	vin  base.HeaderValue
 	vout base.HeaderValue
-	h    Authorization
+	h    headers.Authorization
 }{
 	{
 		"basic",
 		base.HeaderValue{"Basic bXl1c2VyOm15cGFzcw=="},
 		base.HeaderValue{"Basic bXl1c2VyOm15cGFzcw=="},
-		Authorization{
-			Method:    AuthMethodBasic,
+		headers.Authorization{
+			Method:    headers.AuthMethodBasic,
 			Username:  "myuser",
 			BasicPass: "mypass",
 		},
@@ -34,8 +35,8 @@ var casesAuthorization = []struct {
 			`nonce="7ypf/xlj9XXwfDPEoM4URrv/xwf94BcCAzFZH4GiTo0v", uri="/dir/index.html", ` +
 			`response="8ca523f5e9506fed4657c9700eebdbec", qop=auth, nc=00000001, ` +
 			`cnonce="f2/wE4q74E6zIJEtWaHKaf5wv/H5QzzpXusqGemxURZJ"`},
-		Authorization{
-			Method:   AuthMethodDigest,
+		headers.Authorization{
+			Method:   headers.AuthMethodDigest,
 			Username: "Mufasa",
 			Realm:    "http-auth@example.org",
 			Nonce:    "7ypf/xlj9XXwfDPEoM4URrv/xwf94BcCAzFZH4GiTo0v",
@@ -54,8 +55,8 @@ var casesAuthorization = []struct {
 		base.HeaderValue{`Digest username="Mufasa", realm="testrealm@host.com", ` +
 			`nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", uri="/dir/index.html", ` +
 			`response="e966c932a9242554e42c8ee200cec7f6", opaque="5ccc069c403ebaf9f0171e9517f40e41"`},
-		Authorization{
-			Method:   AuthMethodDigest,
+		headers.Authorization{
+			Method:   headers.AuthMethodDigest,
 			Username: "Mufasa",
 			Realm:    "testrealm@host.com",
 			Nonce:    "dcd98b7102dd2f0e8b11d0f600bfb0c093",
@@ -72,8 +73,8 @@ var casesAuthorization = []struct {
 		base.HeaderValue{`Digest username="", realm="IPCAM", ` +
 			`nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", ` +
 			`response="c072ae90eb4a27f4cdcb90d62266b2a1"`},
-		Authorization{
-			Method:   AuthMethodDigest,
+		headers.Authorization{
+			Method:   headers.AuthMethodDigest,
 			Username: "",
 			Realm:    "IPCAM",
 			Nonce:    "5d17cd12b9fa8a85ac5ceef0926ea5a6",
@@ -90,15 +91,15 @@ var casesAuthorization = []struct {
 		base.HeaderValue{`Digest username="Mufasa", realm="testrealm@host.com", ` +
 			`nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", uri="/dir/index.html", ` +
 			`response="e966c932a9242554e42c8ee200cec7f6", opaque="5ccc069c403ebaf9f0171e9517f40e41", algorithm="MD5"`},
-		Authorization{
-			Method:    AuthMethodDigest,
+		headers.Authorization{
+			Method:    headers.AuthMethodDigest,
 			Username:  "Mufasa",
 			Realm:     "testrealm@host.com",
 			Nonce:     "dcd98b7102dd2f0e8b11d0f600bfb0c093",
 			URI:       "/dir/index.html",
 			Response:  "e966c932a9242554e42c8ee200cec7f6",
 			Opaque:    new("5ccc069c403ebaf9f0171e9517f40e41"),
-			Algorithm: new(AuthAlgorithmMD5),
+			Algorithm: new(headers.AuthAlgorithmMD5),
 		},
 	},
 	{
@@ -109,14 +110,14 @@ var casesAuthorization = []struct {
 		base.HeaderValue{`Digest username="admin", realm="IP Camera(AB705)", ` +
 			`nonce="1ad195c2b2ca5a03784e53f88e16f579", uri="rtsp://192.168.80.76/", ` +
 			`response="9e2324f104f3ce507d17e44a78fc1293001fe84805bde65d2aaa9be97a5a8913", algorithm="SHA-256"`},
-		Authorization{
-			Method:    AuthMethodDigest,
+		headers.Authorization{
+			Method:    headers.AuthMethodDigest,
 			Username:  "admin",
 			Realm:     "IP Camera(AB705)",
 			Nonce:     "1ad195c2b2ca5a03784e53f88e16f579",
 			URI:       "rtsp://192.168.80.76/",
 			Response:  "9e2324f104f3ce507d17e44a78fc1293001fe84805bde65d2aaa9be97a5a8913",
-			Algorithm: new(AuthAlgorithmSHA256),
+			Algorithm: new(headers.AuthAlgorithmSHA256),
 		},
 	},
 }
@@ -124,7 +125,7 @@ var casesAuthorization = []struct {
 func TestAuthorizationUnmarshal(t *testing.T) {
 	for _, ca := range casesAuthorization {
 		t.Run(ca.name, func(t *testing.T) {
-			var h Authorization
+			var h headers.Authorization
 			err := h.Unmarshal(ca.vin)
 			require.NoError(t, err)
 			require.Equal(t, ca.h, h)
@@ -147,7 +148,7 @@ func FuzzAuthorizationUnmarshal(f *testing.F) {
 	}
 
 	f.Fuzz(func(_ *testing.T, b string) {
-		var h Authorization
+		var h headers.Authorization
 		err := h.Unmarshal(base.HeaderValue{b})
 		if err != nil {
 			return
@@ -159,13 +160,13 @@ func FuzzAuthorizationUnmarshal(f *testing.F) {
 
 func TestAuthorizationAdditionalErrors(t *testing.T) {
 	func() {
-		var h Authorization
+		var h headers.Authorization
 		err := h.Unmarshal(base.HeaderValue{})
 		require.Error(t, err)
 	}()
 
 	func() {
-		var h Authorization
+		var h headers.Authorization
 		err := h.Unmarshal(base.HeaderValue{"a", "b"})
 		require.Error(t, err)
 	}()

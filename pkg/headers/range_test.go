@@ -1,4 +1,4 @@
-package headers
+package headers_test
 
 import (
 	"testing"
@@ -7,24 +7,25 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 )
 
 var casesRange = []struct {
 	name string
 	vin  base.HeaderValue
 	vout base.HeaderValue
-	h    Range
+	h    headers.Range
 }{
 	{
 		"smpte",
 		base.HeaderValue{`smpte=10:07:00-10:07:33:05.01`},
 		base.HeaderValue{`smpte=10:07:00-10:07:33:05.01`},
-		Range{
-			Value: &RangeSMPTE{
-				Start: RangeSMPTETime{
+		headers.Range{
+			Value: &headers.RangeSMPTE{
+				Start: headers.RangeSMPTETime{
 					Time: time.Duration(7*60+10*3600) * time.Second,
 				},
-				End: &RangeSMPTETime{
+				End: &headers.RangeSMPTETime{
 					Time:     time.Duration(33+7*60+10*3600) * time.Second,
 					Frame:    5,
 					Subframe: 1,
@@ -36,9 +37,9 @@ var casesRange = []struct {
 		"smpte open ended",
 		base.HeaderValue{`smpte=0:10:00-`},
 		base.HeaderValue{`smpte=0:10:00-`},
-		Range{
-			Value: &RangeSMPTE{
-				Start: RangeSMPTETime{
+		headers.Range{
+			Value: &headers.RangeSMPTE{
+				Start: headers.RangeSMPTETime{
 					Time: time.Duration(10*60) * time.Second,
 				},
 			},
@@ -48,9 +49,9 @@ var casesRange = []struct {
 		"smpte with frame",
 		base.HeaderValue{`smpte=0:10:00:01-`},
 		base.HeaderValue{`smpte=0:10:00:01-`},
-		Range{
-			Value: &RangeSMPTE{
-				Start: RangeSMPTETime{
+		headers.Range{
+			Value: &headers.RangeSMPTE{
+				Start: headers.RangeSMPTETime{
 					Time:  time.Duration(10*60) * time.Second,
 					Frame: 1,
 				},
@@ -61,8 +62,8 @@ var casesRange = []struct {
 		"npt",
 		base.HeaderValue{`npt=123.45-125`},
 		base.HeaderValue{`npt=123.45-125`},
-		Range{
-			Value: &RangeNPT{
+		headers.Range{
+			Value: &headers.RangeNPT{
 				Start: time.Duration(123.45 * float64(time.Second)),
 				End:   new(125 * time.Second),
 			},
@@ -72,8 +73,8 @@ var casesRange = []struct {
 		"npt open ended",
 		base.HeaderValue{`npt=12:05:35.3-`},
 		base.HeaderValue{`npt=43535.3-`},
-		Range{
-			Value: &RangeNPT{
+		headers.Range{
+			Value: &headers.RangeNPT{
 				Start: time.Duration(float64(12*3600+5*60+35.3) * float64(time.Second)),
 			},
 		},
@@ -82,8 +83,8 @@ var casesRange = []struct {
 		"clock",
 		base.HeaderValue{`clock=19961108T142300Z-19961108T143520Z`},
 		base.HeaderValue{`clock=19961108T142300Z-19961108T143520Z`},
-		Range{
-			Value: &RangeUTC{
+		headers.Range{
+			Value: &headers.RangeUTC{
 				Start: time.Date(1996, 11, 8, 14, 23, 0, 0, time.UTC),
 				End:   new(time.Date(1996, 11, 8, 14, 35, 20, 0, time.UTC)),
 			},
@@ -93,8 +94,8 @@ var casesRange = []struct {
 		"clock open ended",
 		base.HeaderValue{`clock=19960213T143205Z-`},
 		base.HeaderValue{`clock=19960213T143205Z-`},
-		Range{
-			Value: &RangeUTC{
+		headers.Range{
+			Value: &headers.RangeUTC{
 				Start: time.Date(1996, 2, 13, 14, 32, 5, 0, time.UTC),
 			},
 		},
@@ -103,8 +104,8 @@ var casesRange = []struct {
 		"time",
 		base.HeaderValue{`clock=19960213T143205Z-;time=19970123T143720Z`},
 		base.HeaderValue{`clock=19960213T143205Z-;time=19970123T143720Z`},
-		Range{
-			Value: &RangeUTC{
+		headers.Range{
+			Value: &headers.RangeUTC{
 				Start: time.Date(1996, 2, 13, 14, 32, 5, 0, time.UTC),
 			},
 			Time: new(time.Date(1997, 1, 23, 14, 37, 20, 0, time.UTC)),
@@ -115,7 +116,7 @@ var casesRange = []struct {
 func TestRangeUnmarshal(t *testing.T) {
 	for _, ca := range casesRange {
 		t.Run(ca.name, func(t *testing.T) {
-			var h Range
+			var h headers.Range
 			err := h.Unmarshal(ca.vin)
 			require.NoError(t, err)
 			require.Equal(t, ca.h, h)
@@ -142,7 +143,7 @@ func FuzzRangeUnmarshal(f *testing.F) {
 	f.Add("clock=")
 
 	f.Fuzz(func(_ *testing.T, b string) {
-		var h Range
+		var h headers.Range
 		err := h.Unmarshal(base.HeaderValue{b})
 		if err != nil {
 			return
@@ -154,13 +155,13 @@ func FuzzRangeUnmarshal(f *testing.F) {
 
 func TestRangeAdditionalErrors(t *testing.T) {
 	func() {
-		var h Range
+		var h headers.Range
 		err := h.Unmarshal(base.HeaderValue{})
 		require.Error(t, err)
 	}()
 
 	func() {
-		var h Range
+		var h headers.Range
 		err := h.Unmarshal(base.HeaderValue{"a", "b"})
 		require.Error(t, err)
 	}()

@@ -1,4 +1,4 @@
-package rtpmpeg4audio
+package rtpmpeg4audio_test
 
 import (
 	"bytes"
@@ -8,12 +8,14 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpmpeg4audio"
 )
 
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			d := &Decoder{
+			d := &rtpmpeg4audio.Decoder{
 				SizeLength:       ca.sizeLength,
 				IndexLength:      ca.indexLength,
 				IndexDeltaLength: ca.indexDeltaLength,
@@ -32,7 +34,7 @@ func TestDecode(t *testing.T) {
 				// test input integrity
 				require.Equal(t, clone, pkt)
 
-				if errors.Is(err, ErrMorePacketsNeeded) {
+				if errors.Is(err, rtpmpeg4audio.ErrMorePacketsNeeded) {
 					continue
 				}
 
@@ -46,7 +48,7 @@ func TestDecode(t *testing.T) {
 }
 
 func TestDecodeFragmented(t *testing.T) {
-	d := &Decoder{
+	d := &rtpmpeg4audio.Decoder{
 		SizeLength:       13,
 		IndexLength:      3,
 		IndexDeltaLength: 3,
@@ -64,7 +66,7 @@ func TestDecodeFragmented(t *testing.T) {
 		},
 		Payload: []byte{0x00, 0x10, 0x00, 0x50, 0, 1, 2, 3},
 	})
-	require.Equal(t, ErrMorePacketsNeeded, err)
+	require.Equal(t, rtpmpeg4audio.ErrMorePacketsNeeded, err)
 
 	aus, err := d.Decode(&rtp.Packet{
 		Header: rtp.Header{
@@ -82,7 +84,7 @@ func TestDecodeFragmented(t *testing.T) {
 }
 
 func TestDecodeADTS(t *testing.T) {
-	d := &Decoder{
+	d := &rtpmpeg4audio.Decoder{
 		SizeLength:       13,
 		IndexLength:      3,
 		IndexDeltaLength: 3,
@@ -111,7 +113,7 @@ func TestDecodeADTS(t *testing.T) {
 }
 
 func TestDecodeErrorMissingPacket(t *testing.T) {
-	d := &Decoder{
+	d := &rtpmpeg4audio.Decoder{
 		SizeLength:       13,
 		IndexLength:      3,
 		IndexDeltaLength: 3,
@@ -132,7 +134,7 @@ func TestDecodeErrorMissingPacket(t *testing.T) {
 			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
 		),
 	})
-	require.Equal(t, ErrMorePacketsNeeded, err)
+	require.Equal(t, rtpmpeg4audio.ErrMorePacketsNeeded, err)
 
 	_, err = d.Decode(&rtp.Packet{
 		Header: rtp.Header{
@@ -151,7 +153,7 @@ func TestDecodeErrorMissingPacket(t *testing.T) {
 }
 
 func TestDecodeErrorCompletePacketTrailingData(t *testing.T) {
-	d := &Decoder{
+	d := &rtpmpeg4audio.Decoder{
 		SizeLength:       13,
 		IndexLength:      3,
 		IndexDeltaLength: 3,
@@ -174,7 +176,7 @@ func TestDecodeErrorCompletePacketTrailingData(t *testing.T) {
 }
 
 func TestDecodeInit(t *testing.T) {
-	d := &Decoder{}
+	d := &rtpmpeg4audio.Decoder{}
 	err := d.Init()
 	require.EqualError(t, err, "invalid AU-size length")
 }
@@ -246,7 +248,7 @@ func FuzzDecoder(f *testing.F) {
 			return
 		}
 
-		d := &Decoder{
+		d := &rtpmpeg4audio.Decoder{
 			SizeLength:       13,
 			IndexLength:      3,
 			IndexDeltaLength: 3,
@@ -267,7 +269,7 @@ func FuzzDecoder(f *testing.F) {
 				require.NotEmpty(t, au)
 			}
 
-			e := &Encoder{
+			e := &rtpmpeg4audio.Encoder{
 				SizeLength:            13,
 				IndexLength:           3,
 				IndexDeltaLength:      3,

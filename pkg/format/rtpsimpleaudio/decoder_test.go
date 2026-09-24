@@ -1,16 +1,18 @@
-package rtpsimpleaudio
+package rtpsimpleaudio_test
 
 import (
 	"testing"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpsimpleaudio"
 )
 
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			var d Decoder
+			var d rtpsimpleaudio.Decoder
 			err := d.Init()
 			require.NoError(t, err)
 
@@ -22,7 +24,7 @@ func TestDecode(t *testing.T) {
 }
 
 func TestDecodeErrorEmpty(t *testing.T) {
-	var d Decoder
+	var d rtpsimpleaudio.Decoder
 	err := d.Init()
 	require.NoError(t, err)
 

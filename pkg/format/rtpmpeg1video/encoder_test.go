@@ -1,4 +1,4 @@
-package rtpmpeg1video
+package rtpmpeg1video_test
 
 import (
 	"bytes"
@@ -6,6 +6,8 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpmpeg1video"
 )
 
 func mergeBytes(vals ...[]byte) []byte {
@@ -148,7 +150,7 @@ var cases = []struct {
 func TestEncode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			e := &Encoder{
+			e := &rtpmpeg1video.Encoder{
 				SSRC:                  new(uint32(0x9dbb7812)),
 				InitialSequenceNumber: new(uint16(0x44ed)),
 				PayloadMaxSize:        1000,
@@ -164,7 +166,7 @@ func TestEncode(t *testing.T) {
 }
 
 func TestEncodeRandomInitialState(t *testing.T) {
-	e := &Encoder{}
+	e := &rtpmpeg1video.Encoder{}
 	err := e.Init()
 	require.NoError(t, err)
 	require.NotEqual(t, nil, e.SSRC)

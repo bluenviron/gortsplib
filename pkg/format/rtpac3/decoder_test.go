@@ -1,4 +1,4 @@
-package rtpac3
+package rtpac3_test
 
 import (
 	"encoding/binary"
@@ -7,12 +7,14 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpac3"
 )
 
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			var d Decoder
+			var d rtpac3.Decoder
 			err := d.Init()
 			require.NoError(t, err)
 
@@ -27,7 +29,7 @@ func TestDecode(t *testing.T) {
 				// test input integrity
 				require.Equal(t, clone, pkt)
 
-				if errors.Is(err, ErrMorePacketsNeeded) {
+				if errors.Is(err, rtpac3.ErrMorePacketsNeeded) {
 					continue
 				}
 
@@ -41,7 +43,7 @@ func TestDecode(t *testing.T) {
 }
 
 func TestDecodeErrorMissingPacket(t *testing.T) {
-	var d Decoder
+	var d rtpac3.Decoder
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -57,7 +59,7 @@ func TestDecodeErrorMissingPacket(t *testing.T) {
 			0x01, 0x02, 0x0b, 0x77, 0x1a, 0x01, 0x1e, 0x40,
 		},
 	})
-	require.Equal(t, ErrMorePacketsNeeded, err)
+	require.Equal(t, rtpac3.ErrMorePacketsNeeded, err)
 
 	_, err = d.Decode(&rtp.Packet{
 		Header: rtp.Header{
@@ -141,7 +143,7 @@ func FuzzDecoder(f *testing.F) {
 			return
 		}
 
-		var d Decoder
+		var d rtpac3.Decoder
 		err = d.Init()
 		require.NoError(t, err)
 
@@ -158,7 +160,7 @@ func FuzzDecoder(f *testing.F) {
 				require.NotEmpty(t, frame)
 			}
 
-			e := &Encoder{
+			e := &rtpac3.Encoder{
 				PayloadType:           96,
 				SSRC:                  new(uint32(12321)),
 				InitialSequenceNumber: new(uint16(45432)),
