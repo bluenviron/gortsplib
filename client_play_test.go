@@ -2421,6 +2421,187 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 	<-packetRecv
 }
 
+func TestClientPlayNoTransportHeader(t *testing.T) {
+	for _, ca := range []string{"udp", "tcp"} {
+		t.Run(ca, func(t *testing.T) {
+			l, err := net.Listen("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer l.Close()
+
+			serverDone := make(chan struct{})
+			defer func() { <-serverDone }()
+
+			go func() {
+				defer close(serverDone)
+
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
+				defer nconn.Close()
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
+
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
+				require.Equal(t, base.Options, req.Method)
+
+				err2 = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Public": base.HeaderValue{strings.Join([]string{
+							string(base.Describe),
+							string(base.Setup),
+							string(base.Play),
+						}, ", ")},
+					},
+				})
+				require.NoError(t, err2)
+
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
+				require.Equal(t, base.Describe, req.Method)
+
+				medias := []*description.Media{
+					testH264Media,
+					{
+						Type: description.MediaTypeAudio,
+						Formats: []format.Format{&format.G711{
+							PayloadTyp:   8,
+							MULaw:        false,
+							SampleRate:   8000,
+							ChannelCount: 1,
+						}},
+					},
+				}
+
+				err2 = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Content-Type": base.HeaderValue{"application/sdp"},
+						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
+					},
+					Body: mediasToSDP(medias),
+				})
+				require.NoError(t, err2)
+
+				if ca == "udp" {
+					req, err2 = conn.ReadRequest()
+					require.NoError(t, err2)
+					require.Equal(t, base.Setup, req.Method)
+
+					err2 = conn.WriteResponse(&base.Response{
+						StatusCode: base.StatusOK,
+						Header: base.Header{
+							"Session": base.HeaderValue{"ABCDE;timeout=60"},
+						},
+					})
+					require.NoError(t, err2)
+					return
+				}
+
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
+				require.Equal(t, base.Setup, req.Method)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[0].Control), req.URL)
+
+				var inTH headers.Transport
+				err2 = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err2)
+
+				th := headers.Transport{
+					Delivery:       new(headers.TransportDeliveryUnicast),
+					Protocol:       headers.TransportProtocolTCP,
+					InterleavedIDs: inTH.InterleavedIDs,
+				}
+
+				err2 = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Transport": th.Marshal(),
+						"Session":   base.HeaderValue{"ABCDE;timeout=60"},
+					},
+				})
+				require.NoError(t, err2)
+
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
+				require.Equal(t, base.Setup, req.Method)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[1].Control), req.URL)
+
+				err2 = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err2)
+
+				// omit the Transport header and return a different session,
+				// like some cameras do.
+				err2 = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Session": base.HeaderValue{"FGHIJ;timeout=60"},
+					},
+				})
+				require.NoError(t, err2)
+
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
+				require.Equal(t, base.Play, req.Method)
+				require.Equal(t, base.HeaderValue{"FGHIJ"}, req.Header["Session"])
+
+				err2 = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+				})
+				require.NoError(t, err2)
+
+				err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+					Channel: inTH.InterleavedIDs[0],
+					Payload: mustMarshalPacketRTP(&rtp.Packet{
+						Header: rtp.Header{
+							Version:     2,
+							PayloadType: 8,
+							SSRC:        0x38F27A2F,
+						},
+						Payload: []byte{1, 2, 3, 4},
+					}),
+				}, make([]byte, 1024))
+				require.NoError(t, err2)
+
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
+				require.Equal(t, base.Teardown, req.Method)
+
+				err2 = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+				})
+				require.NoError(t, err2)
+			}()
+
+			packetRecv := make(chan struct{})
+
+			c := Client{}
+
+			if ca == "udp" {
+				c.Protocol = new(ProtocolUDP)
+			} else {
+				c.Protocol = new(ProtocolTCP)
+			}
+
+			err = readAll(&c, "rtsp://localhost:8554/teststream",
+				func(medi *description.Media, _ format.Format, _ *rtp.Packet) {
+					if medi.Type == description.MediaTypeAudio {
+						close(packetRecv)
+					}
+				})
+
+			if ca == "udp" {
+				require.EqualError(t, err, "invalid transport header: value not provided")
+				return
+			}
+
+			require.NoError(t, err)
+			defer c.Close()
+
+			<-packetRecv
+		})
+	}
+}
+
 func TestClientPlayRedirect(t *testing.T) {
 	for _, ca := range []string{
 		"without credentials",
