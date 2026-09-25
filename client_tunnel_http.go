@@ -13,7 +13,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/bluenviron/gortsplib/v5/pkg/auth"
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 )
 
 type clientTunnelHTTP struct {
@@ -84,22 +86,106 @@ func newClientTunnelHTTP(
 		}
 	}
 
-	if secure && dialTLSContext != nil {
-		var err error
-		c.readChan, err = dialTLSContext(ctx, "tcp", addr)
-		if err != nil {
-			return nil, err
+	dial := func() (net.Conn, error) {
+		if secure && dialTLSContext != nil {
+			return dialTLSContext(ctx, "tcp", addr)
 		}
-	} else {
-		var err error
-		c.readChan, err = dialContext(ctx, "tcp", addr)
+
+		nconn, err := dialContext(ctx, "tcp", addr)
 		if err != nil {
 			return nil, err
 		}
 
 		if secure {
-			c.readChan = tls.Client(c.readChan, tlsConfig)
+			nconn = tls.Client(nconn, tlsConfig)
 		}
+
+		return nconn, nil
+	}
+
+	tunnelID := strings.ReplaceAll(uuid.New().String(), "-", "")
+	requestTarget := clientTunnelHTTPRequestTarget(u)
+
+	// the tunnel requests are authenticated like RTSP requests:
+	// credentials are sent only after the server asked for them, with the
+	// method it asked for. The POST request, whose response is never read,
+	// reuses the method negotiated by the GET request.
+	var sender *auth.Sender
+
+	authorization := func(method string) string {
+		if sender == nil {
+			return ""
+		}
+		return "Authorization: " + sender.Authorization(method, requestTarget)[0] + "\r\n"
+	}
+
+	for {
+		readChan, err := dial()
+		if err != nil {
+			return nil, err
+		}
+
+		var statusCode int
+		var wwwAuth base.HeaderValue
+		readBuf := bufio.NewReader(readChan)
+
+		err = runWithContext(ctx, readChan, func() error {
+			// do not use http.Request
+			// since Content-Length requires a Body of same size
+			_, err2 := readChan.Write([]byte(
+				"GET " + requestTarget + " HTTP/1.1\r\n" +
+					"Host: " + addr + "\r\n" +
+					"X-Sessioncookie: " + tunnelID + "\r\n" +
+					"Accept: application/x-rtsp-tunnelled\r\n" +
+					authorization("GET") +
+					"\r\n",
+			))
+			if err2 != nil {
+				return err2
+			}
+
+			res, err2 := http.ReadResponse(readBuf, nil)
+			if err2 != nil {
+				return err2
+			}
+			res.Body.Close()
+
+			statusCode = res.StatusCode
+			wwwAuth = base.HeaderValue(res.Header.Values("WWW-Authenticate"))
+			return nil
+		})
+		if err != nil {
+			readChan.Close()
+			return nil, err
+		}
+
+		if statusCode == http.StatusUnauthorized && sender == nil && u != nil && u.User != nil {
+			// send the request again with authentication, on a new connection,
+			// since the server may close the one that carried the challenge.
+			readChan.Close()
+
+			pass, _ := u.User.Password()
+
+			sender = &auth.Sender{
+				WWWAuth: wwwAuth,
+				User:    u.User.Username(),
+				Pass:    pass,
+			}
+			err = sender.Initialize()
+			if err != nil {
+				return nil, liberrors.ErrClientAuthSetup{Err: err}
+			}
+			continue
+		}
+
+		if statusCode != http.StatusOK {
+			readChan.Close()
+			return nil, fmt.Errorf("bad status code: %v", statusCode)
+		}
+
+		c.readChan = readChan
+		c.readBuf = readBuf
+		break
 	}
 
 	ok := false
@@ -110,96 +196,28 @@ func newClientTunnelHTTP(
 		}
 	}()
 
-	ctxCheckerReadDone := make(chan struct{})
-	defer func() { <-ctxCheckerReadDone }()
-
-	ctxCheckerReadTerminate := make(chan struct{})
-	defer close(ctxCheckerReadTerminate)
-
-	go func() {
-		defer close(ctxCheckerReadDone)
-		select {
-		case <-ctx.Done():
-			c.readChan.Close()
-		case <-ctxCheckerReadTerminate:
-		}
-	}()
-
-	tunnelID := strings.ReplaceAll(uuid.New().String(), "-", "")
-	requestTarget := clientTunnelHTTPRequestTarget(u)
-
-	// do not use http.Request
-	// since Content-Length requires a Body of same size
-	_, err := c.readChan.Write([]byte(
-		"GET " + requestTarget + " HTTP/1.1\r\n" +
-			"Host: " + addr + "\r\n" +
-			"X-Sessioncookie: " + tunnelID + "\r\n" +
-			"Accept: application/x-rtsp-tunnelled\r\n" +
-			"\r\n",
-	))
+	var err error
+	c.writeChan, err = dial()
 	if err != nil {
 		return nil, err
 	}
 
-	c.readBuf = bufio.NewReader(c.readChan)
-	res, err := http.ReadResponse(c.readBuf, nil)
+	err = runWithContext(ctx, c.writeChan, func() error {
+		// do not use http.Request
+		// since Content-Length requires a Body of same size
+		_, err2 := c.writeChan.Write([]byte(
+			"POST " + requestTarget + " HTTP/1.1\r\n" +
+				"Host: " + addr + "\r\n" +
+				"X-Sessioncookie: " + tunnelID + "\r\n" +
+				"Content-Type: application/x-rtsp-tunnelled\r\n" +
+				"Content-Length: 30000\r\n" +
+				authorization("POST") +
+				"\r\n",
+		))
+		return err2
+	})
 	if err != nil {
-		return nil, err
-	}
-	res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("bad status code: %v", res.StatusCode)
-	}
-
-	if secure && dialTLSContext != nil {
-		c.writeChan, err = dialTLSContext(ctx, "tcp", addr)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		c.writeChan, err = dialContext(ctx, "tcp", addr)
-		if err != nil {
-			return nil, err
-		}
-
-		if secure {
-			c.writeChan = tls.Client(c.writeChan, tlsConfig)
-		}
-	}
-
-	defer func() {
-		if !ok {
-			c.writeChan.Close()
-		}
-	}()
-
-	ctxCheckerWriteDone := make(chan struct{})
-	defer func() { <-ctxCheckerWriteDone }()
-
-	ctxCheckerWriteTerminate := make(chan struct{})
-	defer close(ctxCheckerWriteTerminate)
-
-	go func() {
-		defer close(ctxCheckerWriteDone)
-		select {
-		case <-ctx.Done():
-			c.writeChan.Close()
-		case <-ctxCheckerWriteTerminate:
-		}
-	}()
-
-	// do not use http.Request
-	// since Content-Length requires a Body of same size
-	_, err = c.writeChan.Write([]byte(
-		"POST " + requestTarget + " HTTP/1.1\r\n" +
-			"Host: " + addr + "\r\n" +
-			"X-Sessioncookie: " + tunnelID + "\r\n" +
-			"Content-Type: application/x-rtsp-tunnelled\r\n" +
-			"Content-Length: 30000\r\n" +
-			"\r\n",
-	))
-	if err != nil {
+		c.writeChan.Close()
 		return nil, err
 	}
 
@@ -207,6 +225,29 @@ func newClientTunnelHTTP(
 
 	ok = true
 	return c, nil
+}
+
+// runWithContext runs fn and closes nconn if ctx is done before fn returns,
+// so that a blocked read or write returns.
+func runWithContext(ctx context.Context, nconn net.Conn, fn func() error) error {
+	done := make(chan struct{})
+	terminate := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		select {
+		case <-ctx.Done():
+			nconn.Close()
+		case <-terminate:
+		}
+	}()
+
+	err := fn()
+
+	close(terminate)
+	<-done
+
+	return err
 }
 
 func clientTunnelHTTPRequestTarget(u *base.URL) string {
