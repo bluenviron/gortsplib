@@ -69,8 +69,18 @@ func (se *Sender) Initialize() error {
 
 // AddAuthorization adds the Authorization header to a Request.
 func (se *Sender) AddAuthorization(req *base.Request) {
-	urStr := req.URL.CloneWithoutCredentials().String()
+	if req.Header == nil {
+		req.Header = make(base.Header)
+	}
 
+	req.Header["Authorization"] = se.Authorization(string(req.Method), req.URL.CloneWithoutCredentials().String())
+}
+
+// Authorization returns the value of the Authorization header of a request
+// with the given method and URI. The URI is the one covered by a Digest
+// response: the absolute URL of a RTSP request, or the request target of a
+// HTTP request, like the ones that open a RTSP-over-HTTP tunnel.
+func (se *Sender) Authorization(method string, uri string) base.HeaderValue {
 	h := headers.Authorization{
 		Method: se.authHeader.Method,
 	}
@@ -82,7 +92,7 @@ func (se *Sender) AddAuthorization(req *base.Request) {
 	} else { // digest
 		h.Realm = se.authHeader.Realm
 		h.Nonce = se.authHeader.Nonce
-		h.URI = urStr
+		h.URI = uri
 		h.Algorithm = se.authHeader.Algorithm
 		h.Opaque = se.authHeader.Opaque
 
@@ -104,16 +114,12 @@ func (se *Sender) AddAuthorization(req *base.Request) {
 
 		if se.authHeader.Algorithm == nil || *se.authHeader.Algorithm == headers.AuthAlgorithmMD5 {
 			h.Response = md5Hex(md5Hex(se.User+":"+se.authHeader.Realm+":"+se.Pass) + ":" +
-				middle + ":" + md5Hex(string(req.Method)+":"+urStr))
+				middle + ":" + md5Hex(method+":"+uri))
 		} else { // sha256
 			h.Response = sha256Hex(sha256Hex(se.User+":"+se.authHeader.Realm+":"+se.Pass) + ":" +
-				middle + ":" + sha256Hex(string(req.Method)+":"+urStr))
+				middle + ":" + sha256Hex(method+":"+uri))
 		}
 	}
 
-	if req.Header == nil {
-		req.Header = make(base.Header)
-	}
-
-	req.Header["Authorization"] = h.Marshal()
+	return h.Marshal()
 }
