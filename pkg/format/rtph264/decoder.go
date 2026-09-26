@@ -31,6 +31,12 @@ func joinFragments(fragments [][]byte, size int) []byte {
 // Even though fragments must contain only
 // one NAL unit, some vendors put multiple anyway.
 func splitNALUs(b []byte) [][]byte {
+	// do not treat start codes inside an SEI as NAL delimiters:
+	// ONVIF Media Signing makes emulation prevention optional in its SEI.
+	if len(b) > 0 && h264.NALUType(b[0]&0x1F) == h264.NALUTypeSEI {
+		return [][]byte{b}
+	}
+
 	startCode := []byte{0x00, 0x00, 0x01}
 	nalus := make([][]byte, 0, 1)
 	for len(b) > 0 {
@@ -312,7 +318,11 @@ func (d *Decoder) removeAnnexB(nalus [][]byte) ([][]byte, error) {
 	if len(nalus) == 1 {
 		nalu := nalus[0]
 
-		if !d.annexBMode && bytes.Contains(nalu, []byte{0x00, 0x00, 0x00, 0x01}) {
+		// an SEI must not enable Annex-B mode (ONVIF Media Signing makes
+		// emulation prevention optional in its SEI). Once a non-SEI NALU has
+		// enabled it, SEIs are still split like every other NALU.
+		if !d.annexBMode && len(nalu) > 0 && h264.NALUType(nalu[0]&0x1F) != h264.NALUTypeSEI &&
+			bytes.Contains(nalu, []byte{0x00, 0x00, 0x00, 0x01}) {
 			d.annexBMode = true
 		}
 
