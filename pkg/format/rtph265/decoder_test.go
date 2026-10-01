@@ -366,6 +366,108 @@ func TestDecodeErrorMissingPacket(t *testing.T) {
 	require.EqualError(t, err, "discarding frame since a RTP packet is missing")
 }
 
+func TestDecodeTrailingSEI(t *testing.T) {
+	picture := []byte{0x26, 0x01, 0x88}
+	prefix := []byte{0x4e, 0x01, 0x05}
+	suffix := []byte{0x50, 0x01, 0x05}
+	nonIDR := []byte{0x02, 0x01, 0x9a}
+
+	tests := []struct {
+		name     string
+		packets  []*rtp.Packet
+		outcomes [][][]byte
+		waiting  []bool
+	}{
+		{
+			name: "trailing prefix and suffix SEIs",
+			packets: []*rtp.Packet{
+				{Header: rtp.Header{Marker: true, Timestamp: 100}, Payload: picture},
+				{Header: rtp.Header{Marker: true, Timestamp: 100}, Payload: prefix},
+				{Header: rtp.Header{Marker: true, Timestamp: 100}, Payload: suffix},
+				{Header: rtp.Header{Marker: true, Timestamp: 200}, Payload: nonIDR},
+			},
+			outcomes: [][][]byte{{picture}, nil, nil, {nonIDR}},
+			waiting:  []bool{false, true, true, false},
+		},
+		{
+			name: "different timestamp",
+			packets: []*rtp.Packet{
+				{Header: rtp.Header{Marker: true, Timestamp: 100}, Payload: picture},
+				{Header: rtp.Header{Marker: true, Timestamp: 200}, Payload: prefix},
+				{Header: rtp.Header{Marker: true, Timestamp: 200}, Payload: suffix},
+			},
+			outcomes: [][][]byte{{picture}, {prefix}, {suffix}},
+			waiting:  []bool{false, false, false},
+		},
+		{
+			name: "no previous picture",
+			packets: []*rtp.Packet{
+				{Header: rtp.Header{Marker: true, Timestamp: 100}, Payload: prefix},
+				{Header: rtp.Header{Marker: true, Timestamp: 100}, Payload: suffix},
+			},
+			outcomes: [][][]byte{{prefix}, {suffix}},
+			waiting:  []bool{false, false},
+		},
+		{
+			name: "SEI before first picture at same timestamp",
+			packets: []*rtp.Packet{
+				{Header: rtp.Header{Marker: true, Timestamp: 100}, Payload: prefix},
+				{Header: rtp.Header{Marker: true, Timestamp: 100}, Payload: picture},
+				{Header: rtp.Header{Marker: true, Timestamp: 100}, Payload: prefix},
+			},
+			outcomes: [][][]byte{{prefix}, {picture}, nil},
+			waiting:  []bool{false, false, true},
+		},
+		{
+			name: "non-SEI AU precedes SEI",
+			packets: []*rtp.Packet{
+				{Header: rtp.Header{Marker: true, Timestamp: 100}, Payload: picture},
+				{Header: rtp.Header{Marker: true, Timestamp: 100}, Payload: []byte{0x46, 0x01, 0x10}},
+				{Header: rtp.Header{Marker: true, Timestamp: 100}, Payload: prefix},
+			},
+			outcomes: [][][]byte{{picture}, {{0x46, 0x01, 0x10}}, nil},
+			waiting:  []bool{false, false, true},
+		},
+		{
+			name: "mixed picture and SEI",
+			packets: []*rtp.Packet{
+				{Header: rtp.Header{Marker: true, Timestamp: 100}, Payload: picture},
+				{Header: rtp.Header{Timestamp: 100}, Payload: prefix},
+				{Header: rtp.Header{Marker: true, Timestamp: 100}, Payload: nonIDR},
+				{Header: rtp.Header{Marker: true, Timestamp: 100}, Payload: prefix},
+			},
+			outcomes: [][][]byte{{picture}, nil, {prefix, nonIDR}, nil},
+			waiting:  []bool{false, true, false, true},
+		},
+		{
+			name: "aggregated SEIs",
+			packets: []*rtp.Packet{
+				{Header: rtp.Header{Marker: true, Timestamp: 100}, Payload: picture},
+				{Header: rtp.Header{Marker: true, Timestamp: 100}, Payload: []byte{0x60, 0x01, 0, 3, 0x4e, 1, 5, 0, 3, 0x50, 1, 5}},
+			},
+			outcomes: [][][]byte{{picture}, nil},
+			waiting:  []bool{false, true},
+		},
+	}
+
+	for _, ca := range tests {
+		t.Run(ca.name, func(t *testing.T) {
+			var d rtph265.Decoder
+			require.NoError(t, d.Init())
+
+			for i, pkt := range ca.packets {
+				au, err := d.Decode(pkt)
+				if ca.waiting[i] {
+					require.ErrorIs(t, err, rtph265.ErrMorePacketsNeeded)
+				} else {
+					require.NoError(t, err)
+				}
+				require.Equal(t, ca.outcomes[i], au)
+			}
+		})
+	}
+}
+
 func serializePackets(packets []*rtp.Packet) ([]byte, error) {
 	var buf []byte
 
