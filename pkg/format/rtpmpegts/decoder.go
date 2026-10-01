@@ -21,6 +21,7 @@ func (d *Decoder) Init() error {
 }
 
 // Decode decodes MPEG-TS packets from a RTP packet.
+// On success, it returns at least one packet, each with at least one byte.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	if len(pkt.Payload) == 0 {
 		return nil, fmt.Errorf("empty MPEG-TS payload")

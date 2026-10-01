@@ -89,6 +89,7 @@ func (d *Decoder) decodeFrameChunk(pkt *rtp.Packet) ([]byte, error) {
 }
 
 // Decode decodes a VP8 frame from a RTP packet.
+// On success, the frame contains at least one byte.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	chunk, err := d.decodeFrameChunk(pkt)
 	if err != nil {

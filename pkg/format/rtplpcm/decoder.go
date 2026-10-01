@@ -22,6 +22,7 @@ func (d *Decoder) Init() error {
 }
 
 // Decode decodes audio samples from a RTP packet.
+// On success, the samples contain at least one byte.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	if len(pkt.Payload) == 0 {
 		return nil, fmt.Errorf("payload is too short")

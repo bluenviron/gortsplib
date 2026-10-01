@@ -249,10 +249,15 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 		return nil, err
 	}
 
+	if len(nalus) == 0 {
+		return nil, fmt.Errorf("fragmented NALU doesn't contain any NALU")
+	}
+
 	return nalus, nil
 }
 
 // Decode decodes an access unit from a RTP packet.
+// On success, the access unit contains at least one NALU, each with at least one byte.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	nalus, err := d.decodeNALUs(pkt)
 	if err != nil {

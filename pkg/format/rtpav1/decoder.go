@@ -156,6 +156,7 @@ func (d *Decoder) decodeOBUs(pkt *rtp.Packet) ([][]byte, error) {
 }
 
 // Decode decodes a temporal unit from a RTP packet.
+// On success, the temporal unit contains at least one OBU, each with at least one byte.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	obus, err := d.decodeOBUs(pkt)
 	if err != nil {
