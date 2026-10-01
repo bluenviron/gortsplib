@@ -67,6 +67,17 @@ func auSize(au [][]byte) int {
 	return s
 }
 
+func auIsOnlySEI(au [][]byte) bool {
+	for _, nalu := range au {
+		typ := h265.NALUType((nalu[0] >> 1) & 0b111111)
+		if typ != h265.NALUType_PREFIX_SEI_NUT && typ != h265.NALUType_SUFFIX_SEI_NUT {
+			return false
+		}
+	}
+
+	return true
+}
+
 // Decoder is a RTP/H265 decoder.
 // Specification: RFC7798
 type Decoder struct {
@@ -79,9 +90,11 @@ type Decoder struct {
 	fragmentNextSeqNum  uint16
 
 	// for Decode()
-	frameBuffer     [][]byte
-	frameBufferLen  int
-	frameBufferSize int
+	frameBuffer         [][]byte
+	frameBufferLen      int
+	frameBufferSize     int
+	lastNonSEITimestamp uint32
+	lastNonSEIReceived  bool
 }
 
 // Init initializes the decoder.
@@ -246,6 +259,18 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	d.frameBuffer = nil
 	d.frameBufferLen = 0
 	d.frameBufferSize = 0
+
+	// Drop trailing SEI-only access units, that in reality should be leading the previous access unit.
+	// These cause problems in downstream components (DTS extractor, recorder).
+	if auIsOnlySEI(ret) {
+		if d.lastNonSEIReceived && pkt.Timestamp == d.lastNonSEITimestamp {
+			return nil, ErrMorePacketsNeeded
+		}
+		d.lastNonSEIReceived = false
+	} else {
+		d.lastNonSEITimestamp = pkt.Timestamp
+		d.lastNonSEIReceived = true
+	}
 
 	return ret, nil
 }

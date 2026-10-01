@@ -71,6 +71,16 @@ func auSize(au [][]byte) int {
 	return s
 }
 
+func auIsOnlySEI(au [][]byte) bool {
+	for _, nalu := range au {
+		if h264.NALUType(nalu[0]&0x1F) != h264.NALUTypeSEI {
+			return false
+		}
+	}
+
+	return true
+}
+
 // Decoder is a RTP/H264 decoder.
 // Specification: RFC6184
 type Decoder struct {
@@ -88,6 +98,8 @@ type Decoder struct {
 	frameBufferLen       int
 	frameBufferSize      int
 	frameBufferTimestamp uint32
+	lastNonSEITimestamp  uint32
+	lastNonSEIReceived   bool
 }
 
 // Init initializes the decoder.
@@ -248,31 +260,46 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	}
 	l := len(nalus)
 
+	var ret [][]byte
+	var retTimestamp uint32
+
 	// support splitting access units by timestamp.
 	// (some cameras do not use the Marker field, like the FLIR M400)
 	if d.frameBuffer != nil && pkt.Timestamp != d.frameBufferTimestamp {
-		ret := d.frameBuffer
+		ret = d.frameBuffer
+		retTimestamp = d.frameBufferTimestamp
 		d.resetFrameBuffer()
 
 		err = d.addToFrameBuffer(nalus, l, pkt.Timestamp)
 		if err != nil {
 			return nil, err
 		}
+	} else {
+		err = d.addToFrameBuffer(nalus, l, pkt.Timestamp)
+		if err != nil {
+			return nil, err
+		}
 
-		return ret, nil
+		if !pkt.Marker {
+			return nil, ErrMorePacketsNeeded
+		}
+
+		ret = d.frameBuffer
+		retTimestamp = d.frameBufferTimestamp
+		d.resetFrameBuffer()
 	}
 
-	err = d.addToFrameBuffer(nalus, l, pkt.Timestamp)
-	if err != nil {
-		return nil, err
+	// Drop trailing SEI-only access units, that in reality should be leading the previous access unit.
+	// These cause problems in downstream components (DTS extractor, recorder).
+	if auIsOnlySEI(ret) {
+		if d.lastNonSEIReceived && retTimestamp == d.lastNonSEITimestamp {
+			return nil, ErrMorePacketsNeeded
+		}
+		d.lastNonSEIReceived = false
+	} else {
+		d.lastNonSEITimestamp = retTimestamp
+		d.lastNonSEIReceived = true
 	}
-
-	if !pkt.Marker {
-		return nil, ErrMorePacketsNeeded
-	}
-
-	ret := d.frameBuffer
-	d.resetFrameBuffer()
 
 	return ret, nil
 }
