@@ -179,6 +179,7 @@ func (d *Decoder) resetFragments() {
 }
 
 // Decode decodes an image from a RTP packet.
+// On success, the image contains at least one byte.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	byts := pkt.Payload
 

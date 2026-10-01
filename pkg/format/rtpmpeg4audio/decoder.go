@@ -128,6 +128,7 @@ func (d *Decoder) resetFragments() {
 }
 
 // Decode decodes access units from a RTP packet.
+// On success, it returns at least one access unit, each with at least one byte.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	if len(pkt.Payload) < 2 {
 		d.resetFragments()

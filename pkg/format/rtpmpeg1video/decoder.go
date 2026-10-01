@@ -146,6 +146,7 @@ func (d *Decoder) decodeSlice(pkt *rtp.Packet) ([]byte, error) {
 }
 
 // Decode decodes frames from a RTP packet.
+// On success, the frame contains at least one byte.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	slice, err := d.decodeSlice(pkt)
 	if err != nil {

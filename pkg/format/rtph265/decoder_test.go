@@ -336,6 +336,66 @@ func TestDecodeErrorNALUCount(t *testing.T) {
 	require.EqualError(t, err, "NALU count (22) exceeds maximum allowed (21)")
 }
 
+func TestDecodeErrorEmptyFU(t *testing.T) {
+	var d rtph265.Decoder
+	err := d.Init()
+	require.NoError(t, err)
+
+	au, err := d.Decode(&rtp.Packet{
+		Header:  rtp.Header{SequenceNumber: 1},
+		Payload: []byte{0x62, 0x00, 0x80, 0x01},
+	})
+	require.Nil(t, au)
+	require.ErrorIs(t, err, rtph265.ErrMorePacketsNeeded)
+
+	au, err = d.Decode(&rtp.Packet{
+		Header:  rtp.Header{SequenceNumber: 2, Marker: true},
+		Payload: []byte{0x62, 0x00, 0x40},
+	})
+	require.Nil(t, au)
+	require.EqualError(t, err, "fragmented NALU doesn't contain any NALU")
+
+	au, err = d.Decode(&rtp.Packet{
+		Header:  rtp.Header{Marker: true},
+		Payload: []byte{0x26, 0x01, 0x88},
+	})
+	require.NoError(t, err)
+	require.Equal(t, [][]byte{{0x26, 0x01, 0x88}}, au)
+}
+
+func TestDecodeErrorEmptyFUPreservesBufferedAU(t *testing.T) {
+	var d rtph265.Decoder
+	err := d.Init()
+	require.NoError(t, err)
+
+	au, err := d.Decode(&rtp.Packet{
+		Payload: []byte{0x26, 0x01, 0x88},
+	})
+	require.Nil(t, au)
+	require.ErrorIs(t, err, rtph265.ErrMorePacketsNeeded)
+
+	au, err = d.Decode(&rtp.Packet{
+		Header:  rtp.Header{SequenceNumber: 1},
+		Payload: []byte{0x62, 0x00, 0x80, 0x01},
+	})
+	require.Nil(t, au)
+	require.ErrorIs(t, err, rtph265.ErrMorePacketsNeeded)
+
+	au, err = d.Decode(&rtp.Packet{
+		Header:  rtp.Header{SequenceNumber: 2, Marker: true},
+		Payload: []byte{0x62, 0x00, 0x40},
+	})
+	require.Nil(t, au)
+	require.EqualError(t, err, "fragmented NALU doesn't contain any NALU")
+
+	au, err = d.Decode(&rtp.Packet{
+		Header:  rtp.Header{Marker: true},
+		Payload: []byte{0x02, 0x01, 0x99},
+	})
+	require.NoError(t, err)
+	require.Equal(t, [][]byte{{0x26, 0x01, 0x88}, {0x02, 0x01, 0x99}}, au)
+}
+
 func TestDecodeErrorMissingPacket(t *testing.T) {
 	var d rtph265.Decoder
 	err := d.Init()
@@ -547,21 +607,30 @@ func FuzzDecoder(f *testing.F) {
 		0x78, 0x62, 0x00, 0x01, 0x03, 0x04,
 	})
 
+	buf, err := serializePackets([]*rtp.Packet{
+		{Header: rtp.Header{SequenceNumber: 1}, Payload: []byte{0x62, 0x00, 0x80, 0x01}},
+		{Header: rtp.Header{SequenceNumber: 2, Marker: true}, Payload: []byte{0x62, 0x00, 0x40}},
+	})
+	if err != nil {
+		panic(err)
+	}
+	f.Add(buf)
+
 	f.Fuzz(func(t *testing.T, buf []byte) {
-		packets, err := unserializePackets(buf)
-		if err != nil {
+		packets, err2 := unserializePackets(buf)
+		if err2 != nil {
 			t.Skip()
 			return
 		}
 
 		var d rtph265.Decoder
-		err = d.Init()
-		require.NoError(t, err)
+		err2 = d.Init()
+		require.NoError(t, err2)
 
 		for _, pkt := range packets {
 			var au [][]byte
-			au, err = d.Decode(pkt)
-			if err != nil {
+			au, err2 = d.Decode(pkt)
+			if err2 != nil {
 				continue
 			}
 
@@ -575,8 +644,8 @@ func FuzzDecoder(f *testing.F) {
 				SSRC:                  new(uint32(12321)),
 				InitialSequenceNumber: new(uint16(45432)),
 			}
-			err = e.Init()
-			require.NoError(t, err)
+			err2 = e.Init()
+			require.NoError(t, err2)
 
 			e.Encode(au) //nolint:errcheck
 		}

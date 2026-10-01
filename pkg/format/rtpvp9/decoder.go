@@ -48,6 +48,7 @@ func (d *Decoder) resetFragments() {
 }
 
 // Decode decodes a VP9 frame from a RTP packet.
+// On success, the frame contains at least one byte.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	var vpkt codecs.VP9Packet
 	_, err := vpkt.Unmarshal(pkt.Payload)
