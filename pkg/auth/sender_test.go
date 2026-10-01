@@ -255,3 +255,26 @@ func TestSenderOpaque(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "5ccc069c403ebaf9f0171e9517f40e41", *h.Opaque)
 }
+
+func TestSenderAuthorizationHTTPRequestTarget(t *testing.T) {
+	se := &auth.Sender{
+		WWWAuth: base.HeaderValue{
+			`Digest realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce"`,
+		},
+		User: "myuser",
+		Pass: "mypass",
+	}
+	err := se.Initialize()
+	require.NoError(t, err)
+
+	// a HTTP request, like the ones that open a RTSP-over-HTTP tunnel,
+	// is authenticated with its request target as Digest URI.
+	var h headers.Authorization
+	err = h.Unmarshal(se.Authorization("GET", "/mypath?key=val"))
+	require.NoError(t, err)
+	require.Equal(t, "/mypath?key=val", h.URI)
+
+	ha1 := testMD5("myuser:myrealm:mypass")
+	ha2 := testMD5("GET:/mypath?key=val")
+	require.Equal(t, testMD5(ha1+":f49ac6dd0ba708d4becddc9692d1f2ce:"+ha2), h.Response)
+}
