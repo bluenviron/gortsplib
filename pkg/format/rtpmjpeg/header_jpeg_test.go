@@ -24,6 +24,16 @@ var casesJpeg = []struct {
 			Height:       32,
 		},
 	},
+	{
+		"restart type 64",
+		[]byte{0, 0, 0, 0, 64, 255, 8, 4},
+		headerJPEG{Type: 64, Quantization: 255, Width: 64, Height: 32},
+	},
+	{
+		"restart type 65",
+		[]byte{0, 0, 0, 0, 65, 255, 8, 4},
+		headerJPEG{Type: 65, Quantization: 255, Width: 64, Height: 32},
+	},
 }
 
 func TestHeaderJpegUnmarshal(t *testing.T) {
@@ -46,6 +56,14 @@ func TestHeaderJpegUnmarshalErrors(t *testing.T) {
 		var h headerJPEG
 		_, err := h.unmarshal([]byte{0, 0, 0, 0, 1, q, 8, 8})
 		require.Error(t, err, "quantization %d must be rejected", q)
+	}
+}
+
+func TestHeaderJpegUnmarshalUnsupportedTypes(t *testing.T) {
+	for _, typ := range []uint8{2, 63, 66, 127, 128} {
+		var h headerJPEG
+		_, err := h.unmarshal([]byte{0, 0, 0, 0, typ, 255, 8, 4})
+		require.ErrorContains(t, err, "not supported")
 	}
 }
 

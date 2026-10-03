@@ -3,6 +3,7 @@ package rtpmjpeg_test
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/pion/rtp"
@@ -28,6 +29,69 @@ func TestDecode(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, ca.image, image)
 			}
+		})
+	}
+}
+
+func TestDecodeRestartMarkerErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name    string
+		payload []byte
+		message string
+	}{
+		{"truncated", []byte{0, 0, 0, 0, 64, 63, 8, 4, 0, 7, 0xFF}, "buffer is too short"},
+		{"zero interval", []byte{0, 0, 0, 0, 64, 63, 8, 4, 0, 0, 0xFF, 0xFF}, "restart interval must not be zero"},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			var d rtpmjpeg.Decoder
+			err := d.Init()
+			require.NoError(t, err)
+
+			_, err = d.Decode(&rtp.Packet{Payload: ca.payload})
+			require.ErrorContains(t, err, ca.message)
+		})
+	}
+
+	first := &rtp.Packet{
+		Payload: []byte{0, 0, 0, 0, 64, 63, 8, 4, 0, 7, 0xFF, 0xFF, 1, 2},
+	}
+	for _, ca := range []struct {
+		name    string
+		payload []byte
+		message string
+	}{
+		{"truncated continuation", []byte{0, 0, 0, 2, 64, 63, 8, 4, 0, 7, 0xFF}, "buffer is too short"},
+		{"changed interval", []byte{0, 0, 0, 2, 64, 63, 8, 4, 0, 8, 0xFF, 0xFF, 3, 4}, "JPEG headers changed within frame"},
+		{"changed type", []byte{0, 0, 0, 2, 65, 63, 8, 4, 0, 7, 0xFF, 0xFF, 3, 4}, "JPEG headers changed within frame"},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			var d rtpmjpeg.Decoder
+			err := d.Init()
+			require.NoError(t, err)
+
+			_, err = d.Decode(first)
+			require.ErrorIs(t, err, rtpmjpeg.ErrMorePacketsNeeded)
+			_, err = d.Decode(&rtp.Packet{Header: rtp.Header{Marker: true}, Payload: ca.payload})
+			require.ErrorContains(t, err, ca.message)
+		})
+	}
+}
+
+func TestDecodeSingleQuantizationTable(t *testing.T) {
+	for _, typ := range []uint8{0, 1} {
+		t.Run(fmt.Sprint(typ), func(t *testing.T) {
+			pkt := *cases[0].pkts[0]
+			pkt.Payload = append([]byte(nil), pkt.Payload...)
+			pkt.Payload[4] = typ
+			pkt.Payload[11] = 64
+			pkt.Payload = append(pkt.Payload[:76], pkt.Payload[140:]...)
+
+			var d rtpmjpeg.Decoder
+			err := d.Init()
+			require.NoError(t, err)
+
+			_, err = d.Decode(&pkt)
+			require.ErrorContains(t, err, "table length 64 is not supported")
 		})
 	}
 }
