@@ -21,8 +21,9 @@ func (h *headerJPEG) unmarshal(byts []byte) (int, error) {
 	h.TypeSpecific = byts[0]
 	h.FragmentOffset = uint32(byts[1])<<16 | uint32(byts[2])<<8 | uint32(byts[3])
 
+	// RFC2435 defines types 0 and 1, and their restart-marker variants 64 and 65.
 	h.Type = byts[4]
-	if h.Type > 63 {
+	if h.Type != 0 && h.Type != 1 && h.Type != 64 && h.Type != 65 {
 		return 0, fmt.Errorf("type %d is not supported", h.Type)
 	}
 

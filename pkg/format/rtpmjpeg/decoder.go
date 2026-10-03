@@ -165,6 +165,7 @@ type Decoder struct {
 	fragments           [][]byte
 	fragmentsSize       int
 	firstJpegHeader     *headerJPEG
+	firstRestartHeader  *headerRestartMarker
 	quantizationTables  [][]byte
 }
 
@@ -190,6 +191,19 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	}
 	byts = byts[n:]
 
+	var restartHeader *headerRestartMarker
+	if jh.Type >= 64 {
+		restartHeader = &headerRestartMarker{}
+		n, err = restartHeader.unmarshal(byts)
+		if err != nil {
+			return nil, err
+		}
+		if restartHeader.Interval == 0 {
+			return nil, fmt.Errorf("restart interval must not be zero")
+		}
+		byts = byts[n:]
+	}
+
 	if jh.FragmentOffset == 0 {
 		d.resetFragments()
 		d.firstPacketReceived = true
@@ -209,7 +223,15 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 		d.fragments = append(d.fragments, byts)
 		d.fragmentsSize = len(byts)
 		d.firstJpegHeader = &jh
+		d.firstRestartHeader = restartHeader
 	} else {
+		if d.firstJpegHeader != nil &&
+			(jh.Type != d.firstJpegHeader.Type ||
+				(jh.Type >= 64 && restartHeader.Interval != d.firstRestartHeader.Interval)) {
+			d.resetFragments()
+			return nil, fmt.Errorf("JPEG headers changed within frame")
+		}
+
 		if int(jh.FragmentOffset) != d.fragmentsSize {
 			if !d.firstPacketReceived {
 				return nil, ErrNonStartingPacketAndNoPrevious
@@ -283,6 +305,11 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 		TableNumber: 1,
 		TableClass:  1,
 	}.Marshal(buf)
+
+	if d.firstRestartHeader != nil {
+		interval := d.firstRestartHeader.Interval
+		buf = append(buf, 0xFF, jpeg.MarkerDefineRestartInterval, 0, 4, byte(interval>>8), byte(interval))
+	}
 
 	buf = jpeg.StartOfScan{}.Marshal(buf)
 

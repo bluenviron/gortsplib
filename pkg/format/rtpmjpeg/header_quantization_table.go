@@ -22,9 +22,7 @@ func (h *headerQuantizationTable) unmarshal(byts []byte) (int, error) {
 	}
 
 	length := int(byts[2])<<8 | int(byts[3])
-	switch length {
-	case 64, 128:
-	default:
+	if length != 128 {
 		return 0, fmt.Errorf("table length %d is not supported", length)
 	}
 

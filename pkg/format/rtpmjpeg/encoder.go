@@ -2,7 +2,7 @@ package rtpmjpeg
 
 import (
 	"crypto/rand"
-	"slices"
+	"fmt"
 
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/jpeg"
 	"github.com/pion/rtp"
@@ -74,6 +74,7 @@ func (e *Encoder) Encode(image []byte) ([]*rtp.Packet, error) {
 	var sof *jpeg.StartOfFrame1
 	var dri *jpeg.DefineRestartInterval
 	quantizationTables := make(map[uint8][]byte)
+	var tableIDs [3]uint8
 	var data []byte
 
 outer:
@@ -94,7 +95,7 @@ outer:
 			var dqt jpeg.DefineQuantizationTable
 			err := dqt.Unmarshal(image[2:mlen])
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 			image = image[mlen:]
 
@@ -108,7 +109,7 @@ outer:
 			dri = &jpeg.DefineRestartInterval{}
 			err := dri.Unmarshal(image[2:mlen])
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 			image = image[mlen:]
 
@@ -116,10 +117,12 @@ outer:
 			mlen := int(image[0])<<8 | int(image[1])
 
 			sof = &jpeg.StartOfFrame1{}
-			err := sof.Unmarshal(image[2:mlen])
+			sofData := image[2:mlen]
+			err := sof.Unmarshal(sofData)
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
+			tableIDs = [3]uint8{sofData[8], sofData[11], sofData[14]}
 			image = image[mlen:]
 
 		case jpeg.MarkerStartOfScan:
@@ -137,6 +140,20 @@ outer:
 		}
 	}
 
+	if tableIDs[1] != tableIDs[2] {
+		return nil, fmt.Errorf("chroma components use different quantization tables")
+	}
+
+	lumaTable, ok := quantizationTables[tableIDs[0]]
+	if !ok {
+		return nil, fmt.Errorf("luminance quantization table %d is missing", tableIDs[0])
+	}
+
+	chromaTable, ok := quantizationTables[tableIDs[1]]
+	if !ok {
+		return nil, fmt.Errorf("chrominance quantization table %d is missing", tableIDs[1])
+	}
+
 	jh := headerJPEG{
 		TypeSpecific: 0,
 		Type:         sof.Type,
@@ -146,6 +163,9 @@ outer:
 	}
 
 	if dri != nil {
+		if dri.Interval == 0 {
+			return nil, fmt.Errorf("restart interval must not be zero")
+		}
 		jh.Type += 64
 	}
 
@@ -169,23 +189,9 @@ outer:
 		if first {
 			first = false
 
-			qth := headerQuantizationTable{}
-
-			// gather and sort tables IDs
-			ids := make([]uint8, len(quantizationTables))
-			i := 0
-			for id := range quantizationTables {
-				ids[i] = id
-				i++
-			}
-			slices.Sort(ids)
-
-			// add tables sorted by ID
-			for _, id := range ids {
-				qth.Tables = append(qth.Tables, quantizationTables[id])
-			}
-
-			buf = qth.marshal(buf)
+			buf = (headerQuantizationTable{
+				Tables: [][]byte{lumaTable, chromaTable},
+			}).marshal(buf)
 		}
 
 		remaining := e.PayloadMaxSize - len(buf)
