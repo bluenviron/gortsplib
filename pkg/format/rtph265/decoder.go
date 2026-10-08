@@ -31,6 +31,15 @@ func joinFragments(fragments [][]byte, size int) []byte {
 // Even though fragments must contain only
 // one NAL unit, some vendors put multiple anyway.
 func splitNALUs(b []byte) [][]byte {
+	// do not treat start codes inside an SEI as NAL delimiters:
+	// ONVIF Media Signing makes emulation prevention optional in its SEI.
+	if len(b) > 0 {
+		typ := h265.NALUType((b[0] >> 1) & 0b111111)
+		if typ == h265.NALUType_PREFIX_SEI_NUT || typ == h265.NALUType_SUFFIX_SEI_NUT {
+			return [][]byte{b}
+		}
+	}
+
 	startCode := []byte{0x00, 0x00, 0x01}
 	nalus := make([][]byte, 0, 1)
 
