@@ -103,6 +103,8 @@ func writeReqReadRes(
 }
 
 func doDescribe(t *testing.T, conn *conn.Conn, backChannels bool) *description.Session {
+	t.Helper()
+
 	header := base.Header{
 		"CSeq": base.HeaderValue{"1"},
 	}
