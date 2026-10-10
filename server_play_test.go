@@ -30,6 +30,7 @@ import (
 )
 
 func multicastCapableIP(t *testing.T) string {
+	t.Helper()
 	intfs, err := net.Interfaces()
 	require.NoError(t, err)
 
@@ -57,6 +58,7 @@ func multicastCapableIP(t *testing.T) string {
 }
 
 func mediaURL(t *testing.T, baseURL *base.URL, media *description.Media) *base.URL {
+	t.Helper()
 	u, err := media.URL(baseURL)
 	require.NoError(t, err)
 	return u
@@ -65,6 +67,8 @@ func mediaURL(t *testing.T, baseURL *base.URL, media *description.Media) *base.U
 func doSetup(t *testing.T, conn *conn.Conn, u string,
 	inTH *headers.Transport, session string,
 ) (*base.Response, *headers.Transport) {
+	t.Helper()
+
 	h := base.Header{
 		"CSeq":      base.HeaderValue{"1"},
 		"Transport": inTH.Marshal(),
@@ -90,6 +94,8 @@ func doSetup(t *testing.T, conn *conn.Conn, u string,
 }
 
 func doPlay(t *testing.T, conn *conn.Conn, u string, session string) *base.Response {
+	t.Helper()
+
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL(u),
@@ -104,6 +110,8 @@ func doPlay(t *testing.T, conn *conn.Conn, u string, session string) *base.Respo
 }
 
 func doPause(t *testing.T, conn *conn.Conn, u string, session string) {
+	t.Helper()
+
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Pause,
 		URL:    mustParseURL(u),
@@ -117,6 +125,8 @@ func doPause(t *testing.T, conn *conn.Conn, u string, session string) {
 }
 
 func doTeardown(t *testing.T, conn *conn.Conn, u string, session string) {
+	t.Helper()
+
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Teardown,
 		URL:    mustParseURL(u),
@@ -130,6 +140,8 @@ func doTeardown(t *testing.T, conn *conn.Conn, u string, session string) {
 }
 
 func readSession(t *testing.T, res *base.Response) string {
+	t.Helper()
+
 	var sx headers.Session
 	err := sx.Unmarshal(res.Header["Session"])
 	require.NoError(t, err)

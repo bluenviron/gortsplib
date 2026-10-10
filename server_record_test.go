@@ -25,6 +25,8 @@ import (
 )
 
 func doAnnounce(t *testing.T, conn *conn.Conn, u string, medias []*description.Media) {
+	t.Helper()
+
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Announce,
 		URL:    mustParseURL(u),
@@ -39,6 +41,8 @@ func doAnnounce(t *testing.T, conn *conn.Conn, u string, medias []*description.M
 }
 
 func doRecord(t *testing.T, conn *conn.Conn, u string, session string) {
+	t.Helper()
+
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Record,
 		URL:    mustParseURL(u),

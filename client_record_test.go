@@ -128,6 +128,8 @@ func readRequestIgnoreFrames(c *conn.Conn) (*base.Request, error) {
 
 // handleServerConnection handles the common server-side connection logic for the security profile tests
 func handleServerConnection(t *testing.T, serverDone chan struct{}, nconn net.Conn) {
+	t.Helper()
+
 	defer close(serverDone)
 
 	if nconn == nil {
@@ -226,6 +228,8 @@ func createAudioMedia() *description.Media {
 
 // setupTLSTestServer creates a TLS listener and server goroutine for RTSPS testing
 func setupTLSTestServer(t *testing.T) (net.Listener, chan struct{}) {
+	t.Helper()
+
 	cert, err := tls.X509KeyPair(serverCert, serverKey)
 	require.NoError(t, err)
 
@@ -262,6 +266,8 @@ func createTLSClientWithProtocol(addr string, protocol Protocol) *Client {
 
 // testRTSPAnnounceWithProtocol is a helper function that tests RTSP announce with a specific protocol and media
 func testRTSPAnnounceWithProtocol(t *testing.T, protocol Protocol, mediaFactory func() *description.Media) {
+	t.Helper()
+
 	l, err := net.Listen("tcp", "localhost:0")
 	require.NoError(t, err)
 	defer l.Close()
