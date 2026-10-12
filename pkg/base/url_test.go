@@ -25,7 +25,7 @@ func TestParseURL(t *testing.T) {
 	}{
 		{
 			"ipv6 stateless",
-			`rtsp://user:pa%23ss@[fe80::a8f4:3219:f33e:a072%wl0]:8554/prox%23ied`,
+			`rtsp://user:pa%23ss@[fe80::a8f4:3219:f33e:a072%25wl0]:8554/prox%23ied`,
 			&base.URL{
 				Scheme: "rtsp",
 				Host:   "[fe80::a8f4:3219:f33e:a072%wl0]:8554",
