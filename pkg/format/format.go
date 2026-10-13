@@ -44,6 +44,36 @@ func getFormatAttribute(attributes []sdp.Attribute, payloadType uint8, key strin
 	return ""
 }
 
+func getSingleFormatAttribute(attributes []sdp.Attribute, key string) (string, bool) {
+	var ret string
+	found := false
+
+	for _, attr := range attributes {
+		if attr.Key != key {
+			continue
+		}
+
+		v := strings.TrimSpace(attr.Value)
+		parts := strings.SplitN(v, " ", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		if _, err := strconv.ParseUint(parts[0], 10, 8); err != nil {
+			continue
+		}
+
+		if found {
+			return "", false
+		}
+
+		ret = parts[1]
+		found = true
+	}
+
+	return ret, found
+}
+
 func getCodecAndClock(rtpMap string) (string, string) {
 	parts2 := strings.SplitN(rtpMap, "/", 2)
 	if len(parts2) != 2 {
@@ -123,7 +153,13 @@ func Unmarshal(md *sdp.MediaDescription, payloadTypeStr string) (Format, error) 
 	payloadType := uint8(tmp)
 
 	rtpMap := getFormatAttribute(md.Attributes, payloadType, "rtpmap")
-	fmtp := decodeFMTP(getFormatAttribute(md.Attributes, payloadType, "fmtp"))
+	fmtp := getFormatAttribute(md.Attributes, payloadType, "fmtp")
+	if fmtp == "" && len(md.MediaName.Formats) == 1 {
+		if fallback, ok := getSingleFormatAttribute(md.Attributes, "fmtp"); ok {
+			fmtp = fallback
+		}
+	}
+	fmtpDecoded := decodeFMTP(fmtp)
 	codec, clock := getCodecAndClock(rtpMap)
 
 	format := func() Format {
@@ -234,7 +270,7 @@ func Unmarshal(md *sdp.MediaDescription, payloadTypeStr string) (Format, error) 
 		clock:       clock,
 		codec:       codec,
 		rtpMap:      rtpMap,
-		fmtp:        fmtp,
+		fmtp:        fmtpDecoded,
 	})
 	if err != nil {
 		return nil, err
