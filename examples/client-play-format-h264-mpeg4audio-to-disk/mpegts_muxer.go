@@ -75,7 +75,7 @@ func (e *mpegtsMuxer) writeH264(au [][]byte, pts int64) error {
 	var filteredAU [][]byte //nolint:prealloc
 
 	nonIDRPresent := false
-	idrPresent := false
+	randomAccess := h264.IsRandomAccess(au)
 
 	for _, nalu := range au {
 		typ := h264.NALUType(nalu[0] & 0x1F)
@@ -88,9 +88,6 @@ func (e *mpegtsMuxer) writeH264(au [][]byte, pts int64) error {
 			e.h264Format.PPS = nalu
 			continue
 
-		case h264.NALUTypeIDR:
-			idrPresent = true
-
 		case h264.NALUTypeNonIDR:
 			nonIDRPresent = true
 		}
@@ -100,18 +97,18 @@ func (e *mpegtsMuxer) writeH264(au [][]byte, pts int64) error {
 
 	au = filteredAU
 
-	if au == nil || (!nonIDRPresent && !idrPresent) {
+	if au == nil || (!nonIDRPresent && !randomAccess) {
 		return nil
 	}
 
-	// add SPS and PPS before access unit that contains an IDR
-	if idrPresent {
+	// add SPS and PPS before access unit that contains a random access point
+	if randomAccess {
 		au = append([][]byte{e.h264Format.SPS, e.h264Format.PPS}, au...)
 	}
 
 	if e.dtsExtractor == nil {
-		// skip samples silently until we find one with a IDR
-		if !idrPresent {
+		// skip samples silently until we find a random access point
+		if !randomAccess {
 			return nil
 		}
 		e.dtsExtractor = &h264.DTSExtractor{}
