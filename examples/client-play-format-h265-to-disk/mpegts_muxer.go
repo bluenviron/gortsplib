@@ -82,16 +82,17 @@ func (e *mpegtsMuxer) writeH265(au [][]byte, pts int64) error {
 		return nil
 	}
 
-	// add VPS, SPS and PPS before random access access unit
+	// add VPS, SPS and PPS before access units that contain a random access point
 	if randomAccess {
 		au = append([][]byte{e.vps, e.sps, e.pps}, au...)
 	}
 
 	if e.dtsExtractor == nil {
-		// skip samples silently until we find one with a IDR
+		// skip samples silently until we find one with a random access point
 		if !randomAccess {
 			return nil
 		}
+
 		e.dtsExtractor = &h265.DTSExtractor{}
 		e.dtsExtractor.Initialize()
 	}
