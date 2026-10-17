@@ -1931,9 +1931,16 @@ func (c *Client) doSetup(
 	}
 
 	var thRes headers.Transport
-	err = thRes.Unmarshal(res.Header["Transport"])
-	if err != nil {
-		return nil, liberrors.ErrClientTransportHeaderInvalid{Err: err}
+
+	// some cameras do not send a Transport header when using TCP.
+	// in this case, assume that the requested interleaved IDs have been accepted.
+	if _, ok := res.Header["Transport"]; !ok && protocol == ProtocolTCP {
+		thRes = th
+	} else {
+		err = thRes.Unmarshal(res.Header["Transport"])
+		if err != nil {
+			return nil, liberrors.ErrClientTransportHeaderInvalid{Err: err}
+		}
 	}
 
 	switch protocol {
