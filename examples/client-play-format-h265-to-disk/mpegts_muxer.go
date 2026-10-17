@@ -55,7 +55,7 @@ func (e *mpegtsMuxer) close() {
 func (e *mpegtsMuxer) writeH265(au [][]byte, pts int64) error {
 	var filteredAU [][]byte //nolint:prealloc
 
-	isRandomAccess := false
+	randomAccess := h265.IsRandomAccess(au)
 
 	for _, nalu := range au {
 		typ := h265.NALUType((nalu[0] >> 1) & 0b111111)
@@ -71,9 +71,6 @@ func (e *mpegtsMuxer) writeH265(au [][]byte, pts int64) error {
 		case h265.NALUType_PPS_NUT:
 			e.pps = nalu
 			continue
-
-		case h265.NALUType_IDR_W_RADL, h265.NALUType_IDR_N_LP, h265.NALUType_CRA_NUT:
-			isRandomAccess = true
 		}
 
 		filteredAU = append(filteredAU, nalu)
@@ -86,13 +83,13 @@ func (e *mpegtsMuxer) writeH265(au [][]byte, pts int64) error {
 	}
 
 	// add VPS, SPS and PPS before random access access unit
-	if isRandomAccess {
+	if randomAccess {
 		au = append([][]byte{e.vps, e.sps, e.pps}, au...)
 	}
 
 	if e.dtsExtractor == nil {
 		// skip samples silently until we find one with a IDR
-		if !isRandomAccess {
+		if !randomAccess {
 			return nil
 		}
 		e.dtsExtractor = &h265.DTSExtractor{}
