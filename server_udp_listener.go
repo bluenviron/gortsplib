@@ -1,11 +1,13 @@
 package gortsplib
 
 import (
+	"context"
 	"net"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/bluenviron/gortsplib/v5/internal/udpreaderr"
 	"github.com/bluenviron/gortsplib/v5/pkg/multicast"
 	"github.com/bluenviron/gortsplib/v5/pkg/readbuffer"
 )
@@ -33,6 +35,7 @@ func createUDPListenerMulticastPair(
 	multicastRTPPort int,
 	multicastRTCPPort int,
 	ip net.IP,
+	onListenError func(ctx context.Context, err error),
 ) (*serverUDPListener, *serverUDPListener, error) {
 	rtpl := &serverUDPListener{
 		readBufferSize:  readBufferSize,
@@ -40,6 +43,7 @@ func createUDPListenerMulticastPair(
 		writeTimeout:    writeTimeout,
 		multicastEnable: true,
 		address:         net.JoinHostPort(ip.String(), strconv.FormatInt(int64(multicastRTPPort), 10)),
+		onListenError:   onListenError,
 	}
 	err := rtpl.initialize()
 	if err != nil {
@@ -52,6 +56,7 @@ func createUDPListenerMulticastPair(
 		writeTimeout:    writeTimeout,
 		multicastEnable: true,
 		address:         net.JoinHostPort(ip.String(), strconv.FormatInt(int64(multicastRTCPPort), 10)),
+		onListenError:   onListenError,
 	}
 	err = rtcpl.initialize()
 	if err != nil {
@@ -68,7 +73,10 @@ type serverUDPListener struct {
 	writeTimeout    time.Duration
 	multicastEnable bool
 	address         string
+	onListenError   func(ctx context.Context, err error)
 
+	ctx          context.Context
+	ctxCancel    context.CancelFunc
 	pc           packetConn
 	listenIP     net.IP
 	clientsMutex sync.RWMutex
@@ -107,6 +115,7 @@ func (u *serverUDPListener) initialize() error {
 		}
 	}
 
+	u.ctx, u.ctxCancel = context.WithCancel(context.Background())
 	u.clients = make(map[clientAddr]readFunc)
 	u.done = make(chan struct{})
 
@@ -116,6 +125,7 @@ func (u *serverUDPListener) initialize() error {
 }
 
 func (u *serverUDPListener) close() {
+	u.ctxCancel()
 	u.pc.Close()
 	<-u.done
 }
@@ -138,6 +148,12 @@ func (u *serverUDPListener) run() {
 	for {
 		n, addr2, err := u.pc.ReadFrom(buf)
 		if err != nil {
+			if udpreaderr.IsPacketTooBig(err) {
+				continue
+			}
+			if u.ctx.Err() == nil {
+				u.onListenError(u.ctx, err)
+			}
 			break
 		}
 		addr := addr2.(*net.UDPAddr)

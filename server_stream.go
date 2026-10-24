@@ -304,6 +304,7 @@ func (st *ServerStream) readerAdd(
 					rtpPort:           rtpPort,
 					rtcpPort:          rtcpPort,
 					srtpOutCtx:        ssm.srtpOutCtx,
+					onListenError:     st.Server.listenError,
 				}
 				err := smm.initialize()
 				if err != nil {
