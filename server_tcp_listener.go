@@ -47,7 +47,7 @@ func (sl *serverTCPListener) run() {
 	for {
 		nconn, err := sl.ln.Accept()
 		if err != nil {
-			sl.s.acceptErr(err)
+			sl.s.listenError(sl.s.ctx, err)
 			return
 		}
 

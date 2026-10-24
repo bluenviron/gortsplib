@@ -12,9 +12,12 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
+	"github.com/pion/rtcp"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v5/internal/base64streamreader"
@@ -59,6 +62,139 @@ func TestClientURLToAddress(t *testing.T) {
 			addr := canonicalAddr(mustParseURL(ca.url))
 			require.Equal(t, ca.addr, addr)
 		})
+	}
+}
+
+func newUDPListenerTestClient(
+	t *testing.T,
+	address string,
+) (*Client, []*udpListenerTestPacketConn) {
+	t.Helper()
+
+	u, err := base.ParseURL(address)
+	require.NoError(t, err)
+	var sockets []*udpListenerTestPacketConn
+	c := &Client{
+		Scheme:   u.Scheme,
+		Host:     u.Host,
+		Protocol: new(ProtocolUDP),
+		ListenPacket: func(network, address2 string) (net.PacketConn, error) {
+			pc, err2 := net.ListenPacket(network, address2)
+			if err2 != nil {
+				return nil, err2
+			}
+			wrapped := &udpListenerTestPacketConn{UDPConn: pc.(*net.UDPConn)}
+			sockets = append(sockets, wrapped)
+			return wrapped, nil
+		},
+	}
+	require.NoError(t, c.Start())
+	t.Cleanup(c.Close)
+
+	medi := testH264Media
+	_, err = c.Announce(u, &description.Session{Medias: []*description.Media{medi}})
+	require.NoError(t, err)
+	_, err = c.Setup(u, medi, 0, 0)
+	require.NoError(t, err)
+	return c, sockets
+}
+
+func TestClientUDPOversizedPacket(t *testing.T) {
+	for _, source := range []string{"known", "unknown"} {
+		t.Run(source, func(t *testing.T) {
+			address, serverSockets := newUDPListenerTestServer(t, &testServerHandler{})
+			c, clientSockets := newUDPListenerTestClient(t, address)
+			received := make(chan struct{}, 1)
+			c.OnPacketRTCPAny(func(_ *description.Media, _ rtcp.Packet) {
+				received <- struct{}{}
+			})
+			_, err := c.Record()
+			require.NoError(t, err)
+
+			var sender net.PacketConn = serverSockets[1]
+			if source == "unknown" {
+				sender, err = net.ListenPacket("udp4", "127.0.0.1:0")
+				require.NoError(t, err)
+				defer sender.Close()
+			}
+			addr := clientSockets[1].LocalAddr().(*net.UDPAddr)
+			addr = &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: addr.Port}
+			_, err = sender.WriteTo(bytes.Repeat([]byte{0x01}, 4096), addr)
+			require.NoError(t, err)
+			payload, err := (&rtcp.ReceiverReport{SSRC: 123}).Marshal()
+			require.NoError(t, err)
+			_, err = serverSockets[1].WriteTo(payload, addr)
+			require.NoError(t, err)
+
+			select {
+			case <-received:
+			case <-time.After(3 * time.Second):
+				t.Fatal("UDP listener stopped after an oversized packet")
+			}
+		})
+	}
+}
+
+func TestClientUDPListenError(t *testing.T) {
+	for _, state := range []string{"idle", "request"} {
+		for _, listener := range []string{"rtp", "rtcp"} {
+			t.Run(state+"/"+listener, func(t *testing.T) {
+				requestReceived := make(chan struct{})
+				releaseRequest := make(chan struct{})
+				handler := &testServerHandler{}
+				if state == "request" {
+					handler.onRecord = func(_ *ServerHandlerOnRecordCtx) (*base.Response, error) {
+						close(requestReceived)
+						<-releaseRequest
+						return &base.Response{StatusCode: base.StatusOK}, nil
+					}
+				}
+				address, _ := newUDPListenerTestServer(t, handler)
+				c, sockets := newUDPListenerTestClient(t, address)
+				t.Cleanup(func() { close(releaseRequest) })
+
+				recordDone := make(chan error, 1)
+				if state == "request" {
+					go func() {
+						_, err := c.Record()
+						recordDone <- err
+					}()
+					select {
+					case <-requestReceived:
+					case <-time.After(3 * time.Second):
+						t.Fatal("RECORD request not received")
+					}
+				} else {
+					_, err := c.Record()
+					require.NoError(t, err)
+				}
+
+				index := 0
+				if listener == "rtcp" {
+					index = 1
+				}
+				sockets[index].fail.Store(true)
+				require.NoError(t, sockets[index].SetReadDeadline(time.Now()))
+
+				if state == "request" {
+					select {
+					case err := <-recordDone:
+						require.EqualError(t, err, "UDP read failed")
+					case <-time.After(3 * time.Second):
+						t.Fatal("RECORD did not return the listener error")
+					}
+				}
+
+				waitDone := make(chan error, 1)
+				go func() { waitDone <- c.Wait() }()
+				select {
+				case err := <-waitDone:
+					require.EqualError(t, err, "UDP read failed")
+				case <-time.After(3 * time.Second):
+					t.Fatal("Wait did not return the listener error")
+				}
+			})
+		}
 	}
 }
 
@@ -685,6 +821,62 @@ func TestClientUDPSourcePorts(t *testing.T) {
 		err = c.SetupAll(sd.BaseURL, sd.Medias)
 		require.NoError(t, err)
 	})
+}
+
+func TestClientUDPSourcePortsRetry(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		err  error
+	}{
+		{"windows address in use", syscall.Errno(10048)},
+		{"permission denied", syscall.EACCES},
+		{"other error", errors.New("bind failed")},
+	} {
+		for _, listener := range []string{"rtp", "rtcp"} {
+			t.Run(ca.name+"/"+listener, func(t *testing.T) {
+				address, _ := newUDPListenerTestServer(t, &testServerHandler{})
+				u := mustParseURL(address)
+
+				var attempts []string
+				var sockets []net.PacketConn
+				failAt := 1
+				if listener == "rtcp" {
+					failAt = 2
+				}
+				c := &Client{
+					Scheme:             u.Scheme,
+					Host:               u.Host,
+					Protocol:           new(ProtocolUDP),
+					UDPSourcePortRange: [2]uint16{1000, 1005},
+					ListenPacket: func(network, address2 string) (net.PacketConn, error) {
+						attempts = append(attempts, address2)
+						if len(attempts) == failAt {
+							return nil, &net.OpError{Op: "listen", Net: network, Err: ca.err}
+						}
+						pc, err := net.ListenPacket(network, "127.0.0.1:0")
+						if err == nil {
+							sockets = append(sockets, pc)
+							t.Cleanup(func() { pc.Close() })
+						}
+						return pc, err
+					},
+				}
+				require.NoError(t, c.Start())
+				t.Cleanup(c.Close)
+				_, err := c.Announce(u, &description.Session{Medias: []*description.Media{testH264Media}})
+				require.NoError(t, err)
+				_, err = c.Setup(u, testH264Media, 0, 0)
+				require.NoError(t, err)
+				require.Len(t, attempts, failAt+2)
+				require.NotEqual(t, attempts[0], attempts[failAt])
+
+				if listener == "rtcp" {
+					_, err = sockets[0].WriteTo([]byte{0x01}, sockets[1].LocalAddr())
+					require.ErrorIs(t, err, net.ErrClosed)
+				}
+			})
+		}
+	}
 }
 
 func TestClientAuth(t *testing.T) {
@@ -1788,4 +1980,17 @@ func TestClientTunnelWebSocket(t *testing.T) {
 			require.Equal(t, base.StatusOK, res.StatusCode)
 		})
 	}
+}
+
+type udpListenerTestPacketConn struct {
+	*net.UDPConn
+	fail atomic.Bool
+}
+
+func (pc *udpListenerTestPacketConn) ReadFrom(buf []byte) (int, net.Addr, error) {
+	n, addr, err := pc.UDPConn.ReadFrom(buf)
+	if err != nil && pc.fail.Load() {
+		return n, addr, errors.New("UDP read failed")
+	}
+	return n, addr, err
 }

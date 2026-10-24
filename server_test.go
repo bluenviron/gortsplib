@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
@@ -12,6 +13,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/auth"
@@ -131,6 +134,109 @@ func doDescribe(t *testing.T, conn *conn.Conn, backChannels bool) *description.S
 	desc2.BaseURL = mustParseURL(res.Header["Content-Base"][0])
 
 	return &desc2
+}
+
+func newUDPListenerTestServer(
+	t *testing.T,
+	handler *testServerHandler,
+) (string, []*net.UDPConn) {
+	t.Helper()
+
+	handler.onAnnounce = func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+		return &base.Response{StatusCode: base.StatusOK}, nil
+	}
+	handler.onSetup = func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+		return &base.Response{StatusCode: base.StatusOK}, nil, nil
+	}
+	if handler.onRecord == nil {
+		handler.onRecord = func(_ *ServerHandlerOnRecordCtx) (*base.Response, error) {
+			return &base.Response{StatusCode: base.StatusOK}, nil
+		}
+	}
+
+	var address string
+	var sockets []*net.UDPConn
+	s := &Server{
+		RTSPAddress:    "127.0.0.1:0",
+		UDPRTPAddress:  "127.0.0.1:8000",
+		UDPRTCPAddress: "127.0.0.1:8001",
+		Handler:        handler,
+		Listen: func(network, address2 string) (net.Listener, error) {
+			ln, err := net.Listen(network, address2)
+			if err == nil {
+				address = ln.Addr().String()
+			}
+			return ln, err
+		},
+		ListenPacket: func(network, _ string) (net.PacketConn, error) {
+			pc, err := net.ListenPacket(network, "127.0.0.1:0")
+			if err != nil {
+				return nil, err
+			}
+			sockets = append(sockets, pc.(*net.UDPConn))
+			return pc, nil
+		},
+	}
+	require.NoError(t, s.Start())
+	t.Cleanup(s.Close)
+	return "rtsp://" + address + "/teststream", sockets
+}
+
+func TestServerUDPOversizedPacket(t *testing.T) {
+	for _, source := range []string{"known", "unknown"} {
+		for _, listener := range []string{"rtp", "rtcp"} {
+			t.Run(source+"/"+listener, func(t *testing.T) {
+				received := make(chan struct{}, 1)
+				handler := &testServerHandler{
+					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+						ctx.Session.OnPacketRTPAny(func(_ *description.Media, _ format.Format, _ *rtp.Packet) {
+							received <- struct{}{}
+						})
+						ctx.Session.OnPacketRTCPAny(func(_ *description.Media, _ rtcp.Packet) {
+							received <- struct{}{}
+						})
+						return &base.Response{StatusCode: base.StatusOK}, nil
+					},
+				}
+				address, serverSockets := newUDPListenerTestServer(t, handler)
+				c, clientSockets := newUDPListenerTestClient(t, address)
+				_, err := c.Record()
+				require.NoError(t, err)
+
+				index := 0
+				if listener == "rtcp" {
+					index = 1
+				}
+				var sender net.PacketConn = clientSockets[index]
+				if source == "unknown" {
+					sender, err = net.ListenPacket("udp4", "127.0.0.1:0")
+					require.NoError(t, err)
+					defer sender.Close()
+				}
+				_, err = sender.WriteTo(bytes.Repeat([]byte{0x01}, 4096), serverSockets[index].LocalAddr())
+				require.NoError(t, err)
+
+				var payload []byte
+				if listener == "rtp" {
+					payload, err = (&rtp.Packet{
+						Header:  rtp.Header{Version: 2, PayloadType: 96, SequenceNumber: 1, SSRC: 123},
+						Payload: []byte{0x05, 0x01},
+					}).Marshal()
+				} else {
+					payload, err = (&rtcp.ReceiverReport{SSRC: 123}).Marshal()
+				}
+				require.NoError(t, err)
+				_, err = clientSockets[index].WriteTo(payload, serverSockets[index].LocalAddr())
+				require.NoError(t, err)
+
+				select {
+				case <-received:
+				case <-time.After(3 * time.Second):
+					t.Fatal("UDP listener stopped after an oversized packet")
+				}
+			})
+		}
+	}
 }
 
 type testServerHandler struct {

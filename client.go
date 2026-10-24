@@ -633,6 +633,7 @@ type Client struct {
 	chRequest     chan *base.Request
 	chReadError   chan error
 	chWriterError chan error
+	chListenError chan error
 
 	// out
 	done chan struct{}
@@ -752,6 +753,7 @@ func (c *Client) Start() error {
 	c.chRequest = make(chan *base.Request)
 	c.chReadError = make(chan error)
 	c.chWriterError = make(chan error)
+	c.chListenError = make(chan error)
 	c.done = make(chan struct{})
 
 	go c.run()
@@ -910,6 +912,9 @@ func (c *Client) runInner() error {
 				return err
 			}
 
+		case err := <-c.chListenError:
+			return err
+
 		case err := <-c.chReadError:
 			c.reader.close()
 			c.reader = nil
@@ -946,6 +951,9 @@ func (c *Client) waitResponse(requestCseqStr string) (*base.Response, error) {
 			if cseq, ok := res.Header["CSeq"]; !ok || len(cseq) != 1 || strings.TrimSpace(cseq[0]) == requestCseqStr {
 				return res, nil
 			}
+
+		case err := <-c.chListenError:
+			return nil, err
 
 		case err := <-c.chReadError:
 			c.reader.close()
@@ -1167,13 +1175,7 @@ func (c *Client) createWriter() {
 			// decrease RAM consumption by allocating less buffers.
 			return 8
 		}(),
-		OnError: func(ctx context.Context, err error) {
-			select {
-			case <-ctx.Done():
-			case <-c.ctx.Done():
-			case c.chWriterError <- err:
-			}
-		},
+		OnError: c.writerError,
 	}
 	c.writer.Initialize()
 
@@ -1277,6 +1279,22 @@ func (c *Client) connOpen(u *base.URL) error {
 	c.reader.start()
 
 	return nil
+}
+
+func (c *Client) writerError(ctx context.Context, err error) {
+	select {
+	case <-ctx.Done():
+	case <-c.ctx.Done():
+	case c.chWriterError <- err:
+	}
+}
+
+func (c *Client) listenError(ctx context.Context, err error) {
+	select {
+	case <-ctx.Done():
+	case <-c.ctx.Done():
+	case c.chListenError <- err:
+	}
 }
 
 func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error) {

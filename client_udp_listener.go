@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"context"
 	"crypto/rand"
 	"math/big"
 	"net"
@@ -8,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/bluenviron/gortsplib/v5/internal/udpreaderr"
 	"github.com/bluenviron/gortsplib/v5/pkg/multicast"
 	"github.com/bluenviron/gortsplib/v5/pkg/readbuffer"
 )
@@ -39,7 +41,8 @@ type clientUDPListener struct {
 	readPort  int
 	writeAddr *net.UDPAddr
 
-	running        bool
+	ctx            context.Context
+	ctxCancel      context.CancelFunc
 	lastPacketTime atomic.Int64
 
 	done chan struct{}
@@ -72,7 +75,7 @@ func (u *clientUDPListener) initialize() error {
 }
 
 func (u *clientUDPListener) close() {
-	if u.running {
+	if u.ctx != nil {
 		u.stop()
 	}
 	u.pc.Close()
@@ -83,17 +86,18 @@ func (u *clientUDPListener) port() int {
 }
 
 func (u *clientUDPListener) start() {
-	u.running = true
+	u.ctx, u.ctxCancel = context.WithCancel(context.Background())
 	u.pc.SetReadDeadline(time.Time{})
 	u.done = make(chan struct{})
 	go u.run()
 }
 
 func (u *clientUDPListener) stop() {
-	if u.running {
+	if u.ctx != nil {
+		u.ctxCancel()
 		u.pc.SetReadDeadline(time.Now())
 		<-u.done
-		u.running = false
+		u.ctx = nil
 	}
 }
 
@@ -111,6 +115,12 @@ func (u *clientUDPListener) run() {
 	for {
 		n, addr, err := u.pc.ReadFrom(buf)
 		if err != nil {
+			if udpreaderr.IsPacketTooBig(err) {
+				continue
+			}
+			if u.ctx.Err() == nil {
+				u.c.listenError(u.ctx, err)
+			}
 			return
 		}
 

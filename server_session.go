@@ -512,13 +512,7 @@ func (ss *ServerSession) createWriter() {
 			// decrease RAM consumption by allocating less buffers.
 			return 8
 		}(),
-		OnError: func(ctx context.Context, err error) {
-			select {
-			case <-ctx.Done():
-			case <-ss.ctx.Done():
-			case ss.chWriterError <- err:
-			}
-		},
+		OnError: ss.writerError,
 	}
 	ss.writer.Initialize()
 
@@ -1505,6 +1499,14 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 	return &base.Response{
 		StatusCode: base.StatusNotImplemented,
 	}, nil
+}
+
+func (ss *ServerSession) writerError(ctx context.Context, err error) {
+	select {
+	case <-ctx.Done():
+	case <-ss.ctx.Done():
+	case ss.chWriterError <- err:
+	}
 }
 
 func (ss *ServerSession) isChannelPairInUse(channel int) bool {

@@ -24,6 +24,7 @@ type serverMulticastWriterMedia struct {
 	rtpPort           int
 	rtcpPort          int
 	srtpOutCtx        *wrappedSRTPContext
+	onListenError     func(ctx context.Context, err error)
 
 	rtpl     *serverUDPListener
 	rtcpl    *serverUDPListener
@@ -41,6 +42,7 @@ func (smm *serverMulticastWriterMedia) initialize() error {
 		smm.rtpPort,
 		smm.rtcpPort,
 		smm.ip,
+		smm.onListenError,
 	)
 	if err != nil {
 		return err
