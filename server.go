@@ -579,7 +579,7 @@ func (s *Server) handleHTTPChannel(req serverHandleHTTPChannelReq) error {
 		defer t.Stop()
 
 		select {
-		case <-req.res:
+		case <-req.res: //nolint:errcheck
 		case <-req.sc.ctx.Done():
 			return fmt.Errorf("terminated")
 		case <-t.C:
