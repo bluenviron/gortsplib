@@ -1,4 +1,4 @@
-package rtpsender
+package rtpsender_test
 
 import (
 	"sync"
@@ -8,6 +8,8 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/rtpsender"
 )
 
 func TestSender(t *testing.T) {
@@ -22,7 +24,7 @@ func TestSender(t *testing.T) {
 
 	pktGenerated := make(chan rtcp.Packet)
 
-	rs := &Sender{
+	rs := &rtpsender.Sender{
 		ClockRate: 90000,
 		Period:    100 * time.Millisecond,
 		TimeNow: func() time.Time {
@@ -117,7 +119,7 @@ func TestSender(t *testing.T) {
 	}, pkt)
 
 	stats = rs.Stats()
-	require.Equal(t, &Stats{
+	require.Equal(t, &rtpsender.Stats{
 		Sent:               3,
 		ReportedLost:       0,
 		LastSequenceNumber: 948,
@@ -132,7 +134,7 @@ func TestSender(t *testing.T) {
 	})
 
 	stats = rs.Stats()
-	require.Equal(t, &Stats{
+	require.Equal(t, &rtpsender.Stats{
 		Sent:               3,
 		ReportedLost:       7,
 		LastSequenceNumber: 948,
@@ -154,7 +156,7 @@ func TestSenderZeroClockRate(t *testing.T) {
 
 	pktGenerated := make(chan rtcp.Packet)
 
-	rs := &Sender{
+	rs := &rtpsender.Sender{
 		ClockRate: 0,
 		Period:    100 * time.Millisecond,
 		TimeNow: func() time.Time {
@@ -194,7 +196,7 @@ func TestSenderZeroClockRate(t *testing.T) {
 	}
 
 	stats = rs.Stats()
-	require.Equal(t, &Stats{
+	require.Equal(t, &rtpsender.Stats{
 		Sent:               1,
 		ReportedLost:       0,
 		LastSequenceNumber: 946,
@@ -213,7 +215,7 @@ func TestSenderInitialReportBeatsPeriod(t *testing.T) {
 	pktGenerated := make(chan rtcp.Packet, 1)
 	now := time.Date(2008, 5, 20, 22, 16, 20, 0, time.UTC)
 
-	rs := &Sender{
+	rs := &rtpsender.Sender{
 		ClockRate: 90000,
 		Period:    1 * time.Hour, // a tick must never be what delivers this report
 		TimeNow:   func() time.Time { return now },
