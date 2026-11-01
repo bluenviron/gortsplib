@@ -1,4 +1,4 @@
-package rtpreceiver
+package rtpreceiver_test
 
 import (
 	"testing"
@@ -7,10 +7,12 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/rtpreceiver"
 )
 
 func TestErrorInvalidPeriod(t *testing.T) {
-	rr := &Receiver{
+	rr := &rtpreceiver.Receiver{
 		ClockRate: 90000,
 		LocalSSRC: 0x65f83afb,
 	}
@@ -19,7 +21,7 @@ func TestErrorInvalidPeriod(t *testing.T) {
 }
 
 func TestErrorDifferentSSRC(t *testing.T) {
-	rr := &Receiver{
+	rr := &rtpreceiver.Receiver{
 		ClockRate: 90000,
 		LocalSSRC: 0x65f83afb,
 		Period:    500 * time.Millisecond,
@@ -60,7 +62,7 @@ func TestErrorDifferentSSRC(t *testing.T) {
 }
 
 func TestStatsBeforeData(t *testing.T) {
-	rr := &Receiver{
+	rr := &rtpreceiver.Receiver{
 		ClockRate: 90000,
 		LocalSSRC: 0x65f83afb,
 		Period:    500 * time.Millisecond,
@@ -81,7 +83,7 @@ func TestStandard(t *testing.T) {
 		t.Run(ca, func(t *testing.T) {
 			pktGenerated := make(chan rtcp.Packet)
 
-			rr := &Receiver{
+			rr := &rtpreceiver.Receiver{
 				ClockRate:            90000,
 				LocalSSRC:            0x65f83afb,
 				UnrealiableTransport: ca == "unrealiable",
@@ -113,7 +115,7 @@ func TestStandard(t *testing.T) {
 			require.NoError(t, err)
 
 			stats := rr.Stats()
-			require.Equal(t, &Stats{
+			require.Equal(t, &rtpreceiver.Stats{
 				Received:           1,
 				LastRTP:            0xafb45733,
 				LastSequenceNumber: 945,
@@ -136,7 +138,7 @@ func TestStandard(t *testing.T) {
 			rr.ProcessSenderReport(&srPkt, ts)
 
 			stats = rr.Stats()
-			require.Equal(t, &Stats{
+			require.Equal(t, &rtpreceiver.Stats{
 				Received:           1,
 				LastRTP:            0xafb45733,
 				LastSequenceNumber: 945,
@@ -189,7 +191,7 @@ func TestStandard(t *testing.T) {
 			}, pkt)
 
 			stats = rr.Stats()
-			require.Equal(t, &Stats{
+			require.Equal(t, &rtpreceiver.Stats{
 				Received:           3,
 				LastRTP:            2947921603,
 				LastSequenceNumber: 947,
@@ -204,7 +206,7 @@ func TestStandard(t *testing.T) {
 func TestNoPackets(t *testing.T) {
 	pktGenerated := make(chan rtcp.Packet)
 
-	rr := &Receiver{
+	rr := &rtpreceiver.Receiver{
 		ClockRate: 90000,
 		LocalSSRC: 0x65f83afb,
 		Period:    500 * time.Millisecond,
@@ -244,7 +246,7 @@ func TestNoPackets(t *testing.T) {
 func TestZeroClockRate(t *testing.T) {
 	pktGenerated := make(chan rtcp.Packet)
 
-	rr := &Receiver{
+	rr := &rtpreceiver.Receiver{
 		ClockRate: 0,
 		LocalSSRC: 0x65f83afb,
 		Period:    500 * time.Millisecond,
@@ -278,7 +280,7 @@ func TestZeroClockRate(t *testing.T) {
 	require.NoError(t, err)
 
 	stats = rr.Stats()
-	require.Equal(t, &Stats{
+	require.Equal(t, &rtpreceiver.Stats{
 		Received:           1,
 		LastRTP:            0xafb45733,
 		LastSequenceNumber: 945,
@@ -297,7 +299,7 @@ func TestZeroClockRate(t *testing.T) {
 	rr.ProcessSenderReport(&srPkt, ts)
 
 	stats = rr.Stats()
-	require.Equal(t, &Stats{
+	require.Equal(t, &rtpreceiver.Stats{
 		Received:           1,
 		LastRTP:            0xafb45733,
 		LastSequenceNumber: 945,
@@ -342,7 +344,7 @@ func TestZeroClockRate(t *testing.T) {
 	}
 
 	stats = rr.Stats()
-	require.Equal(t, &Stats{
+	require.Equal(t, &rtpreceiver.Stats{
 		Received:           3,
 		LastRTP:            2947921603,
 		LastSequenceNumber: 947,
@@ -354,7 +356,7 @@ func TestZeroClockRate(t *testing.T) {
 func TestSequenceNumberOverflow(t *testing.T) {
 	rtcpGenerated := make(chan struct{})
 
-	rr := &Receiver{
+	rr := &rtpreceiver.Receiver{
 		ClockRate: 90000,
 		LocalSSRC: 0x65f83afb,
 		Period:    250 * time.Millisecond,
@@ -428,7 +430,7 @@ func TestSequenceNumberOverflow(t *testing.T) {
 func TestJitter(t *testing.T) {
 	rtcpGenerated := make(chan struct{})
 
-	rr := &Receiver{
+	rr := &rtpreceiver.Receiver{
 		ClockRate: 90000,
 		LocalSSRC: 0x65f83afb,
 		Period:    500 * time.Millisecond,
@@ -516,7 +518,7 @@ func TestJitter(t *testing.T) {
 func TestReliablePacketsLost(t *testing.T) {
 	done := make(chan struct{})
 
-	rr := &Receiver{
+	rr := &rtpreceiver.Receiver{
 		ClockRate: 90000,
 		LocalSSRC: 0x65f83afb,
 		Period:    500 * time.Millisecond,
@@ -590,7 +592,7 @@ func TestReliablePacketsLost(t *testing.T) {
 	<-done
 
 	stats := rr.Stats()
-	require.Equal(t, &Stats{
+	require.Equal(t, &rtpreceiver.Stats{
 		Received:           2,
 		Lost:               1,
 		LastRTP:            0xafb45733,
@@ -605,7 +607,7 @@ func TestReliablePacketsLost(t *testing.T) {
 func TestReliableOverflowAndPacketsLost(t *testing.T) {
 	done := make(chan struct{})
 
-	rr := &Receiver{
+	rr := &rtpreceiver.Receiver{
 		ClockRate: 90000,
 		LocalSSRC: 0x65f83afb,
 		Period:    500 * time.Millisecond,
@@ -679,7 +681,7 @@ func TestReliableOverflowAndPacketsLost(t *testing.T) {
 	<-done
 
 	stats := rr.Stats()
-	require.Equal(t, &Stats{
+	require.Equal(t, &rtpreceiver.Stats{
 		Received:           2,
 		Lost:               2,
 		LastRTP:            0xafb45733,
@@ -710,7 +712,7 @@ func TestUnrealiableReorder(t *testing.T) {
 			}},
 		},
 		{
-			// packet sent before first packet
+			// late duplicate
 			&rtp.Packet{
 				Header: rtp.Header{
 					SequenceNumber: 65529,
@@ -841,7 +843,7 @@ func TestUnrealiableReorder(t *testing.T) {
 		},
 	}
 
-	rr := &Receiver{
+	rr := &rtpreceiver.Receiver{
 		ClockRate:            90000,
 		LocalSSRC:            0x65f83afb,
 		UnrealiableTransport: true,
@@ -851,7 +853,22 @@ func TestUnrealiableReorder(t *testing.T) {
 	require.NoError(t, err)
 	defer rr.Close()
 
-	rr.absPos = 40
+	for sequenceNumber := uint16(65490); sequenceNumber < 65530; sequenceNumber++ {
+		var out []*rtp.Packet
+		var missing uint64
+		out, missing, err = rr.ProcessPacket(&rtp.Packet{
+			Header: rtp.Header{
+				SequenceNumber: sequenceNumber,
+			},
+		}, time.Time{}, true)
+		require.NoError(t, err)
+		require.Equal(t, []*rtp.Packet{{
+			Header: rtp.Header{
+				SequenceNumber: sequenceNumber,
+			},
+		}}, out)
+		require.Equal(t, uint64(0), missing)
+	}
 
 	for _, entry := range sequence {
 		var out []*rtp.Packet
@@ -863,18 +880,18 @@ func TestUnrealiableReorder(t *testing.T) {
 	}
 
 	stats := rr.Stats()
-	require.Equal(t, &Stats{
-		Received:           8,
+	require.Equal(t, &rtpreceiver.Stats{
+		Received:           48,
 		LastRTP:            0,
 		LastSequenceNumber: 1,
-		TotalReceived:      8,
+		TotalReceived:      48,
 	}, stats)
 }
 
 func TestUnrealiableBufferFull(t *testing.T) {
 	rtcpReceived := make(chan struct{})
 
-	rr := &Receiver{
+	rr := &rtpreceiver.Receiver{
 		ClockRate:            90000,
 		LocalSSRC:            0x65f83afb,
 		UnrealiableTransport: true,
@@ -884,7 +901,7 @@ func TestUnrealiableBufferFull(t *testing.T) {
 				SSRC: 1710766843,
 				Reports: []rtcp.ReceptionReport{{
 					SSRC:               0,
-					FractionLost:       131,
+					FractionLost:       95,
 					TotalLost:          34,
 					LastSequenceNumber: 1629,
 					Jitter:             0,
@@ -899,23 +916,27 @@ func TestUnrealiableBufferFull(t *testing.T) {
 	require.NoError(t, err)
 	defer rr.Close()
 
-	rr.absPos = 25
-	sn := uint16(1564)
+	sn := uint16(1539)
 	toMiss := uint64(34)
 
-	out, missing, err := rr.ProcessPacket(&rtp.Packet{
-		Header: rtp.Header{
-			SequenceNumber: sn,
-		},
-	}, time.Time{}, true)
-	require.NoError(t, err)
-	require.Equal(t, []*rtp.Packet{{
-		Header: rtp.Header{
-			SequenceNumber: sn,
-		},
-	}}, out)
-	require.Equal(t, uint64(0), missing)
-	sn++
+	var out []*rtp.Packet
+	var missing uint64
+
+	for range 26 {
+		out, missing, err = rr.ProcessPacket(&rtp.Packet{
+			Header: rtp.Header{
+				SequenceNumber: sn,
+			},
+		}, time.Time{}, true)
+		require.NoError(t, err)
+		require.Equal(t, []*rtp.Packet{{
+			Header: rtp.Header{
+				SequenceNumber: sn,
+			},
+		}}, out)
+		require.Equal(t, uint64(0), missing)
+		sn++
+	}
 
 	var expected []*rtp.Packet
 
@@ -955,12 +976,12 @@ func TestUnrealiableBufferFull(t *testing.T) {
 	<-rtcpReceived
 
 	stats := rr.Stats()
-	require.Equal(t, &Stats{
-		Received:           32,
+	require.Equal(t, &rtpreceiver.Stats{
+		Received:           57,
 		Lost:               34,
 		LastRTP:            0,
 		LastSequenceNumber: 1629,
-		TotalReceived:      32,
+		TotalReceived:      57,
 		TotalLost:          34,
 	}, stats)
 }
@@ -968,7 +989,7 @@ func TestUnrealiableBufferFull(t *testing.T) {
 func TestUnrealiableReset(t *testing.T) {
 	rtcpGenerated := make(chan struct{})
 
-	rr := &Receiver{
+	rr := &rtpreceiver.Receiver{
 		ClockRate:            90000,
 		LocalSSRC:            0x65f83afb,
 		UnrealiableTransport: true,
@@ -1027,7 +1048,7 @@ func TestUnrealiableReset(t *testing.T) {
 	<-rtcpGenerated
 
 	stats := rr.Stats()
-	require.Equal(t, &Stats{
+	require.Equal(t, &rtpreceiver.Stats{
 		Received:           2,
 		LastRTP:            0,
 		LastSequenceNumber: 40064,
@@ -1038,7 +1059,7 @@ func TestUnrealiableReset(t *testing.T) {
 func TestUnrealiableCustomBufferSize(t *testing.T) {
 	customSize := 128
 
-	rr := &Receiver{
+	rr := &rtpreceiver.Receiver{
 		ClockRate:            90000,
 		LocalSSRC:            0x65f83afb,
 		UnrealiableTransport: true,
@@ -1049,25 +1070,25 @@ func TestUnrealiableCustomBufferSize(t *testing.T) {
 	require.NoError(t, err)
 	defer rr.Close()
 
-	// Set absPos to an arbitrary value.
-	rr.absPos = 10
+	var out []*rtp.Packet
+	var missing uint64
 
-	// Process first packet; behaves as usual.
-	firstSeq := uint16(50)
-	out, missing, err := rr.ProcessPacket(&rtp.Packet{
-		Header: rtp.Header{
-			SequenceNumber: firstSeq,
-		},
-	}, time.Time{}, true)
-	require.NoError(t, err)
-	require.Equal(t, []*rtp.Packet{{
-		Header: rtp.Header{
-			SequenceNumber: firstSeq,
-		},
-	}}, out)
-	require.Equal(t, uint64(0), missing)
+	for sequenceNumber := uint16(40); sequenceNumber <= 50; sequenceNumber++ {
+		out, missing, err = rr.ProcessPacket(&rtp.Packet{
+			Header: rtp.Header{
+				SequenceNumber: sequenceNumber,
+			},
+		}, time.Time{}, true)
+		require.NoError(t, err)
+		require.Equal(t, []*rtp.Packet{{
+			Header: rtp.Header{
+				SequenceNumber: sequenceNumber,
+			},
+		}}, out)
+		require.Equal(t, uint64(0), missing)
+	}
 
-	// At this point, expectedSeqNum == firstSeq + 1 (i.e. 51).
+	// At this point, expectedSeqNum == 51.
 	// Now, send a packet with a gap larger than the custom buffer size.
 	// For BufferSize = 128, let's send a packet with SequenceNumber = 51 + 130 = 181.
 	nextSeq := uint16(181)
@@ -1088,11 +1109,11 @@ func TestUnrealiableCustomBufferSize(t *testing.T) {
 	}}, out)
 
 	stats := rr.Stats()
-	require.Equal(t, &Stats{
-		Received:           2,
+	require.Equal(t, &rtpreceiver.Stats{
+		Received:           12,
 		Lost:               130,
 		LastSequenceNumber: 181,
-		TotalReceived:      2,
+		TotalReceived:      12,
 		TotalLost:          130,
 	}, stats)
 }
