@@ -6,6 +6,8 @@ import (
 	"os"
 	"syscall"
 	"time"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/writebuffer"
 )
 
 const (
@@ -157,6 +159,11 @@ func (c *singleConn) Close() error {
 // SetReadBuffer implements Conn.
 func (c *singleConn) SetReadBuffer(bytes int) error {
 	return syscall.SetsockoptInt(int(c.file.Fd()), syscall.SOL_SOCKET, syscall.SO_RCVBUF, bytes)
+}
+
+// SetWriteBuffer implements Conn.
+func (c *singleConn) SetWriteBuffer(bytes int) error {
+	return writebuffer.SetWriteBuffer(c, bytes)
 }
 
 // SyscallConn implements Conn.

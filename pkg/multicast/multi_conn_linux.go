@@ -6,6 +6,8 @@ import (
 	"os"
 	"syscall"
 	"time"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/writebuffer"
 )
 
 // multiConn is a multicast connection
@@ -183,6 +185,17 @@ func (c *multiConn) Close() error {
 // SetReadBuffer implements Conn.
 func (c *multiConn) SetReadBuffer(bytes int) error {
 	return syscall.SetsockoptInt(int(c.readFile.Fd()), syscall.SOL_SOCKET, syscall.SO_RCVBUF, bytes)
+}
+
+// SetWriteBuffer implements Conn.
+func (c *multiConn) SetWriteBuffer(bytes int) error {
+	for _, file := range c.writeFiles {
+		err := writebuffer.SetWriteBufferRaw(&rawConn{fd: file.Fd()}, bytes)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // SyscallConn implements Conn.

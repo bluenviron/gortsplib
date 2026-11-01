@@ -182,6 +182,67 @@ func newUDPListenerTestServer(
 	return "rtsp://" + address + "/teststream", sockets
 }
 
+func TestServerUDPWriteBufferSize(t *testing.T) {
+	for _, readBufferSize := range []int{0, 10000} {
+		t.Run(fmt.Sprintf("readBufferSize=%d", readBufferSize), func(t *testing.T) {
+			var sockets []*udpListenerTestPacketConn
+			s := &Server{
+				RTSPAddress:        "127.0.0.1:0",
+				UDPRTPAddress:      "127.0.0.1:8000",
+				UDPRTCPAddress:     "127.0.0.1:8001",
+				UDPReadBufferSize:  readBufferSize,
+				UDPWriteBufferSize: 20000,
+				ListenPacket: func(network, _ string) (net.PacketConn, error) {
+					pc, err := net.ListenPacket(network, "127.0.0.1:0")
+					if err != nil {
+						return nil, err
+					}
+					wrapped := &udpListenerTestPacketConn{UDPConn: pc.(*net.UDPConn)}
+					sockets = append(sockets, wrapped)
+					return wrapped, nil
+				},
+			}
+			require.NoError(t, s.Start())
+			defer s.Close()
+
+			require.Len(t, sockets, 2)
+			calls := int32(1)
+			if readBufferSize != 0 {
+				calls++
+			}
+			for _, pc := range sockets {
+				require.Equal(t, calls, pc.syscallConnCalls.Load())
+			}
+		})
+	}
+}
+
+func TestServerUDPWriteBufferSizeError(t *testing.T) {
+	var socket *udpListenerTestPacketConn
+	s := &Server{
+		RTSPAddress:        "127.0.0.1:0",
+		UDPRTPAddress:      "127.0.0.1:8000",
+		UDPRTCPAddress:     "127.0.0.1:8001",
+		UDPWriteBufferSize: 20000,
+		ListenPacket: func(network, _ string) (net.PacketConn, error) {
+			pc, err := net.ListenPacket(network, "127.0.0.1:0")
+			if err != nil {
+				return nil, err
+			}
+			socket = &udpListenerTestPacketConn{
+				UDPConn:        pc.(*net.UDPConn),
+				syscallConnErr: fmt.Errorf("test syscall error"),
+			}
+			return socket, nil
+		},
+	}
+	err := s.Start()
+	require.EqualError(t, err, "test syscall error")
+	pc, err := net.ListenPacket("udp4", socket.LocalAddr().String())
+	require.NoError(t, err)
+	require.NoError(t, pc.Close())
+}
+
 func TestServerUDPOversizedPacket(t *testing.T) {
 	for _, source := range []string{"known", "unknown"} {
 		for _, listener := range []string{"rtp", "rtcp"} {
@@ -1718,4 +1779,56 @@ func TestServerReloadDesc(t *testing.T) {
 			PacketizationMode: 1,
 		}},
 	}}, desc.Medias)
+}
+
+func TestServerStreamH264PacketizationMode0TCPOK(t *testing.T) {
+	s := &Server{
+		RTSPAddress: "localhost:8554",
+	}
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	forma := &format.H264{
+		PayloadTyp:        96,
+		PacketizationMode: 0,
+	}
+
+	stream := &ServerStream{
+		Server: s,
+		Desc: &description.Session{Medias: []*description.Media{{
+			Type:    description.MediaTypeVideo,
+			Formats: []format.Format{forma},
+		}}},
+	}
+	err = stream.Initialize()
+	require.NoError(t, err)
+	defer stream.Close()
+}
+
+func TestServerStreamH264PacketizationMode0UDPReject(t *testing.T) {
+	s := &Server{
+		RTSPAddress:    "localhost:8555",
+		UDPRTPAddress:  "127.0.0.1:8002",
+		UDPRTCPAddress: "127.0.0.1:8003",
+	}
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	forma := &format.H264{
+		PayloadTyp:        96,
+		PacketizationMode: 0,
+	}
+
+	stream := &ServerStream{
+		Server: s,
+		Desc: &description.Session{Medias: []*description.Media{{
+			Type:    description.MediaTypeVideo,
+			Formats: []format.Format{forma},
+		}}},
+	}
+	err = stream.Initialize()
+	require.Error(t, err)
+	require.EqualError(t, err, "H264 packetization-mode=0 is not supported by the server")
 }

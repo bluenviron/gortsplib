@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -34,6 +35,81 @@ func mustParseURL(s string) *base.URL {
 		panic(err)
 	}
 	return u
+}
+
+func TestClientUDPWriteBufferSize(t *testing.T) {
+	for _, readBufferSize := range []int{0, 10000} {
+		t.Run(fmt.Sprintf("readBufferSize=%d", readBufferSize), func(t *testing.T) {
+			address, _ := newUDPListenerTestServer(t, &testServerHandler{})
+			u, err := base.ParseURL(address)
+			require.NoError(t, err)
+			var sockets []*udpListenerTestPacketConn
+			c := &Client{
+				Scheme:             u.Scheme,
+				Host:               u.Host,
+				Protocol:           new(ProtocolUDP),
+				UDPReadBufferSize:  readBufferSize,
+				UDPWriteBufferSize: 20000,
+				ListenPacket: func(network, address2 string) (net.PacketConn, error) {
+					pc, err2 := net.ListenPacket(network, address2)
+					if err2 != nil {
+						return nil, err2
+					}
+					wrapped := &udpListenerTestPacketConn{UDPConn: pc.(*net.UDPConn)}
+					sockets = append(sockets, wrapped)
+					return wrapped, nil
+				},
+			}
+			require.NoError(t, c.Start())
+			defer c.Close()
+			_, err = c.Announce(u, &description.Session{Medias: []*description.Media{testH264Media}})
+			require.NoError(t, err)
+			_, err = c.Setup(u, testH264Media, 0, 0)
+			require.NoError(t, err)
+
+			require.Len(t, sockets, 2)
+			calls := int32(1)
+			if readBufferSize != 0 {
+				calls++
+			}
+			for _, pc := range sockets {
+				require.Equal(t, calls, pc.syscallConnCalls.Load())
+			}
+		})
+	}
+}
+
+func TestClientUDPWriteBufferSizeError(t *testing.T) {
+	address, _ := newUDPListenerTestServer(t, &testServerHandler{})
+	u, err := base.ParseURL(address)
+	require.NoError(t, err)
+	var socket *udpListenerTestPacketConn
+	c := &Client{
+		Scheme:             u.Scheme,
+		Host:               u.Host,
+		Protocol:           new(ProtocolUDP),
+		UDPWriteBufferSize: 20000,
+		ListenPacket: func(network, address2 string) (net.PacketConn, error) {
+			pc, err2 := net.ListenPacket(network, address2)
+			if err2 != nil {
+				return nil, err2
+			}
+			socket = &udpListenerTestPacketConn{
+				UDPConn:        pc.(*net.UDPConn),
+				syscallConnErr: errors.New("test syscall error"),
+			}
+			return socket, nil
+		},
+	}
+	require.NoError(t, c.Start())
+	defer c.Close()
+	_, err = c.Announce(u, &description.Session{Medias: []*description.Media{testH264Media}})
+	require.NoError(t, err)
+	_, err = c.Setup(u, testH264Media, 30000, 30001)
+	require.EqualError(t, err, "test syscall error")
+	pc, err := net.ListenPacket("udp4", socket.LocalAddr().String())
+	require.NoError(t, err)
+	require.NoError(t, pc.Close())
 }
 
 func TestClientURLToAddress(t *testing.T) {
@@ -1984,7 +2060,17 @@ func TestClientTunnelWebSocket(t *testing.T) {
 
 type udpListenerTestPacketConn struct {
 	*net.UDPConn
-	fail atomic.Bool
+	fail             atomic.Bool
+	syscallConnCalls atomic.Int32
+	syscallConnErr   error
+}
+
+func (pc *udpListenerTestPacketConn) SyscallConn() (syscall.RawConn, error) {
+	pc.syscallConnCalls.Add(1)
+	if pc.syscallConnErr != nil {
+		return nil, pc.syscallConnErr
+	}
+	return pc.UDPConn.SyscallConn()
 }
 
 func (pc *udpListenerTestPacketConn) ReadFrom(buf []byte) (int, net.Addr, error) {
