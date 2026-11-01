@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"golang.org/x/net/ipv4"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/writebuffer"
 )
 
 // multiConn is a multicast connection
@@ -132,6 +134,17 @@ func (c *multiConn) Close() error {
 // SetReadBuffer implements Conn.
 func (c *multiConn) SetReadBuffer(bytes int) error {
 	return c.readConn.SetReadBuffer(bytes)
+}
+
+// SetWriteBuffer implements Conn.
+func (c *multiConn) SetWriteBuffer(bytes int) error {
+	for _, conn := range c.writeConns {
+		err := writebuffer.SetWriteBuffer(conn, bytes)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // SyscallConn implements Conn.

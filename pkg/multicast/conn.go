@@ -10,5 +10,6 @@ import (
 type Conn interface {
 	net.PacketConn
 	SetReadBuffer(int) error
+	SetWriteBuffer(int) error
 	SyscallConn() (syscall.RawConn, error)
 }

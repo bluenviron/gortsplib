@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"golang.org/x/net/ipv4"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/writebuffer"
 )
 
 const (
@@ -76,6 +78,11 @@ func (c *singleConn) Close() error {
 // SetReadBuffer implements Conn.
 func (c *singleConn) SetReadBuffer(bytes int) error {
 	return c.conn.SetReadBuffer(bytes)
+}
+
+// SetWriteBuffer implements Conn.
+func (c *singleConn) SetWriteBuffer(bytes int) error {
+	return writebuffer.SetWriteBuffer(c.conn, bytes)
 }
 
 // SyscallConn implements Conn.

@@ -14,17 +14,18 @@ import (
 )
 
 type serverMulticastWriterMedia struct {
-	media             *description.Media
-	maxPacketSize     int
-	udpReadBufferSize int
-	listenPacket      func(network string, address string) (net.PacketConn, error)
-	writeQueueSize    int
-	writeTimeout      time.Duration
-	ip                net.IP
-	rtpPort           int
-	rtcpPort          int
-	srtpOutCtx        *wrappedSRTPContext
-	onListenError     func(ctx context.Context, err error)
+	media              *description.Media
+	maxPacketSize      int
+	udpReadBufferSize  int
+	udpWriteBufferSize int
+	listenPacket       func(network string, address string) (net.PacketConn, error)
+	writeQueueSize     int
+	writeTimeout       time.Duration
+	ip                 net.IP
+	rtpPort            int
+	rtcpPort           int
+	srtpOutCtx         *wrappedSRTPContext
+	onListenError      func(ctx context.Context, err error)
 
 	rtpl     *serverUDPListener
 	rtcpl    *serverUDPListener
@@ -37,6 +38,7 @@ type serverMulticastWriterMedia struct {
 func (smm *serverMulticastWriterMedia) initialize() error {
 	rtpl, rtcpl, err := createUDPListenerMulticastPair(
 		smm.udpReadBufferSize,
+		smm.udpWriteBufferSize,
 		smm.listenPacket,
 		smm.writeTimeout,
 		smm.rtpPort,

@@ -12,6 +12,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/internal/udpreaderr"
 	"github.com/bluenviron/gortsplib/v5/pkg/multicast"
 	"github.com/bluenviron/gortsplib/v5/pkg/readbuffer"
+	"github.com/bluenviron/gortsplib/v5/pkg/writebuffer"
 )
 
 func randInRange(maxVal int) (int, error) {
@@ -65,6 +66,19 @@ func (u *clientUDPListener) initialize() error {
 
 	if u.c.UDPReadBufferSize != 0 {
 		err := readbuffer.SetReadBuffer(u.pc, u.c.UDPReadBufferSize)
+		if err != nil {
+			u.pc.Close()
+			return err
+		}
+	}
+
+	if u.c.UDPWriteBufferSize != 0 {
+		var err error
+		if u.multicast {
+			err = u.pc.(multicast.Conn).SetWriteBuffer(u.c.UDPWriteBufferSize)
+		} else {
+			err = writebuffer.SetWriteBuffer(u.pc, u.c.UDPWriteBufferSize)
+		}
 		if err != nil {
 			u.pc.Close()
 			return err

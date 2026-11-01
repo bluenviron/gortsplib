@@ -294,17 +294,18 @@ func (st *ServerStream) readerAdd(
 				}
 
 				smm := &serverMulticastWriterMedia{
-					media:             ssm.media,
-					maxPacketSize:     st.Server.MaxPacketSize,
-					udpReadBufferSize: st.Server.UDPReadBufferSize,
-					listenPacket:      st.Server.ListenPacket,
-					writeQueueSize:    st.Server.WriteQueueSize,
-					writeTimeout:      st.Server.WriteTimeout,
-					ip:                ip,
-					rtpPort:           rtpPort,
-					rtcpPort:          rtcpPort,
-					srtpOutCtx:        ssm.srtpOutCtx,
-					onListenError:     st.Server.listenError,
+					media:              ssm.media,
+					maxPacketSize:      st.Server.MaxPacketSize,
+					udpReadBufferSize:  st.Server.UDPReadBufferSize,
+					udpWriteBufferSize: st.Server.UDPWriteBufferSize,
+					listenPacket:       st.Server.ListenPacket,
+					writeQueueSize:     st.Server.WriteQueueSize,
+					writeTimeout:       st.Server.WriteTimeout,
+					ip:                 ip,
+					rtpPort:            rtpPort,
+					rtcpPort:           rtcpPort,
+					srtpOutCtx:         ssm.srtpOutCtx,
+					onListenError:      st.Server.listenError,
 				}
 				err := smm.initialize()
 				if err != nil {

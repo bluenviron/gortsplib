@@ -10,6 +10,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/internal/udpreaderr"
 	"github.com/bluenviron/gortsplib/v5/pkg/multicast"
 	"github.com/bluenviron/gortsplib/v5/pkg/readbuffer"
+	"github.com/bluenviron/gortsplib/v5/pkg/writebuffer"
 )
 
 type clientAddr struct {
@@ -30,6 +31,7 @@ func (p *clientAddr) fill(ip net.IP, port int) {
 
 func createUDPListenerMulticastPair(
 	readBufferSize int,
+	writeBufferSize int,
 	listenPacket func(network, address string) (net.PacketConn, error),
 	writeTimeout time.Duration,
 	multicastRTPPort int,
@@ -39,6 +41,7 @@ func createUDPListenerMulticastPair(
 ) (*serverUDPListener, *serverUDPListener, error) {
 	rtpl := &serverUDPListener{
 		readBufferSize:  readBufferSize,
+		writeBufferSize: writeBufferSize,
 		listenPacket:    listenPacket,
 		writeTimeout:    writeTimeout,
 		multicastEnable: true,
@@ -52,6 +55,7 @@ func createUDPListenerMulticastPair(
 
 	rtcpl := &serverUDPListener{
 		readBufferSize:  readBufferSize,
+		writeBufferSize: writeBufferSize,
 		listenPacket:    listenPacket,
 		writeTimeout:    writeTimeout,
 		multicastEnable: true,
@@ -69,6 +73,7 @@ func createUDPListenerMulticastPair(
 
 type serverUDPListener struct {
 	readBufferSize  int
+	writeBufferSize int
 	listenPacket    func(network, address string) (net.PacketConn, error)
 	writeTimeout    time.Duration
 	multicastEnable bool
@@ -109,6 +114,19 @@ func (u *serverUDPListener) initialize() error {
 
 	if u.readBufferSize != 0 {
 		err := readbuffer.SetReadBuffer(u.pc, u.readBufferSize)
+		if err != nil {
+			u.pc.Close()
+			return err
+		}
+	}
+
+	if u.writeBufferSize != 0 {
+		var err error
+		if u.multicastEnable {
+			err = u.pc.(multicast.Conn).SetWriteBuffer(u.writeBufferSize)
+		} else {
+			err = writebuffer.SetWriteBuffer(u.pc, u.writeBufferSize)
+		}
 		if err != nil {
 			u.pc.Close()
 			return err

@@ -521,6 +521,10 @@ type Client struct {
 	// This can be increased to reduce packet losses.
 	// It defaults to the operating system default value.
 	UDPReadBufferSize int
+	// Size of the UDP write buffer.
+	// This can be increased to reduce packet losses.
+	// It defaults to the operating system default value.
+	UDPWriteBufferSize int
 	// Size of the queue of outbound packets.
 	// It defaults to 256.
 	WriteQueueSize int
