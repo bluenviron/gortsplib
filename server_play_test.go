@@ -1795,6 +1795,69 @@ func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestServerPlaySetupGStreamerNoDelay(t *testing.T) {
+	var stream *ServerStream
+
+	s := &Server{
+		RTSPAddress: "localhost:8554",
+		Handler: &testServerHandler{
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+		},
+	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	stream = &ServerStream{
+		Server: s,
+		Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+	}
+	err = stream.Initialize()
+	require.NoError(t, err)
+	defer stream.Close()
+
+	nconn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer nconn.Close()
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
+
+	desc := doDescribe(t, conn, false)
+
+	inTH := &headers.Transport{
+		Protocol:       headers.TransportProtocolTCP,
+		Delivery:       new(headers.TransportDeliveryUnicast),
+		Mode:           new(headers.TransportModePlay),
+		InterleavedIDs: &[2]int{0, 1},
+	}
+
+	start := time.Now()
+
+	res, err := writeReqReadRes(conn, base.Request{
+		Method: base.Setup,
+		URL:    mediaURL(t, desc.BaseURL, desc.Medias[0]),
+		Header: base.Header{
+			"CSeq":       base.HeaderValue{"1"},
+			"Transport":  inTH.Marshal(),
+			"User-Agent": base.HeaderValue{"GStreamer/1.24.0"},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	// the rtspclientsink workaround must not delay readers
+	require.Less(t, time.Since(start), 500*time.Millisecond)
+}
+
 func TestServerPlayPause(t *testing.T) {
 	for _, protocol := range []string{
 		"tcp",

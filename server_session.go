@@ -975,8 +975,11 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		// that makes impossible for the client to receive the response
 		// and send frames.
 		// this was causing problems during E2E tests.
+		// it is limited to publishers: readers (rtspsrc) do not need it,
+		// and the delay slows down every stream start on their side.
 		if ua, ok := req.Header["User-Agent"]; ok && len(ua) == 1 &&
-			strings.HasPrefix(ua[0], "GStreamer") {
+			strings.HasPrefix(ua[0], "GStreamer") &&
+			ss.state == ServerSessionStatePreRecord {
 			select {
 			case <-time.After(1 * time.Second):
 			case <-ss.ctx.Done():
