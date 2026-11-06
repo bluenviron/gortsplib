@@ -54,6 +54,43 @@ func serverSessionExtractExistingSSRCs(medias map[*description.Media]*serverSess
 	return ret
 }
 
+// isAffectedGStreamerPublisher checks whether the User-Agent belongs to a GStreamer
+// version affected by a race condition in rtspclientsink (fixed in 1.16.3 and 1.18.0,
+// see https://github.com/bluenviron/gortsplib/issues/1200).
+func isAffectedGStreamerPublisher(header base.HeaderValue) bool {
+	if len(header) != 1 || !strings.HasPrefix(header[0], "GStreamer") {
+		return false
+	}
+
+	v := strings.TrimPrefix(header[0], "GStreamer")
+	v = strings.TrimPrefix(v, "/")
+	if i := strings.IndexAny(v, " ("); i >= 0 {
+		v = v[:i]
+	}
+
+	parts := strings.Split(v, ".")
+	if len(parts) < 3 {
+		return false
+	}
+
+	var nums [3]int
+	for i := range nums {
+		n, err := strconv.Atoi(parts[i])
+		if err != nil {
+			return false
+		}
+		nums[i] = n
+	}
+
+	if nums[0] != 1 {
+		return nums[0] < 1
+	}
+	if nums[1] != 16 {
+		return nums[1] < 16
+	}
+	return nums[2] < 3
+}
+
 func isSecure(profile headers.TransportProfile) bool {
 	return profile == headers.TransportProfileSAVP
 }
@@ -971,12 +1008,11 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			},
 		})
 
-		// workaround to prevent a bug in rtspclientsink
+		// workaround to prevent a bug in rtspclientsink (GStreamer < 1.16.3)
 		// that makes impossible for the client to receive the response
 		// and send frames.
 		// this was causing problems during E2E tests.
-		if ua, ok := req.Header["User-Agent"]; ok && len(ua) == 1 &&
-			strings.HasPrefix(ua[0], "GStreamer") {
+		if ss.state == ServerSessionStatePreRecord && isAffectedGStreamerPublisher(req.Header["User-Agent"]) {
 			select {
 			case <-time.After(1 * time.Second):
 			case <-ss.ctx.Done():
