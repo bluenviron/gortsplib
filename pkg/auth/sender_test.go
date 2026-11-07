@@ -255,3 +255,108 @@ func TestSenderOpaque(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "5ccc069c403ebaf9f0171e9517f40e41", *h.Opaque)
 }
+
+func TestSenderPolicy(t *testing.T) {
+	const (
+		wwwBasic  = "Basic realm=testrealm"
+		wwwMD5    = `Digest realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce"`
+		wwwSHA256 = `Digest realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce", algorithm="SHA-256"`
+	)
+	strict := auth.SenderPolicy{RefuseMD5: true, RefuseCleartextBasic: true}
+
+	for _, ca := range []struct {
+		name      string
+		www       base.HeaderValue
+		policy    auth.SenderPolicy
+		encrypted bool
+		method    headers.AuthMethod // when allowed
+		err       string             // when refused
+	}{
+		{
+			name:   "zero policy allows md5",
+			www:    base.HeaderValue{wwwMD5},
+			method: headers.AuthMethodDigest,
+		},
+		{
+			name:   "md5 refused",
+			www:    base.HeaderValue{wwwMD5},
+			policy: strict,
+			err:    "no authentication methods allowed by policy (refused: Digest MD5)",
+		},
+		{
+			name: "explicit md5 refused",
+			www: base.HeaderValue{
+				`Digest realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce", algorithm="MD5"`,
+			},
+			policy: strict,
+			err:    "no authentication methods allowed by policy (refused: Digest MD5)",
+		},
+		{
+			name:   "sha256 allowed",
+			www:    base.HeaderValue{wwwSHA256},
+			policy: strict,
+			method: headers.AuthMethodDigest,
+		},
+		{
+			name:   "basic without tls refused",
+			www:    base.HeaderValue{wwwBasic},
+			policy: strict,
+			err:    "no authentication methods allowed by policy (refused: Basic without TLS)",
+		},
+		{
+			name:      "basic with tls allowed",
+			www:       base.HeaderValue{wwwBasic},
+			policy:    strict,
+			encrypted: true,
+			method:    headers.AuthMethodBasic,
+		},
+		{
+			name:   "md5 and basic without tls refused",
+			www:    base.HeaderValue{wwwBasic, wwwMD5},
+			policy: strict,
+			err: "no authentication methods allowed by policy " +
+				"(refused: Basic without TLS, Digest MD5)",
+		},
+		{
+			name:      "basic with tls preferred over refused md5",
+			www:       base.HeaderValue{wwwMD5, wwwBasic},
+			policy:    strict,
+			encrypted: true,
+			method:    headers.AuthMethodBasic,
+		},
+		{
+			name:   "md5 refused only",
+			www:    base.HeaderValue{wwwBasic, wwwMD5},
+			policy: auth.SenderPolicy{RefuseMD5: true},
+			method: headers.AuthMethodBasic,
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			se := &auth.Sender{
+				WWWAuth:   ca.www,
+				User:      "myuser",
+				Pass:      "mypass",
+				Policy:    ca.policy,
+				Encrypted: ca.encrypted,
+			}
+			err := se.Initialize()
+
+			if ca.err != "" {
+				require.EqualError(t, err, ca.err)
+				return
+			}
+			require.NoError(t, err)
+
+			req := &base.Request{
+				Method: base.Setup,
+				URL:    mustParseURL("rtsp://myhost/mypath"),
+			}
+			se.AddAuthorization(req)
+
+			var h headers.Authorization
+			err = h.Unmarshal(req.Header["Authorization"])
+			require.NoError(t, err)
+			require.Equal(t, ca.method, h.Method)
+		})
+	}
+}
