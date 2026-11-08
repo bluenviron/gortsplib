@@ -203,3 +203,37 @@ func TestMediaURLError(t *testing.T) {
 	_, err := media.URL(nil)
 	require.EqualError(t, err, "Content-Base header not provided")
 }
+
+func TestMediaLanguage(t *testing.T) {
+	sd, err := sdpunmarshaler.Unmarshal([]byte("v=0\r\n" +
+		"s= \r\n" +
+		"m=audio 0 RTP/AVP 97\r\n" +
+		"a=lang:it\r\n" +
+		"a=rtpmap:97 opus/48000/2\r\n"))
+	require.NoError(t, err)
+
+	var media description.Media
+	err = media.Unmarshal(sd.MediaDescriptions[0])
+	require.NoError(t, err)
+	require.Equal(t, "it", media.Language)
+
+	md, err := media.Marshal()
+	require.NoError(t, err)
+
+	var found bool
+	for _, attr := range md.Attributes {
+		if attr.Key == "lang" {
+			found = true
+			require.Equal(t, "it", attr.Value)
+		}
+	}
+	require.True(t, found)
+
+	// language is omitted when empty
+	media.Language = ""
+	md, err = media.Marshal()
+	require.NoError(t, err)
+	for _, attr := range md.Attributes {
+		require.NotEqual(t, "lang", attr.Key)
+	}
+}

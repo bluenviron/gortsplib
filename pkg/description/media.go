@@ -77,6 +77,10 @@ type Media struct {
 	// Media ID (optional).
 	ID string
 
+	// Language of the media content (optional).
+	// It is a language tag (RFC 5646) and is carried by the lang attribute (RFC 4566, section 6).
+	Language string
+
 	// Whether this media is a back channel.
 	IsBackChannel bool
 
@@ -104,6 +108,8 @@ func (m *Media) Unmarshal(md *sdp.MediaDescription) error {
 	if m.ID != "" && !isAlphaNumeric(m.ID) {
 		return fmt.Errorf("invalid mid: %v", m.ID)
 	}
+
+	m.Language = getAttribute(md.Attributes, "lang")
 
 	m.IsBackChannel = isBackChannel(md.Attributes)
 
@@ -179,6 +185,13 @@ func (m Media) Marshal() (*sdp.MediaDescription, error) {
 		md.Attributes = append(md.Attributes, sdp.Attribute{
 			Key:   "mid",
 			Value: m.ID,
+		})
+	}
+
+	if m.Language != "" {
+		md.Attributes = append(md.Attributes, sdp.Attribute{
+			Key:   "lang",
+			Value: m.Language,
 		})
 	}
 
