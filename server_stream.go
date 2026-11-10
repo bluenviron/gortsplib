@@ -448,6 +448,7 @@ func (st *ServerStream) descForDescribe(
 			out.Medias = append(out.Medias, &description.Media{
 				Type:          medi.Type,
 				ID:            medi.ID,
+				Language:      medi.Language,
 				IsBackChannel: medi.IsBackChannel,
 				// we have to use trackID=number in order to support clients
 				// like the Grandstream GXV3500.

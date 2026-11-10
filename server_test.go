@@ -620,6 +620,67 @@ func TestServerDescribeNonNilBody(t *testing.T) {
 	require.Equal(t, sdpBody, res.Body)
 }
 
+func TestServerDescribeMediaAttributes(t *testing.T) {
+	medi1 := &description.Media{
+		Type:     description.MediaTypeVideo,
+		ID:       "video1",
+		Language: "en",
+		Formats:  testH264Media.Formats,
+	}
+
+	medi2 := &description.Media{
+		Type:     description.MediaTypeAudio,
+		ID:       "audio1",
+		Language: "it",
+		Formats:  []format.Format{&format.G711{MULaw: true}},
+	}
+
+	medi3 := &description.Media{
+		Type:    description.MediaTypeAudio,
+		ID:      "audio2",
+		Formats: []format.Format{&format.G711{MULaw: false}},
+	}
+
+	var stream *ServerStream
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+		},
+		RTSPAddress: "localhost:8554",
+	}
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	stream = &ServerStream{
+		Server: s,
+		Desc:   &description.Session{Medias: []*description.Media{medi1, medi2, medi3}},
+	}
+	err = stream.Initialize()
+	require.NoError(t, err)
+	defer stream.Close()
+
+	nconn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer nconn.Close()
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
+
+	desc := doDescribe(t, conn, false)
+
+	require.Len(t, desc.Medias, 3)
+	require.Equal(t, "video1", desc.Medias[0].ID)
+	require.Equal(t, "en", desc.Medias[0].Language)
+	require.Equal(t, "audio1", desc.Medias[1].ID)
+	require.Equal(t, "it", desc.Medias[1].Language)
+	require.Equal(t, "audio2", desc.Medias[2].ID)
+	require.Equal(t, "", desc.Medias[2].Language)
+}
+
 type testServerErrMethodNotImplemented struct {
 	stream *ServerStream
 }
