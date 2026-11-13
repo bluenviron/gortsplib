@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"time"
 
+	"github.com/bluenviron/mediacommon/v2/pkg/limitedreader"
 	"github.com/bluenviron/mediacommon/v2/pkg/rewindablereader"
 	"github.com/gorilla/websocket"
 
@@ -32,6 +34,9 @@ func isWebSocketTunnel(req *http.Request) bool {
 
 // maximum size of a single RTSP-over-WebSocket message.
 const maxWebSocketMessageSize = 1 * 1024 * 1024
+
+// maximum size of the HTTP request used to detect tunnels.
+const maxTunnelRequestSize = 64 * 1024
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(_ *http.Request) bool {
@@ -132,12 +137,15 @@ func (cr *serverConnReader) handleTunneling(in io.ReadWriter) (io.ReadWriter, er
 
 	if bytes.Equal(buf, []byte{'G', 'E', 'T', ' '}) ||
 		bytes.Equal(buf, []byte{'P', 'O', 'S', 'T'}) {
-		buf := bufio.NewReader(rr)
+		lr := &limitedreader.Reader{R: rr, N: maxTunnelRequestSize}
+		buf := bufio.NewReader(lr)
 		var req *http.Request
 		req, err = http.ReadRequest(buf)
 		if err != nil {
 			return nil, err
 		}
+
+		lr.N = math.MaxInt64
 
 		switch {
 		case isHTTPTunnel(req):
