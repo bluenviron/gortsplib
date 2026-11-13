@@ -87,6 +87,8 @@ func (cr *serverConnReader) runInner() error {
 	var rw io.ReadWriter = cr.sc.bc
 
 	if cr.sc.tunnel == TunnelNone {
+		cr.sc.nconn.SetReadDeadline(time.Now().Add(cr.sc.s.IdleTimeout))
+
 		var err error
 		rw, err = cr.handleTunneling(rw)
 		if err != nil {
