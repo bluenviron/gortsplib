@@ -30,6 +30,9 @@ func isWebSocketTunnel(req *http.Request) bool {
 		req.Header.Get("Sec-WebSocket-Protocol") == "rtsp.onvif.org"
 }
 
+// maximum size of a single RTSP-over-WebSocket message.
+const maxWebSocketMessageSize = 1 * 1024 * 1024
+
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(_ *http.Request) bool {
 		return true
@@ -173,6 +176,8 @@ func (cr *serverConnReader) handleTunneling(in io.ReadWriter) (io.ReadWriter, er
 			if err != nil {
 				return nil, err
 			}
+
+			wconn.SetReadLimit(maxWebSocketMessageSize)
 
 			cr.sc.propsMutex.Lock()
 			cr.sc.tunnel = TunnelWebSocket
