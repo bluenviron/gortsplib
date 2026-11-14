@@ -109,15 +109,20 @@ func main() {
 			dts = timeDecoder.Decode(dts)
 			pts = timeDecoder.Decode(pts)
 
-			// sleep between access units
-			if firstDTS != nil {
-				timeDrift := time.Duration(dts-*firstDTS)*time.Second/90000 - time.Since(startTime)
-				if timeDrift > 0 {
-					time.Sleep(timeDrift)
-				}
-			} else {
+			// timestamps are not guaranteed to start from zero,
+			// make them relative to the first access unit
+			if firstDTS == nil {
 				startTime = time.Now()
-				firstDTS = &dts
+				first := dts
+				firstDTS = &first
+			}
+			dts -= *firstDTS
+			pts -= *firstDTS
+
+			// sleep between access units
+			timeDrift := time.Duration(dts)*time.Second/90000 - time.Since(startTime)
+			if timeDrift > 0 {
+				time.Sleep(timeDrift)
 			}
 
 			log.Printf("writing access unit with pts=%d dts=%d", pts, dts)
