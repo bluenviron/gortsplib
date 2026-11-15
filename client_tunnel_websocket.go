@@ -5,9 +5,12 @@ import (
 	"crypto/tls"
 	"io"
 	"net"
+	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
 )
 
 type clientTunnelWebSocket struct {
@@ -55,6 +58,8 @@ func newClientTunnelWebSocket(
 	tlsConfig *tls.Config,
 	dialContext func(ctx context.Context, network, address string) (net.Conn, error),
 	dialTLSContext func(ctx context.Context, network string, addr string) (net.Conn, error),
+	u *base.URL,
+	onHTTPRequest ClientOnHTTPRequestFunc,
 ) (net.Conn, error) {
 	c := &clientTunnelWebSocket{}
 
@@ -64,7 +69,14 @@ func newClientTunnelWebSocket(
 	} else {
 		ur = "ws"
 	}
-	ur += "://" + addr + "/"
+	ur += "://" + addr + clientTunnelHTTPRequestTarget(u)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ur, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	onHTTPRequest(req)
 
 	dialer := &websocket.Dialer{
 		Subprotocols: []string{"rtsp.onvif.org"},
@@ -77,8 +89,7 @@ func newClientTunnelWebSocket(
 		dialer.TLSClientConfig = tlsConfig
 	}
 
-	var err error
-	c.wconn, _, err = dialer.DialContext(ctx, ur, nil) //nolint:bodyclose
+	c.wconn, _, err = dialer.DialContext(ctx, req.URL.String(), req.Header) //nolint:bodyclose
 	if err != nil {
 		return nil, err
 	}

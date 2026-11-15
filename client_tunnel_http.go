@@ -2,12 +2,15 @@ package gortsplib
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -64,6 +67,7 @@ func newClientTunnelHTTP(
 	dialContext func(ctx context.Context, network, address string) (net.Conn, error),
 	dialTLSContext func(ctx context.Context, network string, addr string) (net.Conn, error),
 	u *base.URL,
+	onHTTPRequest ClientOnHTTPRequestFunc,
 ) (net.Conn, error) {
 	c := &clientTunnelHTTP{}
 
@@ -128,15 +132,15 @@ func newClientTunnelHTTP(
 	tunnelID := strings.ReplaceAll(uuid.New().String(), "-", "")
 	requestTarget := clientTunnelHTTPRequestTarget(u)
 
-	// do not use http.Request
-	// since Content-Length requires a Body of same size
-	_, err := c.readChan.Write([]byte(
-		"GET " + requestTarget + " HTTP/1.1\r\n" +
-			"Host: " + addr + "\r\n" +
-			"X-Sessioncookie: " + tunnelID + "\r\n" +
-			"Accept: application/x-rtsp-tunnelled\r\n" +
-			"\r\n",
-	))
+	err := writeClientTunnelHTTPRequest(c.readChan, onHTTPRequest, &http.Request{
+		Method: http.MethodGet,
+		URL:    &url.URL{Opaque: requestTarget},
+		Host:   addr,
+		Header: http.Header{
+			"X-Sessioncookie": []string{tunnelID},
+			"Accept":          []string{"application/x-rtsp-tunnelled"},
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -189,16 +193,16 @@ func newClientTunnelHTTP(
 		}
 	}()
 
-	// do not use http.Request
-	// since Content-Length requires a Body of same size
-	_, err = c.writeChan.Write([]byte(
-		"POST " + requestTarget + " HTTP/1.1\r\n" +
-			"Host: " + addr + "\r\n" +
-			"X-Sessioncookie: " + tunnelID + "\r\n" +
-			"Content-Type: application/x-rtsp-tunnelled\r\n" +
-			"Content-Length: 30000\r\n" +
-			"\r\n",
-	))
+	err = writeClientTunnelHTTPRequest(c.writeChan, onHTTPRequest, &http.Request{
+		Method: http.MethodPost,
+		URL:    &url.URL{Opaque: requestTarget},
+		Host:   addr,
+		Header: http.Header{
+			"X-Sessioncookie": []string{tunnelID},
+			"Content-Type":    []string{"application/x-rtsp-tunnelled"},
+			"Content-Length":  []string{"30000"},
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -224,4 +228,23 @@ func clientTunnelHTTPRequestTarget(u *base.URL) string {
 	}
 
 	return ret
+}
+
+// writeClientTunnelHTTPRequest writes the request line and headers only,
+// since http.Request.Write requires a Body as long as Content-Length.
+func writeClientTunnelHTTPRequest(
+	w io.Writer,
+	onHTTPRequest ClientOnHTTPRequestFunc,
+	req *http.Request,
+) error {
+	onHTTPRequest(req)
+
+	var buf bytes.Buffer
+	buf.WriteString(req.Method + " " + req.URL.RequestURI() + " HTTP/1.1\r\n")
+	buf.WriteString("Host: " + req.Host + "\r\n")
+	req.Header.Write(&buf) //nolint:errcheck
+	buf.WriteString("\r\n")
+
+	_, err := w.Write(buf.Bytes())
+	return err
 }
