@@ -544,7 +544,7 @@ type Client struct {
 	UDPSourcePortRange [2]uint16
 	// authentication methods that the client is allowed to use.
 	// It defaults to all methods.
-	AllowedAuthMethods []auth.VerifyMethod
+	AllowedAuthMethods []auth.Method
 
 	//
 	// System functions (all optional)

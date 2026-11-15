@@ -1206,16 +1206,16 @@ func TestServerAuth(t *testing.T) {
 					},
 				},
 				RTSPAddress: "localhost:8554",
-				AuthMethods: func() []auth.VerifyMethod {
+				AuthMethods: func() []auth.Method {
 					switch method {
 					case "basic":
-						return []auth.VerifyMethod{auth.VerifyMethodBasic}
+						return []auth.Method{auth.MethodBasic}
 
 					case "digest_md5":
-						return []auth.VerifyMethod{auth.VerifyMethodDigestMD5}
+						return []auth.Method{auth.MethodDigestMD5}
 
 					case "digest_sha256":
-						return []auth.VerifyMethod{auth.VerifyMethodDigestSHA256}
+						return []auth.Method{auth.MethodDigestSHA256}
 					}
 					return nil
 				}(),

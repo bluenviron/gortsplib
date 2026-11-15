@@ -47,16 +47,6 @@ func urlMatches(expected *base.URL, received string, isSetup bool) bool {
 	return false
 }
 
-// VerifyMethod is a validation method.
-type VerifyMethod int
-
-// validation methods.
-const (
-	VerifyMethodBasic VerifyMethod = iota
-	VerifyMethodDigestMD5
-	VerifyMethodDigestSHA256
-)
-
 // Verify verifies a request sent by a client.
 func Verify(
 	req *base.Request,
