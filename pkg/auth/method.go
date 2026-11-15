@@ -10,12 +10,12 @@ const (
 	MethodDigestSHA256
 )
 
-// VerifyMethod is a validation method.
+// VerifyMethod is an authentication method.
 //
 // Deprecated: replaced by Method.
 type VerifyMethod = Method
 
-// validation methods.
+// authentication methods.
 //
 // Deprecated: all replaced by Method*.
 const (

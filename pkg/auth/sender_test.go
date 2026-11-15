@@ -266,7 +266,7 @@ func TestSenderMethods(t *testing.T) {
 	for _, ca := range []struct {
 		name    string
 		www     base.HeaderValue
-		methods []auth.VerifyMethod
+		methods []auth.Method
 		method  headers.AuthMethod // when allowed
 		err     string             // when refused
 	}{
@@ -278,7 +278,7 @@ func TestSenderMethods(t *testing.T) {
 		{
 			name:    "md5 refused",
 			www:     base.HeaderValue{wwwMD5},
-			methods: []auth.VerifyMethod{auth.VerifyMethodBasic, auth.VerifyMethodDigestSHA256},
+			methods: []auth.Method{auth.MethodBasic, auth.MethodDigestSHA256},
 			err:     "no authentication methods allowed by AllowedMethods",
 		},
 		{
@@ -286,37 +286,37 @@ func TestSenderMethods(t *testing.T) {
 			www: base.HeaderValue{
 				`Digest realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce", algorithm="MD5"`,
 			},
-			methods: []auth.VerifyMethod{auth.VerifyMethodDigestSHA256},
+			methods: []auth.Method{auth.MethodDigestSHA256},
 			err:     "no authentication methods allowed by AllowedMethods",
 		},
 		{
 			name:    "sha256 allowed",
 			www:     base.HeaderValue{wwwSHA256},
-			methods: []auth.VerifyMethod{auth.VerifyMethodDigestSHA256},
+			methods: []auth.Method{auth.MethodDigestSHA256},
 			method:  headers.AuthMethodDigest,
 		},
 		{
 			name:    "basic refused",
 			www:     base.HeaderValue{wwwBasic},
-			methods: []auth.VerifyMethod{auth.VerifyMethodDigestMD5, auth.VerifyMethodDigestSHA256},
+			methods: []auth.Method{auth.MethodDigestMD5, auth.MethodDigestSHA256},
 			err:     "no authentication methods allowed by AllowedMethods",
 		},
 		{
 			name:    "basic allowed",
 			www:     base.HeaderValue{wwwBasic},
-			methods: []auth.VerifyMethod{auth.VerifyMethodBasic},
+			methods: []auth.Method{auth.MethodBasic},
 			method:  headers.AuthMethodBasic,
 		},
 		{
 			name:    "basic preferred over refused md5",
 			www:     base.HeaderValue{wwwMD5, wwwBasic},
-			methods: []auth.VerifyMethod{auth.VerifyMethodBasic},
+			methods: []auth.Method{auth.MethodBasic},
 			method:  headers.AuthMethodBasic,
 		},
 		{
 			name:    "md5 allowed among several",
 			www:     base.HeaderValue{wwwBasic, wwwMD5},
-			methods: []auth.VerifyMethod{auth.VerifyMethodDigestMD5, auth.VerifyMethodDigestSHA256},
+			methods: []auth.Method{auth.MethodDigestMD5, auth.MethodDigestSHA256},
 			method:  headers.AuthMethodDigest,
 		},
 	} {

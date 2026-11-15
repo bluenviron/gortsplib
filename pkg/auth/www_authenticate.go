@@ -6,11 +6,11 @@ import (
 )
 
 // GenerateWWWAuthenticate generates a WWW-Authenticate header.
-func GenerateWWWAuthenticate(methods []VerifyMethod, realm string, nonce string) base.HeaderValue {
+func GenerateWWWAuthenticate(methods []Method, realm string, nonce string) base.HeaderValue {
 	if methods == nil {
-		// disable VerifyMethodDigestSHA256 unless explicitly set
+		// disable MethodDigestSHA256 unless explicitly set
 		// since it prevents FFmpeg from authenticating
-		methods = []VerifyMethod{VerifyMethodBasic, VerifyMethodDigestMD5}
+		methods = []Method{MethodBasic, MethodDigestMD5}
 	}
 
 	var ret base.HeaderValue //nolint:prealloc
@@ -19,13 +19,13 @@ func GenerateWWWAuthenticate(methods []VerifyMethod, realm string, nonce string)
 		var a base.HeaderValue
 
 		switch m {
-		case VerifyMethodBasic:
+		case MethodBasic:
 			a = headers.Authenticate{
 				Method: headers.AuthMethodBasic,
 				Realm:  realm,
 			}.Marshal()
 
-		case VerifyMethodDigestMD5:
+		case MethodDigestMD5:
 			aa := headers.AuthAlgorithmMD5
 			a = headers.Authenticate{
 				Method:    headers.AuthMethodDigest,

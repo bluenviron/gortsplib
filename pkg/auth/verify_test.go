@@ -81,7 +81,7 @@ func TestVerify(t *testing.T) {
 				req,
 				"myuser",
 				"mypass",
-				[]auth.VerifyMethod{auth.VerifyMethodBasic, auth.VerifyMethodDigestMD5, auth.VerifyMethodDigestSHA256},
+				[]auth.Method{auth.MethodBasic, auth.MethodDigestMD5, auth.MethodDigestSHA256},
 				"myrealm",
 				"f49ac6dd0ba708d4becddc9692d1f2ce")
 			require.NoError(t, err)

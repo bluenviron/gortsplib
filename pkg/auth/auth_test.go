@@ -20,19 +20,19 @@ func mustParseURL(s string) *base.URL {
 func TestCombined(t *testing.T) {
 	for _, c1 := range []struct {
 		name    string
-		methods []auth.VerifyMethod
+		methods []auth.Method
 	}{
 		{
 			"basic",
-			[]auth.VerifyMethod{auth.VerifyMethodBasic},
+			[]auth.Method{auth.MethodBasic},
 		},
 		{
 			"digest md5",
-			[]auth.VerifyMethod{auth.VerifyMethodDigestMD5},
+			[]auth.Method{auth.MethodDigestMD5},
 		},
 		{
 			"digest sha256",
-			[]auth.VerifyMethod{auth.VerifyMethodDigestSHA256},
+			[]auth.Method{auth.MethodDigestSHA256},
 		},
 		{
 			"all",

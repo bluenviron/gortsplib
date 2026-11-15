@@ -48,18 +48,19 @@ func urlMatches(expected *base.URL, received string, isSetup bool) bool {
 }
 
 // Verify verifies a request sent by a client.
+// methods is the list of allowed authentication methods.
 func Verify(
 	req *base.Request,
 	user string,
 	pass string,
-	methods []VerifyMethod,
+	methods []Method,
 	realm string,
 	nonce string,
 ) error {
 	if methods == nil {
-		// disable VerifyMethodDigestSHA256 unless explicitly set
+		// disable MethodDigestSHA256 unless explicitly set
 		// since it prevents FFmpeg from authenticating
-		methods = []VerifyMethod{VerifyMethodBasic, VerifyMethodDigestMD5}
+		methods = []Method{MethodBasic, MethodDigestMD5}
 	}
 
 	var auth headers.Authorization
@@ -70,9 +71,9 @@ func Verify(
 
 	switch {
 	case auth.Method == headers.AuthMethodDigest &&
-		(slices.Contains(methods, VerifyMethodDigestMD5) &&
+		(slices.Contains(methods, MethodDigestMD5) &&
 			(auth.Algorithm == nil || *auth.Algorithm == headers.AuthAlgorithmMD5) ||
-			slices.Contains(methods, VerifyMethodDigestSHA256) &&
+			slices.Contains(methods, MethodDigestSHA256) &&
 				auth.Algorithm != nil && *auth.Algorithm == headers.AuthAlgorithmSHA256):
 		if auth.Nonce != nonce {
 			return fmt.Errorf("wrong nonce")
@@ -104,7 +105,7 @@ func Verify(
 			return fmt.Errorf("authentication failed")
 		}
 
-	case auth.Method == headers.AuthMethodBasic && slices.Contains(methods, VerifyMethodBasic):
+	case auth.Method == headers.AuthMethodBasic && slices.Contains(methods, MethodBasic):
 		if auth.Username != user {
 			return fmt.Errorf("authentication failed")
 		}
