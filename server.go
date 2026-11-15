@@ -192,7 +192,7 @@ func (s *Server) Start() error {
 		return fmt.Errorf("MaxPacketSize (%d) must be less than %d", s.MaxPacketSize, udpMaxPayloadSize)
 	}
 	if len(s.AuthMethods) == 0 {
-		// disable VerifyMethodDigestSHA256 unless explicitly set
+		// disable MethodDigestSHA256 unless explicitly set
 		// since it prevents FFmpeg from authenticating
 		s.AuthMethods = []auth.Method{auth.MethodBasic, auth.MethodDigestMD5}
 	}

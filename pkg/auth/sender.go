@@ -21,16 +21,16 @@ func hasQOPAuth(qop *string) bool {
 	return false
 }
 
-func challengeMethod(auth *headers.Authenticate) VerifyMethod {
+func challengeMethod(auth *headers.Authenticate) Method {
 	switch {
 	case auth.Method == headers.AuthMethodBasic:
-		return VerifyMethodBasic
+		return MethodBasic
 
 	case auth.Algorithm != nil && *auth.Algorithm == headers.AuthAlgorithmSHA256:
-		return VerifyMethodDigestSHA256
+		return MethodDigestSHA256
 
 	default:
-		return VerifyMethodDigestMD5
+		return MethodDigestMD5
 	}
 }
 
@@ -41,7 +41,7 @@ type Sender struct {
 	WWWAuth        base.HeaderValue
 	User           string
 	Pass           string
-	AllowedMethods []VerifyMethod
+	AllowedMethods []Method
 
 	authHeader *headers.Authenticate
 	hasQOPAuth bool
