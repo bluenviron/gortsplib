@@ -22,7 +22,7 @@ func TestSessionStatsJitter(t *testing.T) {
 				&format.H264{}: {InboundRTPPackets: 100, InboundRTPPacketsJitter: 900},
 				&format.Opus{}: {InboundRTPPackets: 1, InboundRTPPacketsJitter: 960},
 			},
-			jitterUs: newFloat64(15_000),
+			jitterUs: new(float64(15_000)),
 			raw:      930,
 		},
 		{
@@ -32,7 +32,7 @@ func TestSessionStatsJitter(t *testing.T) {
 				&format.Opus{}:    {},
 				&format.Generic{}: {},
 			},
-			jitterUs: newFloat64(10_000),
+			jitterUs: new(float64(10_000)),
 			raw:      300,
 		},
 		{
@@ -61,7 +61,7 @@ func TestSessionStatsJitter(t *testing.T) {
 			formats: map[format.Format]SessionStatsFormat{
 				&format.H264{}: {InboundRTPPackets: 1},
 			},
-			jitterUs: newFloat64(0),
+			jitterUs: new(float64(0)),
 		},
 		{name: "no formats"},
 	} {
@@ -74,10 +74,6 @@ func TestSessionStatsJitter(t *testing.T) {
 			require.Equal(t, ca.raw, stats.RTPPacketsJitter)
 		})
 	}
-}
-
-func newFloat64(v float64) *float64 {
-	return &v
 }
 
 func TestSessionStatsJitterAcrossMedias(t *testing.T) {
