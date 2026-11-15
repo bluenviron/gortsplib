@@ -114,7 +114,7 @@ type Server struct {
 	DisableRTCPSenderReports bool
 	// authentication methods.
 	// It defaults to plain and digest+MD5.
-	AuthMethods []auth.VerifyMethod
+	AuthMethods []auth.Method
 
 	//
 	// Handler (optional)
@@ -194,7 +194,7 @@ func (s *Server) Start() error {
 	if len(s.AuthMethods) == 0 {
 		// disable VerifyMethodDigestSHA256 unless explicitly set
 		// since it prevents FFmpeg from authenticating
-		s.AuthMethods = []auth.VerifyMethod{auth.VerifyMethodBasic, auth.VerifyMethodDigestMD5}
+		s.AuthMethods = []auth.Method{auth.MethodBasic, auth.MethodDigestMD5}
 	}
 
 	// system functions
