@@ -542,11 +542,9 @@ type Client struct {
 	// Range of ports used as source port in outbound UDP packets.
 	// It defaults to [10000, 65535].
 	UDPSourcePortRange [2]uint16
-	// restrictions on the authentication methods used with the server,
-	// for instance to never compute MD5 or to never send Basic credentials
-	// without TLS.
-	// It defaults to allowing all methods.
-	AuthPolicy auth.SenderPolicy
+	// authentication methods that the client is allowed to use.
+	// It defaults to all methods.
+	AllowedAuthMethods []auth.VerifyMethod
 
 	//
 	// System functions (all optional)
@@ -1373,11 +1371,10 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 		user := req.URL.User.Username()
 
 		sender := &auth.Sender{
-			WWWAuth:   res.Header["WWW-Authenticate"],
-			User:      user,
-			Pass:      pass,
-			Policy:    c.AuthPolicy,
-			Encrypted: c.Scheme == schemeRTSPS,
+			WWWAuth:        res.Header["WWW-Authenticate"],
+			User:           user,
+			Pass:           pass,
+			AllowedMethods: c.AllowedAuthMethods,
 		}
 		err = sender.Initialize()
 		if err != nil {

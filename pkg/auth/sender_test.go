@@ -256,88 +256,76 @@ func TestSenderOpaque(t *testing.T) {
 	require.Equal(t, "5ccc069c403ebaf9f0171e9517f40e41", *h.Opaque)
 }
 
-func TestSenderPolicy(t *testing.T) {
+func TestSenderMethods(t *testing.T) {
 	const (
 		wwwBasic  = "Basic realm=testrealm"
 		wwwMD5    = `Digest realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce"`
 		wwwSHA256 = `Digest realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce", algorithm="SHA-256"`
 	)
-	strict := auth.SenderPolicy{RefuseMD5: true, RefuseCleartextBasic: true}
 
 	for _, ca := range []struct {
-		name      string
-		www       base.HeaderValue
-		policy    auth.SenderPolicy
-		encrypted bool
-		method    headers.AuthMethod // when allowed
-		err       string             // when refused
+		name    string
+		www     base.HeaderValue
+		methods []auth.VerifyMethod
+		method  headers.AuthMethod // when allowed
+		err     string             // when refused
 	}{
 		{
-			name:   "zero policy allows md5",
+			name:   "nil methods allow md5",
 			www:    base.HeaderValue{wwwMD5},
 			method: headers.AuthMethodDigest,
 		},
 		{
-			name:   "md5 refused",
-			www:    base.HeaderValue{wwwMD5},
-			policy: strict,
-			err:    "no authentication methods allowed by policy (refused: Digest MD5)",
+			name:    "md5 refused",
+			www:     base.HeaderValue{wwwMD5},
+			methods: []auth.VerifyMethod{auth.VerifyMethodBasic, auth.VerifyMethodDigestSHA256},
+			err:     "no authentication methods allowed by AllowedMethods",
 		},
 		{
 			name: "explicit md5 refused",
 			www: base.HeaderValue{
 				`Digest realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce", algorithm="MD5"`,
 			},
-			policy: strict,
-			err:    "no authentication methods allowed by policy (refused: Digest MD5)",
+			methods: []auth.VerifyMethod{auth.VerifyMethodDigestSHA256},
+			err:     "no authentication methods allowed by AllowedMethods",
 		},
 		{
-			name:   "sha256 allowed",
-			www:    base.HeaderValue{wwwSHA256},
-			policy: strict,
-			method: headers.AuthMethodDigest,
+			name:    "sha256 allowed",
+			www:     base.HeaderValue{wwwSHA256},
+			methods: []auth.VerifyMethod{auth.VerifyMethodDigestSHA256},
+			method:  headers.AuthMethodDigest,
 		},
 		{
-			name:   "basic without tls refused",
-			www:    base.HeaderValue{wwwBasic},
-			policy: strict,
-			err:    "no authentication methods allowed by policy (refused: Basic without TLS)",
+			name:    "basic refused",
+			www:     base.HeaderValue{wwwBasic},
+			methods: []auth.VerifyMethod{auth.VerifyMethodDigestMD5, auth.VerifyMethodDigestSHA256},
+			err:     "no authentication methods allowed by AllowedMethods",
 		},
 		{
-			name:      "basic with tls allowed",
-			www:       base.HeaderValue{wwwBasic},
-			policy:    strict,
-			encrypted: true,
-			method:    headers.AuthMethodBasic,
+			name:    "basic allowed",
+			www:     base.HeaderValue{wwwBasic},
+			methods: []auth.VerifyMethod{auth.VerifyMethodBasic},
+			method:  headers.AuthMethodBasic,
 		},
 		{
-			name:   "md5 and basic without tls refused",
-			www:    base.HeaderValue{wwwBasic, wwwMD5},
-			policy: strict,
-			err: "no authentication methods allowed by policy " +
-				"(refused: Basic without TLS, Digest MD5)",
+			name:    "basic preferred over refused md5",
+			www:     base.HeaderValue{wwwMD5, wwwBasic},
+			methods: []auth.VerifyMethod{auth.VerifyMethodBasic},
+			method:  headers.AuthMethodBasic,
 		},
 		{
-			name:      "basic with tls preferred over refused md5",
-			www:       base.HeaderValue{wwwMD5, wwwBasic},
-			policy:    strict,
-			encrypted: true,
-			method:    headers.AuthMethodBasic,
-		},
-		{
-			name:   "md5 refused only",
-			www:    base.HeaderValue{wwwBasic, wwwMD5},
-			policy: auth.SenderPolicy{RefuseMD5: true},
-			method: headers.AuthMethodBasic,
+			name:    "md5 allowed among several",
+			www:     base.HeaderValue{wwwBasic, wwwMD5},
+			methods: []auth.VerifyMethod{auth.VerifyMethodDigestMD5, auth.VerifyMethodDigestSHA256},
+			method:  headers.AuthMethodDigest,
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			se := &auth.Sender{
-				WWWAuth:   ca.www,
-				User:      "myuser",
-				Pass:      "mypass",
-				Policy:    ca.policy,
-				Encrypted: ca.encrypted,
+				WWWAuth:        ca.www,
+				User:           "myuser",
+				Pass:           "mypass",
+				AllowedMethods: ca.methods,
 			}
 			err := se.Initialize()
 

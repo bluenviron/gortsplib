@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -20,32 +21,27 @@ func hasQOPAuth(qop *string) bool {
 	return false
 }
 
-// SenderPolicy restricts the authentication methods that a Sender can use.
-// The zero value allows all methods.
-type SenderPolicy struct {
-	// Do not answer Digest challenges that use MD5.
-	// MD5 is not an approved algorithm in FIPS 140 environments.
-	RefuseMD5 bool
+func challengeMethod(auth *headers.Authenticate) VerifyMethod {
+	switch {
+	case auth.Method == headers.AuthMethodBasic:
+		return VerifyMethodBasic
 
-	// Do not send Basic credentials over connections that are not encrypted,
-	// since they would travel in clear text.
-	RefuseCleartextBasic bool
+	case auth.Algorithm != nil && *auth.Algorithm == headers.AuthAlgorithmSHA256:
+		return VerifyMethodDigestSHA256
+
+	default:
+		return VerifyMethodDigestMD5
+	}
 }
 
 // Sender allows to send credentials.
 // It requires a WWW-Authenticate header (provided by the server)
 // and a set of credentials.
 type Sender struct {
-	WWWAuth base.HeaderValue
-	User    string
-	Pass    string
-
-	// Restrictions on the authentication method (optional).
-	Policy SenderPolicy
-
-	// Whether the connection is encrypted (TLS).
-	// Used with Policy.RefuseCleartextBasic.
-	Encrypted bool
+	WWWAuth        base.HeaderValue
+	User           string
+	Pass           string
+	AllowedMethods []VerifyMethod
 
 	authHeader *headers.Authenticate
 	hasQOPAuth bool
@@ -55,7 +51,7 @@ type Sender struct {
 
 // Initialize initializes a Sender.
 func (se *Sender) Initialize() error {
-	var refused []string
+	refused := false
 
 	for _, v := range se.WWWAuth {
 		var auth headers.Authenticate
@@ -64,8 +60,8 @@ func (se *Sender) Initialize() error {
 			continue // ignore unrecognized headers
 		}
 
-		if reason := se.Policy.refuses(&auth, se.Encrypted); reason != "" {
-			refused = append(refused, reason)
+		if se.AllowedMethods != nil && !slices.Contains(se.AllowedMethods, challengeMethod(&auth)) {
+			refused = true
 			continue
 		}
 
@@ -77,9 +73,8 @@ func (se *Sender) Initialize() error {
 	}
 
 	if se.authHeader == nil {
-		if refused != nil {
-			return fmt.Errorf("no authentication methods allowed by policy (refused: %s)",
-				strings.Join(refused, ", "))
+		if refused {
+			return fmt.Errorf("no authentication methods allowed by AllowedMethods")
 		}
 		return fmt.Errorf("no authentication methods available")
 	}
@@ -146,16 +141,4 @@ func (se *Sender) AddAuthorization(req *base.Request) {
 	}
 
 	req.Header["Authorization"] = h.Marshal()
-}
-
-func (p SenderPolicy) refuses(auth *headers.Authenticate, encrypted bool) string {
-	switch {
-	case p.RefuseCleartextBasic && auth.Method == headers.AuthMethodBasic && !encrypted:
-		return "Basic without TLS"
-
-	case p.RefuseMD5 && auth.Method == headers.AuthMethodDigest &&
-		(auth.Algorithm == nil || *auth.Algorithm == headers.AuthAlgorithmMD5):
-		return "Digest MD5"
-	}
-	return ""
 }
