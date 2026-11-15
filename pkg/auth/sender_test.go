@@ -255,3 +255,96 @@ func TestSenderOpaque(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "5ccc069c403ebaf9f0171e9517f40e41", *h.Opaque)
 }
+
+func TestSenderMethods(t *testing.T) {
+	const (
+		wwwBasic  = "Basic realm=testrealm"
+		wwwMD5    = `Digest realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce"`
+		wwwSHA256 = `Digest realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce", algorithm="SHA-256"`
+	)
+
+	for _, ca := range []struct {
+		name    string
+		www     base.HeaderValue
+		methods []auth.VerifyMethod
+		method  headers.AuthMethod // when allowed
+		err     string             // when refused
+	}{
+		{
+			name:   "nil methods allow md5",
+			www:    base.HeaderValue{wwwMD5},
+			method: headers.AuthMethodDigest,
+		},
+		{
+			name:    "md5 refused",
+			www:     base.HeaderValue{wwwMD5},
+			methods: []auth.VerifyMethod{auth.VerifyMethodBasic, auth.VerifyMethodDigestSHA256},
+			err:     "no authentication methods allowed by AllowedMethods",
+		},
+		{
+			name: "explicit md5 refused",
+			www: base.HeaderValue{
+				`Digest realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce", algorithm="MD5"`,
+			},
+			methods: []auth.VerifyMethod{auth.VerifyMethodDigestSHA256},
+			err:     "no authentication methods allowed by AllowedMethods",
+		},
+		{
+			name:    "sha256 allowed",
+			www:     base.HeaderValue{wwwSHA256},
+			methods: []auth.VerifyMethod{auth.VerifyMethodDigestSHA256},
+			method:  headers.AuthMethodDigest,
+		},
+		{
+			name:    "basic refused",
+			www:     base.HeaderValue{wwwBasic},
+			methods: []auth.VerifyMethod{auth.VerifyMethodDigestMD5, auth.VerifyMethodDigestSHA256},
+			err:     "no authentication methods allowed by AllowedMethods",
+		},
+		{
+			name:    "basic allowed",
+			www:     base.HeaderValue{wwwBasic},
+			methods: []auth.VerifyMethod{auth.VerifyMethodBasic},
+			method:  headers.AuthMethodBasic,
+		},
+		{
+			name:    "basic preferred over refused md5",
+			www:     base.HeaderValue{wwwMD5, wwwBasic},
+			methods: []auth.VerifyMethod{auth.VerifyMethodBasic},
+			method:  headers.AuthMethodBasic,
+		},
+		{
+			name:    "md5 allowed among several",
+			www:     base.HeaderValue{wwwBasic, wwwMD5},
+			methods: []auth.VerifyMethod{auth.VerifyMethodDigestMD5, auth.VerifyMethodDigestSHA256},
+			method:  headers.AuthMethodDigest,
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			se := &auth.Sender{
+				WWWAuth:        ca.www,
+				User:           "myuser",
+				Pass:           "mypass",
+				AllowedMethods: ca.methods,
+			}
+			err := se.Initialize()
+
+			if ca.err != "" {
+				require.EqualError(t, err, ca.err)
+				return
+			}
+			require.NoError(t, err)
+
+			req := &base.Request{
+				Method: base.Setup,
+				URL:    mustParseURL("rtsp://myhost/mypath"),
+			}
+			se.AddAuthorization(req)
+
+			var h headers.Authorization
+			err = h.Unmarshal(req.Header["Authorization"])
+			require.NoError(t, err)
+			require.Equal(t, ca.method, h.Method)
+		})
+	}
+}
