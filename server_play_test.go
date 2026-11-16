@@ -162,6 +162,12 @@ func TestServerPlayPath(t *testing.T) {
 			"/teststream",
 		},
 		{
+			"play on media url",
+			"rtsp://localhost:8554/teststream[control]",
+			"rtsp://localhost:8554/teststream/trackID=1",
+			"/teststream",
+		},
+		{
 			"no query, ffmpeg format",
 			"rtsp://localhost:8554/teststream?testing=123[control]",
 			"rtsp://localhost:8554/teststream/",
