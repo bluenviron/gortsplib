@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"fmt"
 	"net"
 	"testing"
 	"time"
@@ -16,8 +17,16 @@ import (
 )
 
 func TestClientPlaySenderReportBeforeRTP(t *testing.T) {
-	for _, protocol := range []Protocol{ProtocolTCP, ProtocolUDP} {
-		t.Run(protocol.String(), func(t *testing.T) {
+	for _, scenario := range []struct {
+		protocol       Protocol
+		matchingSource bool
+	}{
+		{ProtocolTCP, true},
+		{ProtocolUDP, true},
+		{ProtocolTCP, false},
+		{ProtocolUDP, false},
+	} {
+		t.Run(fmt.Sprintf("%s/matching-source=%t", scenario.protocol, scenario.matchingSource), func(t *testing.T) {
 			var stream *ServerStream
 			var address string
 			server := &Server{
@@ -42,7 +51,7 @@ func TestClientPlaySenderReportBeforeRTP(t *testing.T) {
 					},
 				},
 			}
-			if protocol == ProtocolUDP {
+			if scenario.protocol == ProtocolUDP {
 				server.UDPRTPAddress = "127.0.0.1:8000"
 				server.UDPRTCPAddress = "127.0.0.1:8001"
 			}
@@ -52,7 +61,7 @@ func TestClientPlaySenderReportBeforeRTP(t *testing.T) {
 			require.NoError(t, stream.Initialize())
 			t.Cleanup(stream.Close)
 			url := mustParseURL("rtsp://" + address + "/stream")
-			client := &Client{Scheme: url.Scheme, Host: url.Host, Protocol: new(protocol)}
+			client := &Client{Scheme: url.Scheme, Host: url.Host, Protocol: new(scenario.protocol)}
 			require.NoError(t, client.Start())
 			t.Cleanup(client.Close)
 			desc, _, err := client.Describe(url)
@@ -73,6 +82,9 @@ func TestClientPlaySenderReportBeforeRTP(t *testing.T) {
 			require.NoError(t, err)
 			origin := time.Date(2018, 2, 20, 19, 0, 0, 0, time.UTC)
 			source := stream.Stats().Medias[testH264Media].Formats[testH264Media.Formats[0]].LocalSSRC
+			if !scenario.matchingSource {
+				source++
+			}
 			require.NoError(t, stream.WritePacketRTCP(testH264Media, &rtcp.SenderReport{
 				SSRC: source, NTPTime: ntp.Encode(origin), RTPTime: 54352,
 			}))
@@ -82,8 +94,10 @@ func TestClientPlaySenderReportBeforeRTP(t *testing.T) {
 				Payload: []byte{1, 2, 3, 4},
 			}, origin))
 			first := <-samples
-			require.True(t, first.available)
-			require.Equal(t, origin, first.absolute.UTC())
+			require.Equal(t, scenario.matchingSource, first.available)
+			if scenario.matchingSource {
+				require.Equal(t, origin, first.absolute.UTC())
+			}
 		})
 	}
 }
