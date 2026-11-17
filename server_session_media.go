@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -30,6 +31,8 @@ type serverSessionMedia struct {
 	onPacketRTCP     OnPacketRTCPFunc
 
 	formats                map[uint8]*serverSessionFormat // record only
+	senderReportsMutex     sync.Mutex
+	pendingSenderReports   senderReportBuffer
 	writePacketRTCPInQueue func([]byte) error
 	bytesReceived          atomic.Uint64
 	bytesSent              atomic.Uint64
@@ -263,12 +266,21 @@ func (ssm *serverSessionMedia) readPacketRTCPRecord(payload []byte) bool {
 	ssm.rtcpPacketsReceived.Add(uint64(len(packets)))
 
 	for _, pkt := range packets {
-		if sr, ok := pkt.(*rtcp.SenderReport); ok {
+		ssm.senderReportsMutex.Lock()
+		switch sr := pkt.(type) {
+		case *rtcp.SenderReport:
 			format := ssm.findFormatByRemoteSSRC(sr.SSRC)
 			if format != nil {
 				format.rtpReceiver.ProcessSenderReport(sr, now)
+			} else {
+				ssm.pendingSenderReports.add(sr, now)
+			}
+		case *rtcp.Goodbye:
+			for _, source := range sr.Sources {
+				ssm.pendingSenderReports.take(source)
 			}
 		}
+		ssm.senderReportsMutex.Unlock()
 
 		ssm.onPacketRTCP(pkt)
 	}

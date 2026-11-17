@@ -235,14 +235,8 @@ func (ssf *serverSessionFormat) remoteSSRC() (uint32, bool) {
 }
 
 func (ssf *serverSessionFormat) readPacketRTP(payload []byte, header *rtp.Header, headerSize int, now time.Time) bool {
-	if !ssf.remoteSSRCFilled {
-		ssf.remoteSSRCMutex.Lock()
-		ssf.remoteSSRCFilled = true
-		ssf.remoteSSRCValue = header.SSRC
-		ssf.remoteSSRCMutex.Unlock()
-
-		// a wrong SSRC is an issue only when encryption is enabled, since it spams srtp.Context.DecryptRTP.
-	} else if ssf.ssm.srtpInCtx != nil &&
+	// A wrong SSRC is an issue when encryption is enabled, since it spams srtp.Context.DecryptRTP.
+	if ssf.remoteSSRCFilled && ssf.ssm.srtpInCtx != nil &&
 		header.SSRC != ssf.remoteSSRCValue {
 		ssf.ssm.onPacketRTPDecodeError(fmt.Errorf("received packet with wrong SSRC %d, expected %d",
 			header.SSRC, ssf.remoteSSRCValue))
@@ -253,6 +247,18 @@ func (ssf *serverSessionFormat) readPacketRTP(payload []byte, header *rtp.Header
 	if err != nil {
 		ssf.ssm.onPacketRTPDecodeError(err)
 		return false
+	}
+
+	if !ssf.remoteSSRCFilled {
+		ssf.ssm.senderReportsMutex.Lock()
+		ssf.remoteSSRCMutex.Lock()
+		ssf.remoteSSRCFilled = true
+		ssf.remoteSSRCValue = pkt.SSRC
+		ssf.remoteSSRCMutex.Unlock()
+		if pending, ok := ssf.ssm.pendingSenderReports.take(pkt.SSRC); ok {
+			ssf.rtpReceiver.ProcessSenderReport(&pending.report, pending.receivedAt)
+		}
+		ssf.ssm.senderReportsMutex.Unlock()
 	}
 
 	pkts, lost := ssf.rtpReceiver.ProcessPacket2(pkt, now, ssf.format.PTSEqualsDTS(pkt))
