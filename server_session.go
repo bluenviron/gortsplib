@@ -1259,9 +1259,15 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		if ss.State() == ServerSessionStatePrePlay && path != ss.setuppedPath {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerPathHasChanged{Prev: ss.setuppedPath, Cur: path}
+			// some clients send PLAY to the media URL used in SETUP
+			// (i.e. rtsp://host/path/trackID=0) instead of the aggregate URL.
+			if p, q, _, err2 := getPathAndQueryAndTrackID(req.URL); err2 == nil && p == ss.setuppedPath {
+				path, query = p, q
+			} else {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, liberrors.ErrServerPathHasChanged{Prev: ss.setuppedPath, Cur: path}
+			}
 		}
 
 		if ss.state != ServerSessionStatePlay &&
