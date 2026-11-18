@@ -84,37 +84,21 @@ func (e *Encoder) Init() error {
 // Encode encodes an access unit into RTP/H265 packets.
 // AU must contain at least 1 element, each element must contain at least 1 byte.
 // The method might panic otherwise.
+//
+// Hikvision NVR compatibility (patched): never emit Aggregation Packets (type 48).
+// VPS/SPS/PPS in the same AU previously became one AP and caused ~200ms TEARDOWN.
+// Emit one NALU per RTP packet (or FU for oversized NALUs), matching Live555 behavior.
 func (e *Encoder) Encode(au [][]byte) ([]*rtp.Packet, error) {
 	var rets []*rtp.Packet
-	var batch [][]byte
 
-	// split NALUs into batches
-	for _, nalu := range au {
-		if e.lenAggregationUnit(batch, nalu) <= e.PayloadMaxSize {
-			// add to existing batch
-			batch = append(batch, nalu)
-		} else {
-			// write batch
-			if batch != nil {
-				pkts, err := e.writeBatch(batch, false)
-				if err != nil {
-					return nil, err
-				}
-				rets = append(rets, pkts...)
-			}
-
-			// initialize new batch
-			batch = [][]byte{nalu}
+	for i, nalu := range au {
+		marker := i == len(au)-1
+		pkts, err := e.writeBatch([][]byte{nalu}, marker)
+		if err != nil {
+			return nil, err
 		}
+		rets = append(rets, pkts...)
 	}
-
-	// write final batch
-	// marker is used to indicate that the entire access unit has been sent
-	pkts, err := e.writeBatch(batch, true)
-	if err != nil {
-		return nil, err
-	}
-	rets = append(rets, pkts...)
 
 	return rets, nil
 }
