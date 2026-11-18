@@ -1962,6 +1962,57 @@ func TestClientTunnelHTTPPathQuery(t *testing.T) {
 	}
 }
 
+type clientTestFailingConn struct {
+	net.Conn
+}
+
+func (c *clientTestFailingConn) Write([]byte) (int, error) {
+	return 0, fmt.Errorf("write failed")
+}
+
+func TestClientTunnelHTTPWriteError(t *testing.T) {
+	for _, ca := range []string{"get", "post"} {
+		t.Run(ca, func(t *testing.T) {
+			dials := 0
+
+			c := Client{
+				Scheme: "rtsp",
+				Host:   "localhost:8554",
+				Tunnel: TunnelHTTP,
+				DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+					dials++
+					clientConn, serverConn := net.Pipe()
+
+					if ca == "get" || dials == 2 {
+						serverConn.Close()
+						return &clientTestFailingConn{Conn: clientConn}, nil
+					}
+
+					go func() {
+						defer serverConn.Close()
+						_, err := http.ReadRequest(bufio.NewReader(serverConn))
+						if err == nil {
+							serverConn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")) //nolint:errcheck
+						}
+					}()
+
+					return clientConn, nil
+				},
+			}
+
+			err := c.Start()
+			require.NoError(t, err)
+			defer c.Close()
+
+			u, err := base.ParseURL("rtsp://localhost:8554/teststream")
+			require.NoError(t, err)
+
+			_, err = c.Options(u)
+			require.ErrorContains(t, err, "write failed")
+		})
+	}
+}
+
 func TestClientTunnelWebSocket(t *testing.T) {
 	for _, ca := range []string{"ws", "wss"} {
 		t.Run(ca, func(t *testing.T) {

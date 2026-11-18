@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -63,17 +64,16 @@ func newClientTunnelWebSocket(
 ) (net.Conn, error) {
 	c := &clientTunnelWebSocket{}
 
-	var ur string
+	scheme := "ws"
 	if secure {
-		ur = "wss"
-	} else {
-		ur = "ws"
+		scheme = "wss"
 	}
-	ur += "://" + addr + clientTunnelHTTPRequestTarget(u)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ur, nil)
-	if err != nil {
-		return nil, err
+	req := &http.Request{
+		Method: http.MethodGet,
+		URL:    &url.URL{Scheme: scheme, Opaque: "//" + addr + clientTunnelHTTPRequestTarget(u)},
+		Host:   addr,
+		Header: http.Header{},
 	}
 
 	onHTTPRequest(req)
@@ -89,6 +89,7 @@ func newClientTunnelWebSocket(
 		dialer.TLSClientConfig = tlsConfig
 	}
 
+	var err error
 	c.wconn, _, err = dialer.DialContext(ctx, req.URL.String(), req.Header) //nolint:bodyclose
 	if err != nil {
 		return nil, err
