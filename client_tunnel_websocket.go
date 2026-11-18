@@ -3,11 +3,15 @@ package gortsplib
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
 )
 
 type clientTunnelWebSocket struct {
@@ -55,16 +59,32 @@ func newClientTunnelWebSocket(
 	tlsConfig *tls.Config,
 	dialContext func(ctx context.Context, network, address string) (net.Conn, error),
 	dialTLSContext func(ctx context.Context, network string, addr string) (net.Conn, error),
+	u *base.URL,
+	onHTTPRequest ClientOnHTTPRequestFunc,
 ) (net.Conn, error) {
 	c := &clientTunnelWebSocket{}
 
-	var ur string
+	scheme := "ws"
 	if secure {
-		ur = "wss"
-	} else {
-		ur = "ws"
+		scheme = "wss"
 	}
-	ur += "://" + addr + "/"
+
+	requestURL := clientTunnelHTTPRequestURL(u)
+	requestURL.Scheme = scheme
+	requestURL.Host = addr
+
+	req := &http.Request{
+		Method: http.MethodGet,
+		URL:    requestURL,
+		Host:   addr,
+		Header: http.Header{},
+	}
+
+	onHTTPRequest(req)
+
+	if req.URL == nil {
+		return nil, fmt.Errorf("HTTP request has no URL")
+	}
 
 	dialer := &websocket.Dialer{
 		Subprotocols: []string{"rtsp.onvif.org"},
@@ -78,7 +98,7 @@ func newClientTunnelWebSocket(
 	}
 
 	var err error
-	c.wconn, _, err = dialer.DialContext(ctx, ur, nil) //nolint:bodyclose
+	c.wconn, _, err = dialer.DialContext(ctx, req.URL.String(), req.Header) //nolint:bodyclose
 	if err != nil {
 		return nil, err
 	}

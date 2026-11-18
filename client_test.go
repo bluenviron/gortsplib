@@ -1462,6 +1462,7 @@ func TestClientTunnelHTTP(t *testing.T) {
 					Header: http.Header{
 						"Accept":          []string{"application/x-rtsp-tunnelled"},
 						"X-Sessioncookie": req1.Header["X-Sessioncookie"],
+						"X-Custom":        []string{"custom-value"},
 					},
 					Body: req1.Body,
 				}, req1)
@@ -1507,6 +1508,7 @@ func TestClientTunnelHTTP(t *testing.T) {
 						"Content-Type":    []string{"application/x-rtsp-tunnelled"},
 						"Content-Length":  []string{"30000"},
 						"X-Sessioncookie": req2.Header["X-Sessioncookie"],
+						"X-Custom":        []string{"custom-value"},
 					},
 					ContentLength: 30000,
 					Body:          req2.Body,
@@ -1572,6 +1574,9 @@ func TestClientTunnelHTTP(t *testing.T) {
 				Scheme: u.Scheme,
 				Host:   u.Host,
 				Tunnel: TunnelHTTP,
+				OnHTTPRequest: func(req *http.Request) {
+					req.Header.Set("X-Custom", "custom-value")
+				},
 				TLSConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
@@ -1957,6 +1962,57 @@ func TestClientTunnelHTTPPathQuery(t *testing.T) {
 	}
 }
 
+type clientTestFailingConn struct {
+	net.Conn
+}
+
+func (c *clientTestFailingConn) Write([]byte) (int, error) {
+	return 0, fmt.Errorf("write failed")
+}
+
+func TestClientTunnelHTTPWriteError(t *testing.T) {
+	for _, ca := range []string{"get", "post"} {
+		t.Run(ca, func(t *testing.T) {
+			dials := 0
+
+			c := Client{
+				Scheme: "rtsp",
+				Host:   "localhost:8554",
+				Tunnel: TunnelHTTP,
+				DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+					dials++
+					clientConn, serverConn := net.Pipe()
+
+					if ca == "get" || dials == 2 {
+						serverConn.Close()
+						return &clientTestFailingConn{Conn: clientConn}, nil
+					}
+
+					go func() {
+						defer serverConn.Close()
+						_, err := http.ReadRequest(bufio.NewReader(serverConn))
+						if err == nil {
+							serverConn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")) //nolint:errcheck
+						}
+					}()
+
+					return clientConn, nil
+				},
+			}
+
+			err := c.Start()
+			require.NoError(t, err)
+			defer c.Close()
+
+			u, err := base.ParseURL("rtsp://localhost:8554/teststream")
+			require.NoError(t, err)
+
+			_, err = c.Options(u)
+			require.ErrorContains(t, err, "write failed")
+		})
+	}
+}
+
 func TestClientTunnelWebSocket(t *testing.T) {
 	for _, ca := range []string{"ws", "wss"} {
 		t.Run(ca, func(t *testing.T) {
@@ -1970,6 +2026,9 @@ func TestClientTunnelWebSocket(t *testing.T) {
 			s := &http.Server{
 				Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					require.Equal(t, r.Header.Get("Sec-WebSocket-Protocol"), "rtsp.onvif.org")
+					require.Equal(t, "/teststream", r.URL.Path)
+					require.Equal(t, "param=value", r.URL.RawQuery)
+					require.Equal(t, "custom-value", r.Header.Get("X-Custom"))
 
 					wconn, err := upgrader.Upgrade(w, r, nil)
 					require.NoError(t, err)
@@ -1994,7 +2053,7 @@ func TestClientTunnelWebSocket(t *testing.T) {
 					req, err2 = conn.ReadRequest()
 					require.NoError(t, err2)
 					require.Equal(t, base.Describe, req.Method)
-					require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
+					require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream?param=value"), req.URL)
 
 					medias := []*description.Media{testH264Media}
 
@@ -2035,13 +2094,16 @@ func TestClientTunnelWebSocket(t *testing.T) {
 			go s.Serve(ln)
 			defer s.Shutdown(context.Background())
 
-			u, err := base.ParseURL(scheme + "://localhost:8554/teststream")
+			u, err := base.ParseURL(scheme + "://localhost:8554/teststream?param=value")
 			require.NoError(t, err)
 
 			c := Client{
 				Scheme: u.Scheme,
 				Host:   u.Host,
 				Tunnel: TunnelWebSocket,
+				OnHTTPRequest: func(req *http.Request) {
+					req.Header.Set("X-Custom", "custom-value")
+				},
 				TLSConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},

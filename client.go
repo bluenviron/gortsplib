@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"slices"
 	"strconv"
 	"strings"
@@ -459,6 +460,9 @@ type ClientOnRequestFunc func(*base.Request)
 // ClientOnResponseFunc is the prototype of Client.OnResponse.
 type ClientOnResponseFunc func(*base.Response)
 
+// ClientOnHTTPRequestFunc is the prototype of Client.OnHTTPRequest.
+type ClientOnHTTPRequestFunc func(*http.Request)
+
 // ClientOnTransportSwitchFunc is the prototype of Client.OnTransportSwitch.
 type ClientOnTransportSwitchFunc func(err error)
 
@@ -574,6 +578,9 @@ type Client struct {
 	OnServerRequest ClientOnRequestFunc
 	// called when sending a response to the server.
 	OnServerResponse ClientOnResponseFunc
+	// called when sending a HTTP request to open a tunnel.
+	// It can be used to change the request.
+	OnHTTPRequest ClientOnHTTPRequestFunc
 	// called when the transport protocol changes.
 	OnTransportSwitch ClientOnTransportSwitchFunc
 	// called when the client detects lost packets.
@@ -697,6 +704,10 @@ func (c *Client) Start() error {
 	}
 	if c.OnServerRequest == nil {
 		c.OnServerRequest = func(*base.Request) {
+		}
+	}
+	if c.OnHTTPRequest == nil {
+		c.OnHTTPRequest = func(*http.Request) {
 		}
 	}
 	if c.OnServerResponse == nil {
@@ -1224,7 +1235,7 @@ func (c *Client) connOpen(u *base.URL) error {
 	case TunnelHTTP:
 		var err error
 		nconn, err = newClientTunnelHTTP(dialCtx, addr, (c.Scheme == schemeRTSPS),
-			c.TLSConfig, c.DialContext, c.DialTLSContext, u)
+			c.TLSConfig, c.DialContext, c.DialTLSContext, u, c.OnHTTPRequest)
 		if err != nil {
 			return err
 		}
@@ -1232,7 +1243,7 @@ func (c *Client) connOpen(u *base.URL) error {
 	case TunnelWebSocket:
 		var err error
 		nconn, err = newClientTunnelWebSocket(dialCtx, addr, (c.Scheme == schemeRTSPS),
-			c.TLSConfig, c.DialContext, c.DialTLSContext)
+			c.TLSConfig, c.DialContext, c.DialTLSContext, u, c.OnHTTPRequest)
 		if err != nil {
 			return err
 		}
