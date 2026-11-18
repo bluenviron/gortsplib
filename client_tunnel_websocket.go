@@ -3,10 +3,10 @@ package gortsplib
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -69,14 +69,22 @@ func newClientTunnelWebSocket(
 		scheme = "wss"
 	}
 
+	requestURL := clientTunnelHTTPRequestURL(u)
+	requestURL.Scheme = scheme
+	requestURL.Host = addr
+
 	req := &http.Request{
 		Method: http.MethodGet,
-		URL:    &url.URL{Scheme: scheme, Opaque: "//" + addr + clientTunnelHTTPRequestTarget(u)},
+		URL:    requestURL,
 		Host:   addr,
 		Header: http.Header{},
 	}
 
 	onHTTPRequest(req)
+
+	if req.URL == nil {
+		return nil, fmt.Errorf("HTTP request has no URL")
+	}
 
 	dialer := &websocket.Dialer{
 		Subprotocols: []string{"rtsp.onvif.org"},

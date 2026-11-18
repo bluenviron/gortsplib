@@ -8,7 +8,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 )
 
-func TestClientTunnelHTTPRequestTarget(t *testing.T) {
+func TestClientTunnelHTTPRequestURL(t *testing.T) {
 	for _, testCase := range []struct {
 		name           string
 		streamURL      *base.URL
@@ -29,9 +29,14 @@ func TestClientTunnelHTTPRequestTarget(t *testing.T) {
 			streamURL:      mustParseURL("rtsp://localhost:8554/teststream?param=value"),
 			expectedTarget: "/teststream?param=value",
 		},
+		{
+			name:           "leading double slash",
+			streamURL:      mustParseURL("rtsp://localhost:8554//teststream"),
+			expectedTarget: "//teststream",
+		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			require.Equal(t, testCase.expectedTarget, clientTunnelHTTPRequestTarget(testCase.streamURL))
+			require.Equal(t, testCase.expectedTarget, clientTunnelHTTPRequestURL(testCase.streamURL).RequestURI())
 		})
 	}
 }

@@ -130,11 +130,11 @@ func newClientTunnelHTTP(
 	}()
 
 	tunnelID := strings.ReplaceAll(uuid.New().String(), "-", "")
-	requestTarget := clientTunnelHTTPRequestTarget(u)
+	requestURL := clientTunnelHTTPRequestURL(u)
 
 	err := writeClientTunnelHTTPRequest(c.readChan, onHTTPRequest, &http.Request{
 		Method: http.MethodGet,
-		URL:    &url.URL{Opaque: requestTarget},
+		URL:    requestURL,
 		Host:   addr,
 		Header: http.Header{
 			"X-Sessioncookie": []string{tunnelID},
@@ -195,7 +195,7 @@ func newClientTunnelHTTP(
 
 	err = writeClientTunnelHTTPRequest(c.writeChan, onHTTPRequest, &http.Request{
 		Method: http.MethodPost,
-		URL:    &url.URL{Opaque: requestTarget},
+		URL:    clientTunnelHTTPRequestURL(u),
 		Host:   addr,
 		Header: http.Header{
 			"X-Sessioncookie": []string{tunnelID},
@@ -213,21 +213,15 @@ func newClientTunnelHTTP(
 	return c, nil
 }
 
-func clientTunnelHTTPRequestTarget(u *base.URL) string {
+func clientTunnelHTTPRequestURL(u *base.URL) *url.URL {
 	if u == nil {
-		return "/"
+		return &url.URL{Path: "/"}
 	}
 
-	ret := u.Path
-	if ret == "" {
-		ret = "/"
+	return &url.URL{
+		Path:     u.Path,
+		RawQuery: u.RawQuery,
 	}
-
-	if u.RawQuery != "" {
-		ret += "?" + u.RawQuery
-	}
-
-	return ret
 }
 
 // writeClientTunnelHTTPRequest writes the request line and headers only,
@@ -238,6 +232,10 @@ func writeClientTunnelHTTPRequest(
 	req *http.Request,
 ) error {
 	onHTTPRequest(req)
+
+	if req.URL == nil {
+		return fmt.Errorf("HTTP request has no URL")
+	}
 
 	var buf bytes.Buffer
 	buf.WriteString(req.Method + " " + req.URL.RequestURI() + " HTTP/1.1\r\n")
