@@ -1462,6 +1462,7 @@ func TestClientTunnelHTTP(t *testing.T) {
 					Header: http.Header{
 						"Accept":          []string{"application/x-rtsp-tunnelled"},
 						"X-Sessioncookie": req1.Header["X-Sessioncookie"],
+						"X-Custom":        []string{"custom-value"},
 					},
 					Body: req1.Body,
 				}, req1)
@@ -1507,6 +1508,7 @@ func TestClientTunnelHTTP(t *testing.T) {
 						"Content-Type":    []string{"application/x-rtsp-tunnelled"},
 						"Content-Length":  []string{"30000"},
 						"X-Sessioncookie": req2.Header["X-Sessioncookie"],
+						"X-Custom":        []string{"custom-value"},
 					},
 					ContentLength: 30000,
 					Body:          req2.Body,
@@ -1572,6 +1574,9 @@ func TestClientTunnelHTTP(t *testing.T) {
 				Scheme: u.Scheme,
 				Host:   u.Host,
 				Tunnel: TunnelHTTP,
+				OnHTTPRequest: func(req *http.Request) {
+					req.Header.Set("X-Custom", "custom-value")
+				},
 				TLSConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
@@ -1830,7 +1835,6 @@ func TestClientTunnelHTTPPathQuery(t *testing.T) {
 					Header: http.Header{
 						"Accept":          []string{"application/x-rtsp-tunnelled"},
 						"X-Sessioncookie": req1.Header["X-Sessioncookie"],
-						"X-Custom":        []string{"custom-value"},
 					},
 					Body: req1.Body,
 				}, req1)
@@ -1877,7 +1881,6 @@ func TestClientTunnelHTTPPathQuery(t *testing.T) {
 						"Content-Type":    []string{"application/x-rtsp-tunnelled"},
 						"Content-Length":  []string{"30000"},
 						"X-Sessioncookie": req2.Header["X-Sessioncookie"],
-						"X-Custom":        []string{"custom-value"},
 					},
 					ContentLength: 30000,
 					Body:          req2.Body,
@@ -1943,9 +1946,6 @@ func TestClientTunnelHTTPPathQuery(t *testing.T) {
 				Scheme: u.Scheme,
 				Host:   u.Host,
 				Tunnel: TunnelHTTP,
-				OnHTTPRequest: func(req *http.Request) {
-					req.Header.Set("X-Custom", "custom-value")
-				},
 				TLSConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
