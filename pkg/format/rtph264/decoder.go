@@ -294,7 +294,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 		d.resetFrameBuffer()
 	}
 
-	// Drop trailing SEI-only access units, that in reality should be leading the previous access unit.
+	// Drop trailing SEI-only access units, since they are supposed to lead access units.
 	// These cause problems in downstream components (DTS extractor, recorder).
 	if auIsOnlySEI(ret) {
 		if d.lastNonSEIReceived && retTimestamp == d.lastNonSEITimestamp {

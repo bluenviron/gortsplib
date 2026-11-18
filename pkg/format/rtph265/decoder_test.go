@@ -651,3 +651,33 @@ func FuzzDecoder(f *testing.F) {
 		}
 	})
 }
+
+func TestDecodeSplitByTimestampWithoutMarker(t *testing.T) {
+	var d rtph265.Decoder
+	err := d.Init()
+	require.NoError(t, err)
+
+	for i := range 3 * h265.MaxNALUsPerAccessUnit {
+		nalu := []byte{0x02, 0x01, byte(i)}
+
+		au, err2 := d.Decode(&rtp.Packet{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         false,
+				PayloadType:    96,
+				SequenceNumber: uint16(i),
+				Timestamp:      uint32(1000 + i*3600),
+				SSRC:           0x9dbb7812,
+			},
+			Payload: nalu,
+		})
+
+		if i == 0 {
+			require.Equal(t, rtph265.ErrMorePacketsNeeded, err2)
+			continue
+		}
+
+		require.NoError(t, err2)
+		require.Equal(t, [][]byte{{0x02, 0x01, byte(i - 1)}}, au)
+	}
+}
