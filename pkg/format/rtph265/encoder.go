@@ -50,6 +50,13 @@ type Encoder struct {
 	// indicates that NALUs have an additional field that specifies the decoding order.
 	MaxDONDiff int
 
+	// DisableAggregation, when true, emits one NALU per RTP packet (or
+	// fragmentation units for oversized NALUs) and never emits Aggregation
+	// Packets (type 48). Default false preserves RFC7798 aggregation.
+	// Useful for some Hikvision NVRs that tear down H.265 sessions when
+	// parameter sets are packed as AP.
+	DisableAggregation bool
+
 	sequenceNumber uint16
 }
 
@@ -85,6 +92,19 @@ func (e *Encoder) Init() error {
 // AU must contain at least 1 element, each element must contain at least 1 byte.
 // The method might panic otherwise.
 func (e *Encoder) Encode(au [][]byte) ([]*rtp.Packet, error) {
+	if e.DisableAggregation {
+		var rets []*rtp.Packet
+		for i, nalu := range au {
+			marker := i == len(au)-1
+			pkts, err := e.writeBatch([][]byte{nalu}, marker)
+			if err != nil {
+				return nil, err
+			}
+			rets = append(rets, pkts...)
+		}
+		return rets, nil
+	}
+
 	var rets []*rtp.Packet
 	var batch [][]byte
 

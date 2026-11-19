@@ -167,3 +167,66 @@ func TestEncodeRandomInitialState(t *testing.T) {
 	require.NotEqual(t, nil, e.SSRC)
 	require.NotEqual(t, nil, e.InitialSequenceNumber)
 }
+
+func TestEncodeDisableAggregation(t *testing.T) {
+	au := [][]byte{
+		{0x07, 0x57},
+		{0x08, 0x66},
+		{0x09, 0x75},
+	}
+
+	eAgg := &rtph265.Encoder{
+		PayloadType:           96,
+		SSRC:                  new(uint32(0x9dbb7812)),
+		InitialSequenceNumber: new(uint16(0x44ed)),
+		PayloadMaxSize:        1000,
+	}
+	require.NoError(t, eAgg.Init())
+	pktsAgg, err := eAgg.Encode(au)
+	require.NoError(t, err)
+	require.Len(t, pktsAgg, 1)
+	require.Equal(t, uint8(48), (pktsAgg[0].Payload[0]>>1)&0b111111)
+
+	e := &rtph265.Encoder{
+		PayloadType:           96,
+		SSRC:                  new(uint32(0x9dbb7812)),
+		InitialSequenceNumber: new(uint16(0x44ed)),
+		PayloadMaxSize:        1000,
+		DisableAggregation:    true,
+	}
+	require.NoError(t, e.Init())
+	pkts, err := e.Encode(au)
+	require.NoError(t, err)
+	require.Equal(t, []*rtp.Packet{
+		{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         false,
+				PayloadType:    96,
+				SequenceNumber: 17645,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: []byte{0x07, 0x57},
+		},
+		{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         false,
+				PayloadType:    96,
+				SequenceNumber: 17646,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: []byte{0x08, 0x66},
+		},
+		{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         true,
+				PayloadType:    96,
+				SequenceNumber: 17647,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: []byte{0x09, 0x75},
+		},
+	}, pkts)
+}
