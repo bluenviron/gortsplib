@@ -53,7 +53,9 @@ func (c *Conn) Read() (any, error) {
 			return c.ReadRequest()
 		}
 
-		if _, err = c.br.Discard(1); err != nil {
+		// silently discard unrecognized bytes.
+		_, err = c.br.Discard(1)
+		if err != nil {
 			return nil, err
 		}
 	}
