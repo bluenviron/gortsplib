@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -147,6 +148,8 @@ type clientMedia struct {
 
 	onPacketRTCP           OnPacketRTCPFunc
 	formats                map[uint8]*clientFormat
+	senderReportsMutex     sync.Mutex
+	pendingSenderReports   senderReportBuffer
 	writePacketRTCPInQueue func([]byte) error
 	bytesReceived          atomic.Uint64
 	bytesSent              atomic.Uint64
@@ -327,12 +330,21 @@ func (cm *clientMedia) readPacketRTCPPlay(payload []byte) bool {
 	cm.rtcpPacketsReceived.Add(uint64(len(packets)))
 
 	for _, pkt := range packets {
-		if sr, ok := pkt.(*rtcp.SenderReport); ok {
+		cm.senderReportsMutex.Lock()
+		switch sr := pkt.(type) {
+		case *rtcp.SenderReport:
 			format := cm.findFormatByRemoteSSRC(sr.SSRC)
 			if format != nil {
 				format.rtpReceiver.ProcessSenderReport(sr, now)
+			} else {
+				cm.pendingSenderReports.add(sr, now)
+			}
+		case *rtcp.Goodbye:
+			for _, source := range sr.Sources {
+				cm.pendingSenderReports.take(source)
 			}
 		}
+		cm.senderReportsMutex.Unlock()
 
 		cm.onPacketRTCP(pkt)
 	}
