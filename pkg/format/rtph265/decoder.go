@@ -90,11 +90,12 @@ type Decoder struct {
 	fragmentNextSeqNum  uint16
 
 	// for Decode()
-	frameBuffer         [][]byte
-	frameBufferLen      int
-	frameBufferSize     int
-	lastNonSEITimestamp uint32
-	lastNonSEIReceived  bool
+	frameBuffer          [][]byte
+	frameBufferLen       int
+	frameBufferSize      int
+	frameBufferTimestamp uint32
+	lastNonSEITimestamp  uint32
+	lastNonSEIReceived   bool
 }
 
 // Init initializes the decoder.
@@ -230,12 +231,61 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	}
 	l := len(nalus)
 
+	var ret [][]byte
+	var retTimestamp uint32
+
+	// support splitting access units by timestamp.
+	// (some cameras do not use the Marker field, like the Raythink PD464T)
+	if d.frameBuffer != nil && pkt.Timestamp != d.frameBufferTimestamp {
+		ret = d.frameBuffer
+		retTimestamp = d.frameBufferTimestamp
+		d.resetFrameBuffer()
+
+		err = d.addToFrameBuffer(nalus, l, pkt.Timestamp)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err = d.addToFrameBuffer(nalus, l, pkt.Timestamp)
+		if err != nil {
+			return nil, err
+		}
+
+		if !pkt.Marker {
+			return nil, ErrMorePacketsNeeded
+		}
+
+		ret = d.frameBuffer
+		retTimestamp = d.frameBufferTimestamp
+		d.resetFrameBuffer()
+	}
+
+	// Drop trailing SEI-only access units, since they are supposed to lead access units.
+	// These cause problems in downstream components (DTS extractor, recorder).
+	if auIsOnlySEI(ret) {
+		if d.lastNonSEIReceived && retTimestamp == d.lastNonSEITimestamp {
+			return nil, ErrMorePacketsNeeded
+		}
+		d.lastNonSEIReceived = false
+	} else {
+		d.lastNonSEITimestamp = retTimestamp
+		d.lastNonSEIReceived = true
+	}
+
+	return ret, nil
+}
+
+func (d *Decoder) resetFrameBuffer() {
+	d.frameBuffer = nil // do not reuse frameBuffer to avoid race conditions
+	d.frameBufferLen = 0
+	d.frameBufferSize = 0
+}
+
+func (d *Decoder) addToFrameBuffer(nalus [][]byte, l int, ts uint32) error {
 	if (d.frameBufferLen + l) > h265.MaxNALUsPerAccessUnit {
 		errCount := d.frameBufferLen + l
-		d.frameBuffer = nil
-		d.frameBufferLen = 0
-		d.frameBufferSize = 0
-		return nil, fmt.Errorf("NALU count (%d) exceeds maximum allowed (%d)",
+		d.resetFrameBuffer()
+		return fmt.Errorf("NALU count (%d) exceeds maximum allowed (%d)",
 			errCount, h265.MaxNALUsPerAccessUnit)
 	}
 
@@ -243,39 +293,14 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 
 	if (d.frameBufferSize + addSize) > h265.MaxAccessUnitSize {
 		errSize := d.frameBufferSize + addSize
-		d.frameBuffer = nil
-		d.frameBufferLen = 0
-		d.frameBufferSize = 0
-		return nil, fmt.Errorf("access unit size (%d) is too big, maximum is %d",
+		d.resetFrameBuffer()
+		return fmt.Errorf("access unit size (%d) is too big, maximum is %d",
 			errSize, h265.MaxAccessUnitSize)
 	}
 
 	d.frameBuffer = append(d.frameBuffer, nalus...)
 	d.frameBufferLen += l
 	d.frameBufferSize += addSize
-
-	if !pkt.Marker {
-		return nil, ErrMorePacketsNeeded
-	}
-
-	ret := d.frameBuffer
-
-	// do not reuse frameBuffer to avoid race conditions
-	d.frameBuffer = nil
-	d.frameBufferLen = 0
-	d.frameBufferSize = 0
-
-	// Drop trailing SEI-only access units, that in reality should be leading the previous access unit.
-	// These cause problems in downstream components (DTS extractor, recorder).
-	if auIsOnlySEI(ret) {
-		if d.lastNonSEIReceived && pkt.Timestamp == d.lastNonSEITimestamp {
-			return nil, ErrMorePacketsNeeded
-		}
-		d.lastNonSEIReceived = false
-	} else {
-		d.lastNonSEITimestamp = pkt.Timestamp
-		d.lastNonSEIReceived = true
-	}
-
-	return ret, nil
+	d.frameBufferTimestamp = ts
+	return nil
 }
