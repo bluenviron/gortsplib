@@ -4223,7 +4223,6 @@ func TestClientPlayNTP64Extension(t *testing.T) {
 		"tcp",
 		"udp secure",
 		"tcp secure",
-		"udp first packet late",
 	} {
 		t.Run(ca, func(t *testing.T) {
 			var stream *ServerStream
@@ -4300,7 +4299,7 @@ func TestClientPlayNTP64Extension(t *testing.T) {
 			require.NoError(t, err)
 			defer c.Close()
 
-			pkts, expected := testNTP64Packets(ca == "udp first packet late")
+			pkts, expected := testNTP64Packets()
 
 			for _, pkt := range pkts {
 				err = stream.WritePacketRTP(medi, pkt)

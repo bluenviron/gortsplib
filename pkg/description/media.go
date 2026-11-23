@@ -58,9 +58,7 @@ func isAlphaNumeric(v string) bool {
 	return true
 }
 
-// parses a=extmap:<id>[/<direction>] <uri> [<attributes>] (RFC 8285).
-// Invalid entries are skipped instead of returning an error, since they do not prevent reading the stream.
-// In case of duplicate IDs or URIs, the first entry wins.
+// invalid entries are skipped, since they do not prevent reading the stream.
 func unmarshalHeaderExtensions(attributes []sdp.Attribute) []HeaderExtension {
 	var ret []HeaderExtension
 
@@ -69,28 +67,24 @@ func unmarshalHeaderExtensions(attributes []sdp.Attribute) []HeaderExtension {
 			continue
 		}
 
-		fields := strings.Fields(attr.Value)
-		if len(fields) < 2 {
+		var em sdp.ExtMap
+		err := em.Unmarshal("extmap:" + attr.Value)
+		if err != nil {
 			continue
 		}
 
-		idStr, _, _ := strings.Cut(fields[0], "/")
-
-		id, err := strconv.ParseUint(idStr, 10, 8)
-		if err != nil || id == 0 {
-			continue
+		ext := HeaderExtension{
+			ID:  uint8(em.Value),
+			URI: em.URI.String(),
 		}
 
-		if slices.ContainsFunc(ret, func(ext HeaderExtension) bool {
-			return ext.ID == uint8(id) || ext.URI == fields[1]
+		if slices.ContainsFunc(ret, func(e HeaderExtension) bool {
+			return e.ID == ext.ID || e.URI == ext.URI
 		}) {
 			continue
 		}
 
-		ret = append(ret, HeaderExtension{
-			ID:  uint8(id),
-			URI: fields[1],
-		})
+		ret = append(ret, ext)
 	}
 
 	return ret

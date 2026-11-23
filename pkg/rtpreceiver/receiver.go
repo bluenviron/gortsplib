@@ -39,7 +39,6 @@ type Receiver struct {
 
 	// ID of the RTP header extension that carries the 64-bit NTP timestamp (RFC 6051).
 	// When set, the extension is used to compute NTP timestamps until the first RTCP sender report.
-	// It defaults to 0 (disabled).
 	NTP64ExtensionID uint8
 
 	// time.Now function.
@@ -269,7 +268,6 @@ func (rr *Receiver) ProcessPacket2(
 }
 
 func (rr *Receiver) processNTP64Extension(pkt *rtp.Packet) {
-	// once a sender report has been received, sender reports are authoritative.
 	if rr.NTP64ExtensionID == 0 || rr.firstSenderReportReceived {
 		return
 	}

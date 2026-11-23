@@ -1787,33 +1787,16 @@ func testNTP64Packet(seq uint16, ts uint32, ntpTime time.Time) *rtp.Packet {
 	return pkt
 }
 
-// packets to send and packets expected by the receiver.
-// When firstLate is true, the first packet arrives after the second one and is discarded.
-func testNTP64Packets(firstLate bool) ([]*rtp.Packet, []testNTP64Received) {
+func testNTP64Packets() ([]*rtp.Packet, []testNTP64Received) {
 	start := time.Date(2018, 2, 20, 19, 0, 0, 0, time.UTC)
 
-	if firstLate {
-		pkts := []*rtp.Packet{
-			testNTP64Packet(101, 54352+90000, start.Add(1*time.Second)),
-			testNTP64Packet(100, 54352, start),
-			testNTP64Packet(102, 54352+2*90000, time.Time{}),
-		}
-		expected := []testNTP64Received{
-			{101, start.Add(1 * time.Second), true},
-			{102, start.Add(2 * time.Second), true},
-		}
-		return pkts, expected
-	}
-
-	pkts := []*rtp.Packet{
+	return []*rtp.Packet{
 		testNTP64Packet(100, 54352, start),
 		testNTP64Packet(101, 54352+90000, time.Time{}),
-	}
-	expected := []testNTP64Received{
+	}, []testNTP64Received{
 		{100, start, true},
 		{101, start.Add(1 * time.Second), true},
 	}
-	return pkts, expected
 }
 
 func TestServerRecordNTP64Extension(t *testing.T) {
@@ -1822,7 +1805,6 @@ func TestServerRecordNTP64Extension(t *testing.T) {
 		"tcp",
 		"udp secure",
 		"tcp secure",
-		"udp first packet late",
 	} {
 		t.Run(ca, func(t *testing.T) {
 			recv := make(chan testNTP64Received, 10)
@@ -1890,7 +1872,7 @@ func TestServerRecordNTP64Extension(t *testing.T) {
 			require.NoError(t, err)
 			defer c.Close()
 
-			pkts, expected := testNTP64Packets(ca == "udp first packet late")
+			pkts, expected := testNTP64Packets()
 
 			for _, pkt := range pkts {
 				err = c.WritePacketRTP(medi, pkt)

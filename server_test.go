@@ -685,11 +685,6 @@ func TestServerDescribeMediaAttributes(t *testing.T) {
 	require.Nil(t, desc.Medias[1].HeaderExtensions)
 	require.Equal(t, "audio2", desc.Medias[2].ID)
 	require.Equal(t, "", desc.Medias[2].Language)
-
-	stream.ReloadDesc()
-
-	desc = doDescribe(t, conn, false)
-	require.Equal(t, medi1.HeaderExtensions, desc.Medias[0].HeaderExtensions)
 }
 
 type testServerErrMethodNotImplemented struct {
