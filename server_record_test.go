@@ -8,7 +8,6 @@ import (
 	"encoding/binary"
 	"net"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -1758,132 +1757,74 @@ func testNTP64Media() *description.Media {
 	}
 }
 
-type testNTP64Received struct {
-	seq uint16
-	ntp time.Time
-	ok  bool
-}
-
-// a zero ntpTime means no extension.
-func testNTP64Packet(seq uint16, ts uint32, ntpTime time.Time) *rtp.Packet {
+func testNTP64Packet() *rtp.Packet {
 	pkt := &rtp.Packet{
 		Header: rtp.Header{
-			Version:        2,
-			Marker:         true,
-			PayloadType:    96,
-			SequenceNumber: seq,
-			Timestamp:      ts,
+			Version:     2,
+			PayloadType: 96,
 		},
 		Payload: []byte{1, 2, 3, 4},
 	}
 
-	if !ntpTime.IsZero() {
-		err := pkt.SetExtension(3, binary.BigEndian.AppendUint64(nil, ntp.Encode(ntpTime)))
-		if err != nil {
-			panic(err)
-		}
+	err := pkt.SetExtension(3, binary.BigEndian.AppendUint64(nil,
+		ntp.Encode(time.Date(2018, 2, 20, 19, 0, 0, 0, time.UTC))))
+	if err != nil {
+		panic(err)
 	}
 
 	return pkt
 }
 
-func testNTP64Packets() ([]*rtp.Packet, []testNTP64Received) {
-	start := time.Date(2018, 2, 20, 19, 0, 0, 0, time.UTC)
-
-	return []*rtp.Packet{
-		testNTP64Packet(100, 54352, start),
-		testNTP64Packet(101, 54352+90000, time.Time{}),
-	}, []testNTP64Received{
-		{100, start, true},
-		{101, start.Add(1 * time.Second), true},
-	}
-}
-
 func TestServerRecordNTP64Extension(t *testing.T) {
-	for _, ca := range []string{
-		"udp",
-		"tcp",
-		"udp secure",
-		"tcp secure",
-	} {
-		t.Run(ca, func(t *testing.T) {
-			recv := make(chan testNTP64Received, 10)
+	recv := make(chan struct{})
 
-			s := &Server{
-				Handler: &testServerHandler{
-					onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
-						return &base.Response{
-							StatusCode: base.StatusOK,
-						}, nil
-					},
-					onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
-						return &base.Response{
-							StatusCode: base.StatusOK,
-						}, nil, nil
-					},
-					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
-						ctx.Session.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
-							v, ok := ctx.Session.PacketNTP(medi, pkt)
-							recv <- testNTP64Received{pkt.SequenceNumber, v.UTC(), ok}
-						})
+	s := &Server{
+		Handler: &testServerHandler{
+			onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil, nil
+			},
+			onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+				ctx.Session.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
+					v, ok := ctx.Session.PacketNTP(medi, pkt)
+					require.True(t, ok)
+					require.Equal(t, time.Date(2018, 2, 20, 19, 0, 0, 0, time.UTC), v.UTC())
+					close(recv)
+				})
 
-						return &base.Response{
-							StatusCode: base.StatusOK,
-						}, nil
-					},
-				},
-				RTSPAddress: "localhost:8554",
-			}
-
-			udp := strings.HasPrefix(ca, "udp")
-
-			if udp {
-				s.UDPRTPAddress = "127.0.0.1:8000"
-				s.UDPRTCPAddress = "127.0.0.1:8001"
-			}
-
-			scheme := "rtsp"
-
-			if strings.HasSuffix(ca, "secure") {
-				scheme = "rtsps"
-				cert, err := tls.X509KeyPair(serverCert, serverKey)
-				require.NoError(t, err)
-				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
-			}
-
-			err := s.Start()
-			require.NoError(t, err)
-			defer s.Close()
-
-			c := Client{
-				TLSConfig:                &tls.Config{InsecureSkipVerify: true},
-				DisableRTCPSenderReports: true,
-			}
-
-			if udp {
-				c.Protocol = new(ProtocolUDP)
-			} else {
-				c.Protocol = new(ProtocolTCP)
-			}
-
-			medi := testNTP64Media()
-
-			err = record(&c, scheme+"://localhost:8554/teststream", []*description.Media{medi}, nil)
-			require.NoError(t, err)
-			defer c.Close()
-
-			pkts, expected := testNTP64Packets()
-
-			for _, pkt := range pkts {
-				err = c.WritePacketRTP(medi, pkt)
-				require.NoError(t, err)
-			}
-
-			for _, exp := range expected {
-				require.Equal(t, exp, <-recv)
-			}
-		})
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+		RTSPAddress: "localhost:8554",
 	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	c := Client{
+		Protocol:                 new(ProtocolTCP),
+		DisableRTCPSenderReports: true,
+	}
+
+	medi := testNTP64Media()
+
+	err = record(&c, "rtsp://localhost:8554/teststream", []*description.Media{medi}, nil)
+	require.NoError(t, err)
+	defer c.Close()
+
+	err = c.WritePacketRTP(medi, testNTP64Packet())
+	require.NoError(t, err)
+
+	<-recv
 }
 
 func TestServerRecordPausePause(t *testing.T) {

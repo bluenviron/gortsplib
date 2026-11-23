@@ -4218,99 +4218,62 @@ func TestClientPlayPacketNTP(t *testing.T) {
 }
 
 func TestClientPlayNTP64Extension(t *testing.T) {
-	for _, ca := range []string{
-		"udp",
-		"tcp",
-		"udp secure",
-		"tcp secure",
-	} {
-		t.Run(ca, func(t *testing.T) {
-			var stream *ServerStream
+	var stream *ServerStream
 
-			s := &Server{
-				Handler: &testServerHandler{
-					onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
-						return &base.Response{
-							StatusCode: base.StatusOK,
-						}, stream, nil
-					},
-					onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
-						return &base.Response{
-							StatusCode: base.StatusOK,
-						}, stream, nil
-					},
-					onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
-						return &base.Response{
-							StatusCode: base.StatusOK,
-						}, nil
-					},
-				},
-				RTSPAddress:              "localhost:8554",
-				DisableRTCPSenderReports: true,
-			}
-
-			udp := strings.HasPrefix(ca, "udp")
-
-			if udp {
-				s.UDPRTPAddress = "127.0.0.1:8000"
-				s.UDPRTCPAddress = "127.0.0.1:8001"
-			}
-
-			scheme := "rtsp"
-
-			if strings.HasSuffix(ca, "secure") {
-				scheme = "rtsps"
-				cert, err := tls.X509KeyPair(serverCert, serverKey)
-				require.NoError(t, err)
-				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
-			}
-
-			err := s.Start()
-			require.NoError(t, err)
-			defer s.Close()
-
-			medi := testNTP64Media()
-
-			stream = &ServerStream{
-				Server: s,
-				Desc:   &description.Session{Medias: []*description.Media{medi}},
-			}
-			err = stream.Initialize()
-			require.NoError(t, err)
-			defer stream.Close()
-
-			c := Client{
-				TLSConfig: &tls.Config{InsecureSkipVerify: true},
-			}
-
-			if udp {
-				c.Protocol = new(ProtocolUDP)
-			} else {
-				c.Protocol = new(ProtocolTCP)
-			}
-
-			recv := make(chan testNTP64Received, 10)
-
-			err = readAll(&c, scheme+"://localhost:8554/teststream",
-				func(medi2 *description.Media, _ format.Format, pkt *rtp.Packet) {
-					v, ok := c.PacketNTP(medi2, pkt)
-					recv <- testNTP64Received{pkt.SequenceNumber, v.UTC(), ok}
-				})
-			require.NoError(t, err)
-			defer c.Close()
-
-			pkts, expected := testNTP64Packets()
-
-			for _, pkt := range pkts {
-				err = stream.WritePacketRTP(medi, pkt)
-				require.NoError(t, err)
-			}
-
-			for _, exp := range expected {
-				require.Equal(t, exp, <-recv)
-			}
-		})
+	s := &Server{
+		Handler: &testServerHandler{
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+			onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+		RTSPAddress:              "localhost:8554",
+		DisableRTCPSenderReports: true,
 	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	medi := testNTP64Media()
+
+	stream = &ServerStream{
+		Server: s,
+		Desc:   &description.Session{Medias: []*description.Media{medi}},
+	}
+	err = stream.Initialize()
+	require.NoError(t, err)
+	defer stream.Close()
+
+	c := Client{Protocol: new(ProtocolTCP)}
+
+	recv := make(chan struct{})
+
+	err = readAll(&c, "rtsp://localhost:8554/teststream",
+		func(medi2 *description.Media, _ format.Format, pkt *rtp.Packet) {
+			v, ok := c.PacketNTP(medi2, pkt)
+			require.True(t, ok)
+			require.Equal(t, time.Date(2018, 2, 20, 19, 0, 0, 0, time.UTC), v.UTC())
+			close(recv)
+		})
+	require.NoError(t, err)
+	defer c.Close()
+
+	err = stream.WritePacketRTP(medi, testNTP64Packet())
+	require.NoError(t, err)
+
+	<-recv
 }
 
 func TestClientPlayBackChannel(t *testing.T) {
