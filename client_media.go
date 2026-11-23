@@ -151,6 +151,7 @@ type clientMedia struct {
 	bytesReceived          atomic.Uint64
 	bytesSent              atomic.Uint64
 	rtpPacketsInError      atomic.Uint64
+	rtpPacketsUnknownPT    atomic.Uint64
 	rtcpPacketsReceived    atomic.Uint64
 	rtcpPacketsSent        atomic.Uint64
 	rtcpPacketsInError     atomic.Uint64
@@ -228,12 +229,13 @@ func (cm *clientMedia) stop() {
 
 func (cm *clientMedia) stats() SessionStatsMedia { //nolint:dupl
 	return SessionStatsMedia{
-		InboundBytes:              cm.bytesReceived.Load(),
-		InboundRTPPacketsInError:  cm.rtpPacketsInError.Load(),
-		InboundRTCPPackets:        cm.rtcpPacketsReceived.Load(),
-		InboundRTCPPacketsInError: cm.rtcpPacketsInError.Load(),
-		OutboundBytes:             cm.bytesSent.Load(),
-		OutboundRTCPPackets:       cm.rtcpPacketsSent.Load(),
+		InboundBytes:                        cm.bytesReceived.Load(),
+		InboundRTPPacketsInError:            cm.rtpPacketsInError.Load(),
+		InboundRTPPacketsUnknownPayloadType: cm.rtpPacketsUnknownPT.Load(),
+		InboundRTCPPackets:                  cm.rtcpPacketsReceived.Load(),
+		InboundRTCPPacketsInError:           cm.rtcpPacketsInError.Load(),
+		OutboundBytes:                       cm.bytesSent.Load(),
+		OutboundRTCPPackets:                 cm.rtcpPacketsSent.Load(),
 		Formats: func() map[format.Format]SessionStatsFormat {
 			ret := make(map[format.Format]SessionStatsFormat, len(cm.formats))
 			for _, fo := range cm.formats {
@@ -308,6 +310,8 @@ func (cm *clientMedia) readPacketRTP(payload []byte, now time.Time) bool {
 
 	forma, ok := cm.formats[header.PayloadType]
 	if !ok {
+		// also counted in InboundRTPPacketsInError
+		cm.rtpPacketsUnknownPT.Add(1)
 		cm.onPacketRTPDecodeError(liberrors.ErrClientRTPPacketUnknownPayloadType{PayloadType: header.PayloadType})
 		return false
 	}
