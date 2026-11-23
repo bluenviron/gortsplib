@@ -53,6 +53,7 @@ func (cf *clientFormat) initialize() {
 			LocalSSRC:            cf.localSSRC,
 			UnrealiableTransport: (cf.cm.udpRTPListener != nil),
 			Period:               cf.cm.c.receiverReportPeriod,
+			NTP64ExtensionID:     ntp64ExtensionID(cf.cm.media),
 			TimeNow:              cf.cm.c.timeNow,
 			WritePacketRTCP: func(pkt rtcp.Packet) {
 				if cf.cm.udpRTPListener != nil && cf.cm.udpRTCPListener.writeAddr != nil {

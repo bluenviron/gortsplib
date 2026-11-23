@@ -271,6 +271,9 @@ var casesSession = []struct {
 			"m=audio 0 RTP/AVP 111 103 104 9 102 0 8 106 105 13 110 112 113 126\r\n" +
 			"a=mid:audio\r\n" +
 			"a=control\r\n" +
+			"a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level\r\n" +
+			"a=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n" +
+			"a=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\n" +
 			"a=rtpmap:111 opus/48000/2\r\n" +
 			"a=fmtp:111 sprop-stereo=0\r\n" +
 			"a=rtpmap:103 ISAC/16000\r\n" +
@@ -289,6 +292,14 @@ var casesSession = []struct {
 			"m=video 0 RTP/AVP 96 97 98 99 100 101 127 124 125\r\n" +
 			"a=mid:video\r\n" +
 			"a=control\r\n" +
+			"a=extmap:14 urn:ietf:params:rtp-hdrext:toffset\r\n" +
+			"a=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n" +
+			"a=extmap:13 urn:3gpp:video-orientation\r\n" +
+			"a=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\n" +
+			"a=extmap:5 http://www.webrtc.org/experiments/rtp-hdrext/playout-delay\r\n" +
+			"a=extmap:6 http://www.webrtc.org/experiments/rtp-hdrext/video-content-type\r\n" +
+			"a=extmap:7 http://www.webrtc.org/experiments/rtp-hdrext/video-timing\r\n" +
+			"a=extmap:8 http://www.webrtc.org/experiments/rtp-hdrext/color-space\r\n" +
 			"a=rtpmap:96 VP8/90000\r\n" +
 			"a=rtpmap:97 rtx/90000\r\n" +
 			"a=fmtp:97 apt=96\r\n" +
@@ -308,6 +319,11 @@ var casesSession = []struct {
 				{
 					ID:   "audio",
 					Type: description.MediaTypeAudio,
+					HeaderExtensions: []description.HeaderExtension{
+						{ID: 1, URI: "urn:ietf:params:rtp-hdrext:ssrc-audio-level"},
+						{ID: 2, URI: "http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time"},
+						{ID: 3, URI: "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"},
+					},
 					Formats: []format.Format{
 						&format.Opus{
 							PayloadTyp:   111,
@@ -381,6 +397,16 @@ var casesSession = []struct {
 				{
 					ID:   "video",
 					Type: description.MediaTypeVideo,
+					HeaderExtensions: []description.HeaderExtension{
+						{ID: 14, URI: "urn:ietf:params:rtp-hdrext:toffset"},
+						{ID: 2, URI: "http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time"},
+						{ID: 13, URI: "urn:3gpp:video-orientation"},
+						{ID: 3, URI: "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"},
+						{ID: 5, URI: "http://www.webrtc.org/experiments/rtp-hdrext/playout-delay"},
+						{ID: 6, URI: "http://www.webrtc.org/experiments/rtp-hdrext/video-content-type"},
+						{ID: 7, URI: "http://www.webrtc.org/experiments/rtp-hdrext/video-timing"},
+						{ID: 8, URI: "http://www.webrtc.org/experiments/rtp-hdrext/color-space"},
+					},
 					Formats: []format.Format{
 						&format.VP8{
 							PayloadTyp: 96,

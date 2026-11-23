@@ -1,6 +1,7 @@
 package rtpreceiver_test
 
 import (
+	"encoding/binary"
 	"testing"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 
+	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
 	"github.com/bluenviron/gortsplib/v5/pkg/rtpreceiver"
 )
 
@@ -1116,4 +1118,373 @@ func TestUnrealiableCustomBufferSize(t *testing.T) {
 		TotalReceived:      12,
 		TotalLost:          130,
 	}, stats)
+}
+
+func ntp64Value(t time.Time) []byte {
+	return binary.BigEndian.AppendUint64(nil, ntp.Encode(t))
+}
+
+// marshal and unmarshal the packet in order to test parsing of the extension.
+func testNTP64Packet(t *testing.T, seq uint16, ts uint32, profile uint16, id uint8, ext []byte) *rtp.Packet {
+	t.Helper()
+
+	pkt := rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: seq,
+			Timestamp:      ts,
+			SSRC:           0xba9da416,
+		},
+		Payload: []byte{1, 2},
+	}
+
+	if ext != nil {
+		pkt.Extension = true
+		pkt.ExtensionProfile = profile
+		err := pkt.SetExtension(id, ext)
+		require.NoError(t, err)
+	}
+
+	byts, err := pkt.Marshal()
+	require.NoError(t, err)
+
+	var out rtp.Packet
+	err = out.Unmarshal(byts)
+	require.NoError(t, err)
+
+	return &out
+}
+
+func TestNTP64Extension(t *testing.T) {
+	for _, ca := range []struct {
+		name    string
+		profile uint16
+		id      uint8
+	}{
+		{
+			"one-byte header",
+			rtp.ExtensionProfileOneByte,
+			3,
+		},
+		{
+			"two-byte header",
+			rtp.ExtensionProfileTwoByte,
+			200,
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			pktGenerated := make(chan rtcp.Packet)
+
+			rr := &rtpreceiver.Receiver{
+				ClockRate:        90000,
+				LocalSSRC:        0x65f83afb,
+				Period:           500 * time.Millisecond,
+				NTP64ExtensionID: ca.id,
+				TimeNow: func() time.Time {
+					return time.Date(2008, 5, 20, 22, 15, 22, 0, time.UTC)
+				},
+				WritePacketRTCP: func(pkt rtcp.Packet) {
+					pktGenerated <- pkt
+				},
+			}
+			err := rr.Initialize()
+			require.NoError(t, err)
+			defer rr.Close()
+
+			_, ok := rr.PacketNTP(0xafb45733)
+			require.False(t, ok)
+
+			pkts, _ := rr.ProcessPacket2(
+				testNTP64Packet(t, 945, 0xafb45733, ca.profile, ca.id,
+					ntp64Value(time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC))),
+				time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC),
+				true)
+			require.Len(t, pkts, 1)
+
+			v, ok := rr.PacketNTP(0xafb45733)
+			require.True(t, ok)
+			require.Equal(t, time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC), v.UTC())
+
+			stats := rr.Stats()
+			require.Equal(t, time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC), stats.LastNTP.UTC())
+
+			// packets without the extension keep the mapping
+			rr.ProcessPacket2(
+				testNTP64Packet(t, 946, 0xafb45733+90000, 0, 0, nil),
+				time.Date(2008, 5, 20, 22, 15, 21, 0, time.UTC),
+				true)
+
+			v, ok = rr.PacketNTP(0xafb45733 + 90000)
+			require.True(t, ok)
+			require.Equal(t, time.Date(2008, 5, 20, 22, 15, 21, 0, time.UTC), v.UTC())
+
+			stats = rr.Stats()
+			require.Equal(t, time.Date(2008, 5, 20, 22, 15, 21, 0, time.UTC), stats.LastNTP.UTC())
+
+			// the extension is not a sender report
+			pkt := <-pktGenerated
+			require.Equal(t, &rtcp.ReceiverReport{
+				SSRC: 0x65f83afb,
+				Reports: []rtcp.ReceptionReport{
+					{
+						SSRC:               0xba9da416,
+						LastSequenceNumber: 946,
+					},
+				},
+			}, pkt)
+		})
+	}
+}
+
+func TestNTP64ExtensionIgnored(t *testing.T) {
+	for _, ca := range []struct {
+		name    string
+		id      uint8
+		profile uint16
+		extID   uint8
+		ext     []byte
+	}{
+		{
+			"disabled",
+			0,
+			rtp.ExtensionProfileOneByte,
+			1,
+			ntp64Value(time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC)),
+		},
+		{
+			"different id",
+			1,
+			rtp.ExtensionProfileOneByte,
+			2,
+			ntp64Value(time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC)),
+		},
+		{
+			"wrong length",
+			1,
+			rtp.ExtensionProfileOneByte,
+			1,
+			ntp64Value(time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC))[:4],
+		},
+		{
+			"zero",
+			1,
+			rtp.ExtensionProfileOneByte,
+			1,
+			make([]byte, 8),
+		},
+		{
+			"non-RFC 8285 profile",
+			1,
+			0xABAC,
+			0,
+			// would be ID 1 with 8 bytes in a one-byte header
+			append(append([]byte{0x17}, ntp64Value(time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC))...), 0, 0, 0),
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			rr := &rtpreceiver.Receiver{
+				ClockRate:        90000,
+				LocalSSRC:        0x65f83afb,
+				Period:           500 * time.Millisecond,
+				NTP64ExtensionID: ca.id,
+				WritePacketRTCP:  func(rtcp.Packet) {},
+			}
+			err := rr.Initialize()
+			require.NoError(t, err)
+			defer rr.Close()
+
+			rr.ProcessPacket2(
+				testNTP64Packet(t, 945, 0xafb45733, ca.profile, ca.extID, ca.ext),
+				time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC),
+				true)
+
+			_, ok := rr.PacketNTP(0xafb45733)
+			require.False(t, ok)
+
+			stats := rr.Stats()
+			require.Equal(t, time.Time{}, stats.LastNTP)
+		})
+	}
+}
+
+func TestNTP64ExtensionAndSenderReport(t *testing.T) {
+	pktGenerated := make(chan rtcp.Packet)
+
+	rr := &rtpreceiver.Receiver{
+		ClockRate:        90000,
+		LocalSSRC:        0x65f83afb,
+		Period:           500 * time.Millisecond,
+		NTP64ExtensionID: 1,
+		TimeNow: func() time.Time {
+			return time.Date(2008, 5, 20, 22, 15, 22, 0, time.UTC)
+		},
+		WritePacketRTCP: func(pkt rtcp.Packet) {
+			pktGenerated <- pkt
+		},
+	}
+	err := rr.Initialize()
+	require.NoError(t, err)
+	defer rr.Close()
+
+	rr.ProcessPacket2(
+		testNTP64Packet(t, 945, 0xafb45733, rtp.ExtensionProfileOneByte, 1,
+			ntp64Value(time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC))),
+		time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC),
+		true)
+
+	v, ok := rr.PacketNTP(0xafb45733)
+	require.True(t, ok)
+	require.Equal(t, time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC), v.UTC())
+
+	// sender reports override the extension
+	srNTP := ntp.Encode(time.Date(2008, 5, 20, 22, 15, 30, 0, time.UTC))
+	rr.ProcessSenderReport(&rtcp.SenderReport{
+		SSRC:    0xba9da416,
+		NTPTime: srNTP,
+		RTPTime: 0xafb45733,
+	}, time.Date(2008, 5, 20, 22, 15, 21, 0, time.UTC))
+
+	v, ok = rr.PacketNTP(0xafb45733)
+	require.True(t, ok)
+	require.Equal(t, time.Date(2008, 5, 20, 22, 15, 30, 0, time.UTC), v.UTC())
+
+	// once a sender report has been received, the extension is ignored
+	rr.ProcessPacket2(
+		testNTP64Packet(t, 946, 0xafb45733+90000, rtp.ExtensionProfileOneByte, 1,
+			ntp64Value(time.Date(2008, 5, 20, 22, 15, 40, 0, time.UTC))),
+		time.Date(2008, 5, 20, 22, 15, 21, 0, time.UTC),
+		true)
+
+	v, ok = rr.PacketNTP(0xafb45733 + 90000)
+	require.True(t, ok)
+	require.Equal(t, time.Date(2008, 5, 20, 22, 15, 31, 0, time.UTC), v.UTC())
+
+	pkt := <-pktGenerated
+	require.Equal(t, &rtcp.ReceiverReport{
+		SSRC: 0x65f83afb,
+		Reports: []rtcp.ReceptionReport{
+			{
+				SSRC:               0xba9da416,
+				LastSequenceNumber: 946,
+				LastSenderReport:   uint32(srNTP >> 16),
+				Delay:              65536,
+			},
+		},
+	}, pkt)
+}
+
+func TestNTP64ExtensionRefresh(t *testing.T) {
+	rr := &rtpreceiver.Receiver{
+		ClockRate:        90000,
+		LocalSSRC:        0x65f83afb,
+		Period:           500 * time.Millisecond,
+		NTP64ExtensionID: 1,
+		WritePacketRTCP:  func(rtcp.Packet) {},
+	}
+	err := rr.Initialize()
+	require.NoError(t, err)
+	defer rr.Close()
+
+	rr.ProcessPacket2(
+		testNTP64Packet(t, 945, 0, rtp.ExtensionProfileOneByte, 1,
+			ntp64Value(time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC))),
+		time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC),
+		true)
+
+	// more than 2^31 ticks after the first extension
+	rr.ProcessPacket2(
+		testNTP64Packet(t, 946, 30000*90000, rtp.ExtensionProfileOneByte, 1,
+			ntp64Value(time.Date(2008, 5, 21, 6, 35, 20, 0, time.UTC))),
+		time.Date(2008, 5, 21, 6, 35, 20, 0, time.UTC),
+		true)
+
+	v, ok := rr.PacketNTP(30001 * 90000)
+	require.True(t, ok)
+	require.Equal(t, time.Date(2008, 5, 21, 6, 35, 21, 0, time.UTC), v.UTC())
+}
+
+func TestNTP64ExtensionReorder(t *testing.T) {
+	rr := &rtpreceiver.Receiver{
+		ClockRate:            90000,
+		LocalSSRC:            0x65f83afb,
+		UnrealiableTransport: true,
+		Period:               500 * time.Millisecond,
+		NTP64ExtensionID:     1,
+		WritePacketRTCP:      func(rtcp.Packet) {},
+	}
+	err := rr.Initialize()
+	require.NoError(t, err)
+	defer rr.Close()
+
+	pkts, _ := rr.ProcessPacket2(
+		testNTP64Packet(t, 945, 0xafb45733, 0, 0, nil),
+		time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC),
+		true)
+	require.Len(t, pkts, 1)
+
+	// buffered packets are not used until they are returned
+	pkts, _ = rr.ProcessPacket2(
+		testNTP64Packet(t, 947, 0xafb45733+2*3000, rtp.ExtensionProfileOneByte, 1,
+			ntp64Value(time.Date(2008, 5, 20, 22, 15, 21, 0, time.UTC))),
+		time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC),
+		true)
+	require.Len(t, pkts, 0)
+
+	_, ok := rr.PacketNTP(0xafb45733 + 2*3000)
+	require.False(t, ok)
+
+	pkts, _ = rr.ProcessPacket2(
+		testNTP64Packet(t, 946, 0xafb45733+3000, 0, 0, nil),
+		time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC),
+		true)
+	require.Len(t, pkts, 2)
+
+	v, ok := rr.PacketNTP(0xafb45733 + 2*3000)
+	require.True(t, ok)
+	require.Equal(t, time.Date(2008, 5, 20, 22, 15, 21, 0, time.UTC), v.UTC())
+}
+
+func TestNTP64ExtensionConcurrentSenderReports(t *testing.T) {
+	rr := &rtpreceiver.Receiver{
+		ClockRate:        90000,
+		LocalSSRC:        0x65f83afb,
+		Period:           500 * time.Millisecond,
+		NTP64ExtensionID: 1,
+		WritePacketRTCP:  func(rtcp.Packet) {},
+	}
+	err := rr.Initialize()
+	require.NoError(t, err)
+	defer rr.Close()
+
+	start := time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC)
+
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		for range 100 {
+			rr.ProcessSenderReport(&rtcp.SenderReport{
+				SSRC:    0xba9da416,
+				NTPTime: ntp.Encode(start),
+				RTPTime: 0,
+			}, start)
+			rr.Stats()
+		}
+	}()
+
+	for i := range 100 {
+		rr.ProcessPacket2(
+			testNTP64Packet(t, uint16(i), uint32(i*3000), rtp.ExtensionProfileOneByte, 1,
+				ntp64Value(start.Add(time.Duration(i)*time.Second/30))),
+			start.Add(time.Duration(i)*time.Second/30),
+			true)
+
+		_, ok := rr.PacketNTP(uint32(i * 3000))
+		require.True(t, ok)
+	}
+
+	<-done
 }

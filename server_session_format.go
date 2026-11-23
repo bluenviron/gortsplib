@@ -45,6 +45,7 @@ func (ssf *serverSessionFormat) initialize() {
 			LocalSSRC:            ssf.localSSRC,
 			UnrealiableTransport: udp,
 			Period:               ssf.ssm.ss.s.receiverReportPeriod,
+			NTP64ExtensionID:     ntp64ExtensionID(ssf.ssm.media),
 			TimeNow:              ssf.ssm.ss.s.timeNow,
 			WritePacketRTCP: func(pkt rtcp.Packet) {
 				if udp {

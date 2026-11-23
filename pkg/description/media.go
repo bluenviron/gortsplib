@@ -58,6 +58,44 @@ func isAlphaNumeric(v string) bool {
 	return true
 }
 
+// parses a=extmap:<id>[/<direction>] <uri> [<attributes>] (RFC 8285).
+// Invalid entries are skipped instead of returning an error, since they do not prevent reading the stream.
+// In case of duplicate IDs or URIs, the first entry wins.
+func unmarshalHeaderExtensions(attributes []sdp.Attribute) []HeaderExtension {
+	var ret []HeaderExtension
+
+	for _, attr := range attributes {
+		if attr.Key != "extmap" {
+			continue
+		}
+
+		fields := strings.Fields(attr.Value)
+		if len(fields) < 2 {
+			continue
+		}
+
+		idStr, _, _ := strings.Cut(fields[0], "/")
+
+		id, err := strconv.ParseUint(idStr, 10, 8)
+		if err != nil || id == 0 {
+			continue
+		}
+
+		if slices.ContainsFunc(ret, func(ext HeaderExtension) bool {
+			return ext.ID == uint8(id) || ext.URI == fields[1]
+		}) {
+			continue
+		}
+
+		ret = append(ret, HeaderExtension{
+			ID:  uint8(id),
+			URI: fields[1],
+		})
+	}
+
+	return ret
+}
+
 // MediaType is the type of a media stream.
 type MediaType string
 
@@ -67,6 +105,19 @@ const (
 	MediaTypeAudio       MediaType = "audio"
 	MediaTypeApplication MediaType = "application"
 )
+
+// HeaderExtension is a RTP header extension (RFC 8285).
+type HeaderExtension struct {
+	// Local identifier.
+	ID uint8
+
+	// URI that identifies the extension.
+	URI string
+}
+
+// NTP64ExtensionURI is the URI of the RTP header extension
+// that carries the 64-bit NTP timestamp of a packet (RFC 6051).
+const NTP64ExtensionURI = "urn:ietf:params:rtp-hdrext:ntp-64"
 
 // Media is a media stream.
 // It contains one or more formats.
@@ -95,6 +146,9 @@ type Media struct {
 
 	// Control attribute.
 	Control string
+
+	// RTP header extensions (extmap attributes).
+	HeaderExtensions []HeaderExtension
 
 	// Formats contained into the media.
 	Formats []format.Format
@@ -145,6 +199,8 @@ func (m *Media) Unmarshal(md *sdp.MediaDescription) error {
 	}
 
 	m.Control = getAttribute(md.Attributes, "control")
+
+	m.HeaderExtensions = unmarshalHeaderExtensions(md.Attributes)
 
 	m.Formats = nil
 
@@ -217,6 +273,13 @@ func (m Media) Marshal() (*sdp.MediaDescription, error) {
 		Key:   "control",
 		Value: m.Control,
 	})
+
+	for _, ext := range m.HeaderExtensions {
+		md.Attributes = append(md.Attributes, sdp.Attribute{
+			Key:   "extmap",
+			Value: strconv.FormatUint(uint64(ext.ID), 10) + " " + ext.URI,
+		})
+	}
 
 	for _, forma := range m.Formats {
 		typ := strconv.FormatUint(uint64(forma.PayloadType()), 10)

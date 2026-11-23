@@ -2,6 +2,7 @@
 package rtpreceiver
 
 import (
+	"encoding/binary"
 	"fmt"
 	"sync"
 	"time"
@@ -36,6 +37,11 @@ type Receiver struct {
 	// Period of RTCP receiver reports.
 	Period time.Duration
 
+	// ID of the RTP header extension that carries the 64-bit NTP timestamp (RFC 6051).
+	// When set, the extension is used to compute NTP timestamps until the first RTCP sender report.
+	// It defaults to 0 (disabled).
+	NTP64ExtensionID uint8
+
 	// time.Now function.
 	TimeNow func() time.Time
 
@@ -64,8 +70,12 @@ type Receiver struct {
 	// data from RTCP sender reports
 	firstSenderReportReceived  bool
 	lastSenderReportTimeNTP    uint64
-	lastSenderReportTimeRTP    uint32
 	lastSenderReportTimeSystem time.Time
+
+	// NTP-RTP mapping, from RTCP sender reports or NTP-64 header extensions
+	ntpMappingValid bool
+	ntpMappingNTP   uint64
+	ntpMappingRTP   uint32
 
 	terminate chan struct{}
 	done      chan struct{}
@@ -206,6 +216,8 @@ func (rr *Receiver) ProcessPacket2(
 			rr.lastSystem = system
 		}
 
+		rr.processNTP64Extension(pkt)
+
 		return []*rtp.Packet{pkt}, 0
 	}
 
@@ -249,9 +261,32 @@ func (rr *Receiver) ProcessPacket2(
 			rr.lastRTP = pkt.Timestamp
 			rr.lastSystem = system
 		}
+
+		rr.processNTP64Extension(pkt)
 	}
 
 	return pkts, lost
+}
+
+func (rr *Receiver) processNTP64Extension(pkt *rtp.Packet) {
+	// once a sender report has been received, sender reports are authoritative.
+	if rr.NTP64ExtensionID == 0 || rr.firstSenderReportReceived {
+		return
+	}
+
+	ext := pkt.GetExtension(rr.NTP64ExtensionID)
+	if len(ext) != 8 {
+		return
+	}
+
+	v := binary.BigEndian.Uint64(ext)
+	if v == 0 {
+		return
+	}
+
+	rr.ntpMappingValid = true
+	rr.ntpMappingNTP = v
+	rr.ntpMappingRTP = pkt.Timestamp
 }
 
 func (rr *Receiver) reorder(pkt *rtp.Packet) ([]*rtp.Packet, uint64) {
@@ -356,19 +391,22 @@ func (rr *Receiver) ProcessSenderReport(sr *rtcp.SenderReport, system time.Time)
 
 	rr.firstSenderReportReceived = true
 	rr.lastSenderReportTimeNTP = sr.NTPTime
-	rr.lastSenderReportTimeRTP = sr.RTPTime
 	rr.lastSenderReportTimeSystem = system
+
+	rr.ntpMappingValid = true
+	rr.ntpMappingNTP = sr.NTPTime
+	rr.ntpMappingRTP = sr.RTPTime
 }
 
 func (rr *Receiver) packetNTPUnsafe(ts uint32) (time.Time, bool) {
-	if !rr.firstSenderReportReceived || rr.ClockRate == 0 {
+	if !rr.ntpMappingValid || rr.ClockRate == 0 {
 		return time.Time{}, false
 	}
 
-	timeDiff := int32(ts - rr.lastSenderReportTimeRTP)
+	timeDiff := int32(ts - rr.ntpMappingRTP)
 	timeDiffGo := (time.Duration(timeDiff) * time.Second) / time.Duration(rr.ClockRate)
 
-	return ntp.Decode(rr.lastSenderReportTimeNTP).Add(timeDiffGo), true
+	return ntp.Decode(rr.ntpMappingNTP).Add(timeDiffGo), true
 }
 
 // PacketNTP returns the NTP (absolute timestamp) of the packet.

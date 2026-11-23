@@ -625,7 +625,11 @@ func TestServerDescribeMediaAttributes(t *testing.T) {
 		Type:     description.MediaTypeVideo,
 		ID:       "video1",
 		Language: "en",
-		Formats:  testH264Media.Formats,
+		HeaderExtensions: []description.HeaderExtension{
+			{ID: 3, URI: "urn:ietf:params:rtp-hdrext:ntp-64"},
+			{ID: 200, URI: "urn:example:two-byte"},
+		},
+		Formats: testH264Media.Formats,
 	}
 
 	medi2 := &description.Media{
@@ -675,10 +679,17 @@ func TestServerDescribeMediaAttributes(t *testing.T) {
 	require.Len(t, desc.Medias, 3)
 	require.Equal(t, "video1", desc.Medias[0].ID)
 	require.Equal(t, "en", desc.Medias[0].Language)
+	require.Equal(t, medi1.HeaderExtensions, desc.Medias[0].HeaderExtensions)
 	require.Equal(t, "audio1", desc.Medias[1].ID)
 	require.Equal(t, "it", desc.Medias[1].Language)
+	require.Nil(t, desc.Medias[1].HeaderExtensions)
 	require.Equal(t, "audio2", desc.Medias[2].ID)
 	require.Equal(t, "", desc.Medias[2].Language)
+
+	stream.ReloadDesc()
+
+	desc = doDescribe(t, conn, false)
+	require.Equal(t, medi1.HeaderExtensions, desc.Medias[0].HeaderExtensions)
 }
 
 type testServerErrMethodNotImplemented struct {

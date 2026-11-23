@@ -237,3 +237,50 @@ func TestMediaLanguage(t *testing.T) {
 		require.NotEqual(t, "lang", attr.Key)
 	}
 }
+
+func TestMediaHeaderExtensions(t *testing.T) {
+	sd, err := sdpunmarshaler.Unmarshal([]byte("v=0\r\n" +
+		"s= \r\n" +
+		"m=video 0 RTP/AVP 96\r\n" +
+		"a=extmap:1/recvonly urn:ietf:params:rtp-hdrext:ntp-64\r\n" +
+		"a=extmap:200 urn:example:two-byte attr1 attr2\r\n" +
+		"a=extmap:3 urn:example:unknown\r\n" +
+		"a=extmap:0 urn:example:zero\r\n" +
+		"a=extmap:abc urn:example:non-numeric\r\n" +
+		"a=extmap:256 urn:example:too-big\r\n" +
+		"a=extmap:4\r\n" +
+		"a=extmap:\r\n" +
+		"a=extmap:1 urn:example:duplicate-id\r\n" +
+		"a=extmap:5 urn:ietf:params:rtp-hdrext:ntp-64\r\n" +
+		"a=rtpmap:96 H264/90000\r\n"))
+	require.NoError(t, err)
+
+	var media description.Media
+	err = media.Unmarshal(sd.MediaDescriptions[0])
+	require.NoError(t, err)
+	require.Equal(t, []description.HeaderExtension{
+		{ID: 1, URI: "urn:ietf:params:rtp-hdrext:ntp-64"},
+		{ID: 200, URI: "urn:example:two-byte"},
+		{ID: 3, URI: "urn:example:unknown"},
+	}, media.HeaderExtensions)
+
+	md, err := media.Marshal()
+	require.NoError(t, err)
+
+	var values []string
+	for _, attr := range md.Attributes {
+		if attr.Key == "extmap" {
+			values = append(values, attr.Value)
+		}
+	}
+	require.Equal(t, []string{
+		"1 urn:ietf:params:rtp-hdrext:ntp-64",
+		"200 urn:example:two-byte",
+		"3 urn:example:unknown",
+	}, values)
+
+	var media2 description.Media
+	err = media2.Unmarshal(md)
+	require.NoError(t, err)
+	require.Equal(t, media.HeaderExtensions, media2.HeaderExtensions)
+}
