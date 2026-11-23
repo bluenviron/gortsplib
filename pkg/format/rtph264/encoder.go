@@ -175,6 +175,10 @@ func (e *Encoder) writeFragmented(nalu []byte, marker bool) ([]*rtp.Packet, erro
 
 	ret := make([]*rtp.Packet, packetCount)
 
+	// allocate all packets and payloads at once
+	packets := make([]rtp.Packet, packetCount)
+	buf := make([]byte, 2*packetCount+le)
+
 	nri := (nalu[0] >> 5) & 0x03
 	typ := nalu[0] & 0x1F
 	nalu = nalu[1:] // remove header
@@ -188,13 +192,15 @@ func (e *Encoder) writeFragmented(nalu []byte, marker bool) ([]*rtp.Packet, erro
 			le = len(nalu)
 		}
 
-		data := make([]byte, 2+le)
+		data := buf[: 2+le : 2+le]
+		buf = buf[2+le:]
 		data[0] = (nri << 5) | uint8(h264.NALUTypeFUA)
 		data[1] = (start << 7) | (end << 6) | typ
 		copy(data[2:], nalu)
 		nalu = nalu[le:]
 
-		ret[i] = &rtp.Packet{
+		ret[i] = &packets[i]
+		*ret[i] = rtp.Packet{
 			Header: rtp.Header{
 				Version:        rtpVersion,
 				PayloadType:    e.PayloadType,
