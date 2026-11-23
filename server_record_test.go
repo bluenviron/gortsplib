@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/tls"
+	"encoding/binary"
 	"net"
 	"strconv"
 	"testing"
@@ -1740,6 +1741,87 @@ func TestServerRecordPacketNTP(t *testing.T) {
 		IP:   net.ParseIP("127.0.0.1"),
 		Port: th.ServerPorts[0],
 	})
+	require.NoError(t, err)
+
+	<-recv
+}
+
+func testNTP64Media() *description.Media {
+	return &description.Media{
+		Type: description.MediaTypeVideo,
+		HeaderExtensions: []description.HeaderExtension{{
+			ID:  3,
+			URI: description.NTP64ExtensionURI,
+		}},
+		Formats: testH264Media.Formats,
+	}
+}
+
+func testNTP64Packet() *rtp.Packet {
+	pkt := &rtp.Packet{
+		Header: rtp.Header{
+			Version:     2,
+			PayloadType: 96,
+		},
+		Payload: []byte{1, 2, 3, 4},
+	}
+
+	err := pkt.SetExtension(3, binary.BigEndian.AppendUint64(nil,
+		ntp.Encode(time.Date(2018, 2, 20, 19, 0, 0, 0, time.UTC))))
+	if err != nil {
+		panic(err)
+	}
+
+	return pkt
+}
+
+func TestServerRecordNTP64Extension(t *testing.T) {
+	recv := make(chan struct{})
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil, nil
+			},
+			onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+				ctx.Session.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
+					v, ok := ctx.Session.PacketNTP(medi, pkt)
+					require.True(t, ok)
+					require.Equal(t, time.Date(2018, 2, 20, 19, 0, 0, 0, time.UTC), v.UTC())
+					close(recv)
+				})
+
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+		RTSPAddress: "localhost:8554",
+	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	c := Client{
+		Protocol:                 new(ProtocolTCP),
+		DisableRTCPSenderReports: true,
+	}
+
+	medi := testNTP64Media()
+
+	err = record(&c, "rtsp://localhost:8554/teststream", []*description.Media{medi}, nil)
+	require.NoError(t, err)
+	defer c.Close()
+
+	err = c.WritePacketRTP(medi, testNTP64Packet())
 	require.NoError(t, err)
 
 	<-recv

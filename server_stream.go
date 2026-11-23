@@ -452,10 +452,11 @@ func (st *ServerStream) descForDescribe(
 				IsBackChannel: medi.IsBackChannel,
 				// we have to use trackID=number in order to support clients
 				// like the Grandstream GXV3500.
-				Control:      "trackID=" + strconv.FormatInt(int64(i), 10),
-				Profile:      profile,
-				KeyMgmtMikey: keyMgmtMikey,
-				Formats:      formatsForDesc,
+				Control:          "trackID=" + strconv.FormatInt(int64(i), 10),
+				Profile:          profile,
+				KeyMgmtMikey:     keyMgmtMikey,
+				HeaderExtensions: medi.HeaderExtensions,
+				Formats:          formatsForDesc,
 			})
 		}
 	}

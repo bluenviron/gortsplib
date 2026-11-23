@@ -58,6 +58,38 @@ func isAlphaNumeric(v string) bool {
 	return true
 }
 
+// invalid entries are skipped, since they do not prevent reading the stream.
+func unmarshalHeaderExtensions(attributes []sdp.Attribute) []HeaderExtension {
+	var ret []HeaderExtension
+
+	for _, attr := range attributes {
+		if attr.Key != "extmap" {
+			continue
+		}
+
+		var em sdp.ExtMap
+		err := em.Unmarshal("extmap:" + attr.Value)
+		if err != nil {
+			continue
+		}
+
+		ext := HeaderExtension{
+			ID:  uint8(em.Value),
+			URI: em.URI.String(),
+		}
+
+		if slices.ContainsFunc(ret, func(e HeaderExtension) bool {
+			return e.ID == ext.ID || e.URI == ext.URI
+		}) {
+			continue
+		}
+
+		ret = append(ret, ext)
+	}
+
+	return ret
+}
+
 // MediaType is the type of a media stream.
 type MediaType string
 
@@ -67,6 +99,19 @@ const (
 	MediaTypeAudio       MediaType = "audio"
 	MediaTypeApplication MediaType = "application"
 )
+
+// HeaderExtension is a RTP header extension (RFC 8285).
+type HeaderExtension struct {
+	// Local identifier.
+	ID uint8
+
+	// URI that identifies the extension.
+	URI string
+}
+
+// NTP64ExtensionURI is the URI of the RTP header extension
+// that carries the 64-bit NTP timestamp of a packet (RFC 6051).
+const NTP64ExtensionURI = "urn:ietf:params:rtp-hdrext:ntp-64"
 
 // Media is a media stream.
 // It contains one or more formats.
@@ -95,6 +140,9 @@ type Media struct {
 
 	// Control attribute.
 	Control string
+
+	// RTP header extensions (extmap attributes).
+	HeaderExtensions []HeaderExtension
 
 	// Formats contained into the media.
 	Formats []format.Format
@@ -145,6 +193,8 @@ func (m *Media) Unmarshal(md *sdp.MediaDescription) error {
 	}
 
 	m.Control = getAttribute(md.Attributes, "control")
+
+	m.HeaderExtensions = unmarshalHeaderExtensions(md.Attributes)
 
 	m.Formats = nil
 
@@ -217,6 +267,13 @@ func (m Media) Marshal() (*sdp.MediaDescription, error) {
 		Key:   "control",
 		Value: m.Control,
 	})
+
+	for _, ext := range m.HeaderExtensions {
+		md.Attributes = append(md.Attributes, sdp.Attribute{
+			Key:   "extmap",
+			Value: strconv.FormatUint(uint64(ext.ID), 10) + " " + ext.URI,
+		})
+	}
 
 	for _, forma := range m.Formats {
 		typ := strconv.FormatUint(uint64(forma.PayloadType()), 10)

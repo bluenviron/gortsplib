@@ -8,11 +8,21 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
+	"github.com/bluenviron/gortsplib/v5/pkg/description"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v5/pkg/rtpreceiver"
 	"github.com/bluenviron/gortsplib/v5/pkg/rtpsender"
 )
+
+func ntp64ExtensionID(medi *description.Media) uint8 {
+	for _, ext := range medi.HeaderExtensions {
+		if ext.URI == description.NTP64ExtensionURI {
+			return ext.ID
+		}
+	}
+	return 0
+}
 
 type clientFormat struct {
 	cm          *clientMedia
@@ -53,6 +63,7 @@ func (cf *clientFormat) initialize() {
 			LocalSSRC:            cf.localSSRC,
 			UnrealiableTransport: (cf.cm.udpRTPListener != nil),
 			Period:               cf.cm.c.receiverReportPeriod,
+			NTP64ExtensionID:     ntp64ExtensionID(cf.cm.media),
 			TimeNow:              cf.cm.c.timeNow,
 			WritePacketRTCP: func(pkt rtcp.Packet) {
 				if cf.cm.udpRTPListener != nil && cf.cm.udpRTCPListener.writeAddr != nil {

@@ -237,3 +237,24 @@ func TestMediaLanguage(t *testing.T) {
 		require.NotEqual(t, "lang", attr.Key)
 	}
 }
+
+func TestMediaHeaderExtensions(t *testing.T) {
+	sd, err := sdpunmarshaler.Unmarshal([]byte("v=0\r\n" +
+		"s= \r\n" +
+		"m=video 0 RTP/AVP 96\r\n" +
+		"a=extmap:1/recvonly urn:ietf:params:rtp-hdrext:ntp-64\r\n" +
+		"a=extmap:200 urn:example:two-byte attr1\r\n" +
+		"a=extmap:0 urn:example:invalid\r\n" +
+		"a=extmap:1 urn:example:duplicate-id\r\n" +
+		"a=extmap:5 urn:ietf:params:rtp-hdrext:ntp-64\r\n" +
+		"a=rtpmap:96 H264/90000\r\n"))
+	require.NoError(t, err)
+
+	var media description.Media
+	err = media.Unmarshal(sd.MediaDescriptions[0])
+	require.NoError(t, err)
+	require.Equal(t, []description.HeaderExtension{
+		{ID: 1, URI: "urn:ietf:params:rtp-hdrext:ntp-64"},
+		{ID: 200, URI: "urn:example:two-byte"},
+	}, media.HeaderExtensions)
+}

@@ -1,6 +1,7 @@
 package rtpreceiver_test
 
 import (
+	"encoding/binary"
 	"testing"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 
+	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
 	"github.com/bluenviron/gortsplib/v5/pkg/rtpreceiver"
 )
 
@@ -1116,4 +1118,139 @@ func TestUnrealiableCustomBufferSize(t *testing.T) {
 		TotalReceived:      12,
 		TotalLost:          130,
 	}, stats)
+}
+
+func ntp64Value(t time.Time) []byte {
+	return binary.BigEndian.AppendUint64(nil, ntp.Encode(t))
+}
+
+func testNTP64Packet(seq uint16, ts uint32, ext []byte) *rtp.Packet {
+	pkt := &rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			PayloadType:    96,
+			SequenceNumber: seq,
+			Timestamp:      ts,
+			SSRC:           0xba9da416,
+		},
+	}
+
+	err := pkt.SetExtension(1, ext)
+	if err != nil {
+		panic(err)
+	}
+
+	return pkt
+}
+
+func TestNTP64Extension(t *testing.T) {
+	pktGenerated := make(chan rtcp.Packet)
+
+	rr := &rtpreceiver.Receiver{
+		ClockRate:        90000,
+		LocalSSRC:        0x65f83afb,
+		Period:           500 * time.Millisecond,
+		NTP64ExtensionID: 1,
+		WritePacketRTCP: func(pkt rtcp.Packet) {
+			pktGenerated <- pkt
+		},
+	}
+	err := rr.Initialize()
+	require.NoError(t, err)
+	defer rr.Close()
+
+	start := time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC)
+
+	rr.ProcessPacket2(testNTP64Packet(945, 0, ntp64Value(start)), start, true)
+
+	v, ok := rr.PacketNTP(90000)
+	require.True(t, ok)
+	require.Equal(t, start.Add(time.Second), v.UTC())
+	require.Equal(t, start, rr.Stats().LastNTP.UTC())
+
+	// the extension is not a sender report
+	pkt := <-pktGenerated
+	require.Equal(t, &rtcp.ReceiverReport{
+		SSRC: 0x65f83afb,
+		Reports: []rtcp.ReceptionReport{{
+			SSRC:               0xba9da416,
+			LastSequenceNumber: 945,
+		}},
+	}, pkt)
+}
+
+func TestNTP64ExtensionIgnored(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		id   uint8
+		ext  []byte
+	}{
+		{"disabled", 0, ntp64Value(time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC))},
+		{"wrong length", 1, ntp64Value(time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC))[:4]},
+		{"zero", 1, make([]byte, 8)},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			rr := &rtpreceiver.Receiver{
+				ClockRate:        90000,
+				Period:           500 * time.Millisecond,
+				NTP64ExtensionID: ca.id,
+			}
+			err := rr.Initialize()
+			require.NoError(t, err)
+			defer rr.Close()
+
+			rr.ProcessPacket2(testNTP64Packet(945, 0, ca.ext), time.Time{}, true)
+
+			_, ok := rr.PacketNTP(0)
+			require.False(t, ok)
+		})
+	}
+}
+
+func TestNTP64ExtensionAndSenderReport(t *testing.T) {
+	rr := &rtpreceiver.Receiver{
+		ClockRate:        90000,
+		Period:           500 * time.Millisecond,
+		NTP64ExtensionID: 1,
+	}
+	err := rr.Initialize()
+	require.NoError(t, err)
+	defer rr.Close()
+
+	start := time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC)
+
+	rr.ProcessPacket2(testNTP64Packet(945, 0, ntp64Value(start)), start, true)
+
+	rr.ProcessSenderReport(&rtcp.SenderReport{
+		NTPTime: ntp.Encode(start.Add(10 * time.Second)),
+		RTPTime: 0,
+	}, start)
+
+	rr.ProcessPacket2(testNTP64Packet(946, 90000, ntp64Value(start.Add(20*time.Second))), start, true)
+
+	v, ok := rr.PacketNTP(90000)
+	require.True(t, ok)
+	require.Equal(t, start.Add(11*time.Second), v.UTC())
+}
+
+func TestNTP64ExtensionRefresh(t *testing.T) {
+	rr := &rtpreceiver.Receiver{
+		ClockRate:        90000,
+		Period:           500 * time.Millisecond,
+		NTP64ExtensionID: 1,
+	}
+	err := rr.Initialize()
+	require.NoError(t, err)
+	defer rr.Close()
+
+	start := time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC)
+
+	rr.ProcessPacket2(testNTP64Packet(945, 0, ntp64Value(start)), start, true)
+
+	// more than 2^31 ticks later
+	rr.ProcessPacket2(testNTP64Packet(946, 30000*90000, ntp64Value(start.Add(30000*time.Second))), start, true)
+
+	v, ok := rr.PacketNTP(30001 * 90000)
+	require.True(t, ok)
+	require.Equal(t, start.Add(30001*time.Second), v.UTC())
 }

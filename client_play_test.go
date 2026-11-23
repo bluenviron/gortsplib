@@ -4217,6 +4217,65 @@ func TestClientPlayPacketNTP(t *testing.T) {
 	<-recv
 }
 
+func TestClientPlayNTP64Extension(t *testing.T) {
+	var stream *ServerStream
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+			onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+		RTSPAddress:              "localhost:8554",
+		DisableRTCPSenderReports: true,
+	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	medi := testNTP64Media()
+
+	stream = &ServerStream{
+		Server: s,
+		Desc:   &description.Session{Medias: []*description.Media{medi}},
+	}
+	err = stream.Initialize()
+	require.NoError(t, err)
+	defer stream.Close()
+
+	c := Client{Protocol: new(ProtocolTCP)}
+
+	recv := make(chan struct{})
+
+	err = readAll(&c, "rtsp://localhost:8554/teststream",
+		func(medi2 *description.Media, _ format.Format, pkt *rtp.Packet) {
+			v, ok := c.PacketNTP(medi2, pkt)
+			require.True(t, ok)
+			require.Equal(t, time.Date(2018, 2, 20, 19, 0, 0, 0, time.UTC), v.UTC())
+			close(recv)
+		})
+	require.NoError(t, err)
+	defer c.Close()
+
+	err = stream.WritePacketRTP(medi, testNTP64Packet())
+	require.NoError(t, err)
+
+	<-recv
+}
+
 func TestClientPlayBackChannel(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
