@@ -13,3 +13,9 @@ type Conn interface {
 	SetWriteBuffer(int) error
 	SyscallConn() (syscall.RawConn, error)
 }
+
+type genericIP struct {
+	Family        int
+	IPProto       int
+	MulticastHops int
+}
