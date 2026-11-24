@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
         go: ["1.26", "1.27"]
@@ -33,7 +33,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   test_e2e:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
       - uses: actions/checkout@v7
@@ -45,7 +45,7 @@ jobs:
       - run: make test-e2e-nodocker
 
   test_32:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
       - uses: actions/checkout@v7
