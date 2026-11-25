@@ -13,7 +13,7 @@ type SessionStatsFormat struct {
 	InboundRTPPackets uint64
 	// lost inbound RTP packets
 	InboundRTPPacketsLost uint64
-	// mean jitter of inbound RTP packets
+	// mean jitter of inbound RTP packets, in RTP clock ticks
 	InboundRTPPacketsJitter float64
 	// last sequence number of inbound RTP packets
 	InboundRTPPacketsLastSequenceNumber uint16
@@ -99,7 +99,11 @@ type SessionStats struct {
 	InboundRTPPacketsLost uint64
 	// inbound RTP packets that could not be processed
 	InboundRTPPacketsInError uint64
-	// mean jitter of inbound RTP packets
+	// mean jitter of inbound RTP packets, in microseconds, across receiving formats.
+	// Nil when no format has received RTP packets or a receiving format has an unknown clock rate.
+	InboundRTPPacketsJitterUs *float64
+	// Deprecated: use InboundRTPPacketsJitterUs. This averages RTP clock ticks
+	// across formats and is not meaningful when their clock rates differ.
 	InboundRTPPacketsJitter float64
 	// inbound RTCP packets correctly received and processed
 	InboundRTCPPackets uint64
@@ -132,7 +136,7 @@ type SessionStats struct {
 	RTPPacketsLost uint64
 	// Deprecated: use InboundRTPPacketsInError.
 	RTPPacketsInError uint64
-	// Deprecated: use InboundRTPPacketsJitter.
+	// Deprecated: use InboundRTPPacketsJitterUs.
 	RTPPacketsJitter float64
 	// Deprecated: use InboundRTCPPackets.
 	RTCPPacketsReceived uint64
@@ -152,6 +156,9 @@ func sessionStatsFromMedias(mediaStats map[*description.Media]SessionStatsMedia)
 	inboundRTPPacketsInError := uint64(0)
 	inboundRTPPacketsJitter := float64(0)
 	inboundRTPPacketsJitterCount := float64(0)
+	var jitterUsTotal float64
+	var jitterUsCount int
+	jitterUsAvailable := true
 	inboundRTCPPackets := uint64(0)
 	outboundRTCPPackets := uint64(0)
 	inboundRTCPPacketsInError := uint64(0)
@@ -164,18 +171,34 @@ func sessionStatsFromMedias(mediaStats map[*description.Media]SessionStatsMedia)
 		outboundRTCPPackets += ms.OutboundRTCPPackets
 		inboundRTCPPacketsInError += ms.InboundRTCPPacketsInError
 
-		for _, fs := range ms.Formats {
+		for forma, fs := range ms.Formats {
 			inboundRTPPackets += fs.InboundRTPPackets
 			outboundRTPPackets += fs.OutboundRTPPackets
 			outboundRTPPacketsReportedLost += fs.OutboundRTPPacketsReportedLost
 			inboundRTPPacketsLost += fs.InboundRTPPacketsLost
 			inboundRTPPacketsJitter += fs.InboundRTPPacketsJitter
 			inboundRTPPacketsJitterCount++
+
+			if fs.InboundRTPPackets != 0 {
+				clockRate := forma.ClockRate()
+				if clockRate <= 0 {
+					jitterUsAvailable = false
+				} else {
+					jitterUsTotal += fs.InboundRTPPacketsJitter * 1_000_000 / float64(clockRate)
+					jitterUsCount++
+				}
+			}
 		}
 	}
 
 	if inboundRTPPacketsJitterCount != 0 {
 		inboundRTPPacketsJitter /= inboundRTPPacketsJitterCount
+	}
+
+	var jitterUs *float64
+	if jitterUsAvailable && jitterUsCount != 0 {
+		value := jitterUsTotal / float64(jitterUsCount)
+		jitterUs = &value
 	}
 
 	return SessionStats{
@@ -184,6 +207,7 @@ func sessionStatsFromMedias(mediaStats map[*description.Media]SessionStatsMedia)
 		InboundRTPPacketsLost:          inboundRTPPacketsLost,
 		InboundRTPPacketsInError:       inboundRTPPacketsInError,
 		InboundRTPPacketsJitter:        inboundRTPPacketsJitter,
+		InboundRTPPacketsJitterUs:      jitterUs,
 		InboundRTCPPackets:             inboundRTCPPackets,
 		InboundRTCPPacketsInError:      inboundRTCPPacketsInError,
 		OutboundBytes:                  outboundBytes,
