@@ -163,11 +163,6 @@ func (cr *serverConnReader) handleTunneling(in io.ReadWriter) (io.ReadWriter, er
 			}
 			var buf2 bytes.Buffer
 			res.Write(&buf2) //nolint:errcheck
-			cr.sc.nconn.SetWriteDeadline(time.Now().Add(cr.sc.s.WriteTimeout))
-			_, err = in.Write(buf2.Bytes())
-			if err != nil {
-				return nil, err
-			}
 
 			cr.sc.httpReadBuf = buf
 
@@ -175,6 +170,11 @@ func (cr *serverConnReader) handleTunneling(in io.ReadWriter) (io.ReadWriter, er
 				sc:       cr.sc,
 				write:    (req.Method == http.MethodPost),
 				tunnelID: req.Header.Get("X-Sessioncookie"),
+				writeResponse: func() error {
+					cr.sc.nconn.SetWriteDeadline(time.Now().Add(cr.sc.s.WriteTimeout))
+					_, err2 := in.Write(buf2.Bytes())
+					return err2
+				},
 			})
 			return nil, err
 

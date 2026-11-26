@@ -48,10 +48,11 @@ type serverFindOrCreateSessionReq struct {
 }
 
 type serverHandleHTTPChannelReq struct {
-	sc       *ServerConn
-	write    bool
-	tunnelID string
-	res      chan error
+	sc            *ServerConn
+	write         bool
+	tunnelID      string
+	writeResponse func() error
+	res           chan error
 }
 
 type serverGetMulticastIPReq struct {
@@ -574,6 +575,13 @@ func (s *Server) closeSession(ss *ServerSession) {
 func (s *Server) handleHTTPChannel(req serverHandleHTTPChannelReq) error {
 	req.res = make(chan error)
 
+	if req.write {
+		err := req.writeResponse()
+		if err != nil {
+			return err
+		}
+	}
+
 	select {
 	case s.chHandleHTTPChannel <- req:
 	case <-s.ctx.Done():
@@ -581,6 +589,14 @@ func (s *Server) handleHTTPChannel(req serverHandleHTTPChannelReq) error {
 	}
 
 	if !req.write {
+		// respond to the GET request after it has been registered,
+		// since clients send the POST request as soon as they receive this response,
+		// and a POST request that arrives before the GET request is registered is rejected.
+		err := req.writeResponse()
+		if err != nil {
+			return err
+		}
+
 		t := time.NewTimer(5 * time.Second)
 		defer t.Stop()
 
