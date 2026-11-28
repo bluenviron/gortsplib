@@ -1684,6 +1684,68 @@ func TestServerTunnelHTTP(t *testing.T) {
 	}
 }
 
+// delayedWriteConn simulates a goroutine that is preempted right after writing.
+type delayedWriteConn struct {
+	net.Conn
+}
+
+func (c *delayedWriteConn) Write(p []byte) (int, error) {
+	n, err := c.Conn.Write(p)
+	time.Sleep(200 * time.Millisecond)
+	return n, err
+}
+
+// firstConnDelayedListener delays writes of the first accepted connection only.
+type firstConnDelayedListener struct {
+	net.Listener
+	n atomic.Uint64
+}
+
+func (l *firstConnDelayedListener) Accept() (net.Conn, error) {
+	nconn, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	if l.n.Add(1) == 1 {
+		return &delayedWriteConn{Conn: nconn}, nil
+	}
+	return nconn, nil
+}
+
+func TestServerTunnelHTTPDelayedGET(t *testing.T) {
+	s := &Server{
+		Handler:     &testServerHandler{},
+		RTSPAddress: "localhost:8554",
+		Listen: func(network string, address string) (net.Listener, error) {
+			ln, err := net.Listen(network, address)
+			if err != nil {
+				return nil, err
+			}
+			return &firstConnDelayedListener{Listener: ln}, nil
+		},
+	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	u := mustParseURL("rtsp://localhost:8554/teststream")
+
+	c := Client{
+		Scheme: u.Scheme,
+		Host:   u.Host,
+		Tunnel: TunnelHTTP,
+	}
+	err = c.Start()
+	require.NoError(t, err)
+	defer c.Close()
+
+	// the GET request is sent through the first connection,
+	// the POST request is sent as soon as the response to the GET request is received.
+	_, err = c.Options(u)
+	require.NoError(t, err)
+}
+
 func TestServerTunnelWebSocket(t *testing.T) {
 	for _, ca := range []string{"ws", "wss"} {
 		t.Run(ca, func(t *testing.T) {
