@@ -78,9 +78,8 @@ func TestServerVsExternal(t *testing.T) {
 	var wg sync.WaitGroup
 
 	for _, file := range files {
-		cfile := file
 		wg.Go(func() {
-			err := buildImage(cfile.Name())
+			err := buildImage(file.Name())
 			require.NoError(t, err)
 		})
 	}

@@ -160,9 +160,7 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 
 	profileFound := false
 
-	for k, rv := range kvs {
-		v := rv
-
+	for k, v := range kvs {
 		switch k {
 		case "RTP/AVP", "RTP/AVP/UDP":
 			h.Profile = TransportProfileAVP

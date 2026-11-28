@@ -695,12 +695,11 @@ func TestServerRecord(t *testing.T) {
 									require.Equal(t, &testRTPPacket, pkt)
 								})
 
-							ci := i
 							ctx.Session.OnPacketRTCP(
 								ctx.Session.AnnouncedDescription().Medias[i],
 								func(pkt rtcp.Packet) {
 									require.Equal(t, &testRTCPPacket, pkt)
-									err2 := ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedDescription().Medias[ci], &testRTCPPacket)
+									err2 := ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedDescription().Medias[i], &testRTCPPacket)
 									require.NoError(t, err2)
 								})
 						}

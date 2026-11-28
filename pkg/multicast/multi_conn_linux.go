@@ -63,11 +63,10 @@ func NewMultiConn(
 		if (intf.Flags & net.FlagMulticast) == 0 {
 			continue
 		}
-		cintf := intf
 
 		var mreq syscall.IPMreq
 		copy(mreq.Multiaddr[:], addr.IP.To4())
-		err = setIPMreqInterface(&mreq, &cintf)
+		err = setIPMreqInterface(&mreq, &intf)
 		if err != nil {
 			continue
 		}
@@ -77,7 +76,7 @@ func NewMultiConn(
 			continue
 		}
 
-		enabledInterfaces = append(enabledInterfaces, &cintf)
+		enabledInterfaces = append(enabledInterfaces, &intf)
 	}
 
 	if enabledInterfaces == nil {

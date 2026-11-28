@@ -107,9 +107,7 @@ func (h *Authorization) Unmarshal(v base.HeaderValue) error {
 		uriReceived := false
 		responseReceived := false
 
-		for k, rv := range kvs {
-			v := rv
-
+		for k, v := range kvs {
 			switch k {
 			case "realm":
 				h.Realm = v
