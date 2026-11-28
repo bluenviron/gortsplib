@@ -55,14 +55,13 @@ func NewMultiConn(
 		if (intf.Flags & net.FlagMulticast) == 0 {
 			continue
 		}
-		cintf := intf
 
-		err = readConnIP.JoinGroup(&cintf, &net.UDPAddr{IP: addr.IP})
+		err = readConnIP.JoinGroup(&intf, &net.UDPAddr{IP: addr.IP})
 		if err != nil {
 			continue
 		}
 
-		enabledInterfaces = append(enabledInterfaces, &cintf)
+		enabledInterfaces = append(enabledInterfaces, &intf)
 	}
 
 	if enabledInterfaces == nil {

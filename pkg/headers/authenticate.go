@@ -103,9 +103,7 @@ func (h *Authenticate) Unmarshal(v base.HeaderValue) error {
 
 		realmReceived := false
 
-		for k, rv := range kvs {
-			v := rv
-
+		for k, v := range kvs {
 			if k == "realm" {
 				h.Realm = v
 				realmReceived = true
@@ -124,9 +122,7 @@ func (h *Authenticate) Unmarshal(v base.HeaderValue) error {
 		realmReceived := false
 		nonceReceived := false
 
-		for k, rv := range kvs {
-			v := rv
-
+		for k, v := range kvs {
 			switch k {
 			case "realm":
 				h.Realm = v
