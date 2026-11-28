@@ -84,6 +84,9 @@ linters:
       rules:
         - name: redundant-import-alias
 
+    copyloopvar:
+      check-alias: true
+
   exclusions:
     rules:
       - linters:
